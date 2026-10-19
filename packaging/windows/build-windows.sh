@@ -235,6 +235,9 @@ write_licenses() {
     # pacman sort en erreur si l'un des fichiers n'a pas de propriétaire : sans gravité.
     owners="$(pacman -Qo "$@" 2>/dev/null | sed -E 's/.* is owned by ([^ ]+) .*/\1/' | sort -u || true)"
     {
+        # La marque d'ordre des octets (BOM) permet à tous les outils de Windows
+        # (Bloc-notes ancien, PowerShell 5.1) de lire les accents.
+        printf '\xef\xbb\xbf'
         echo "Bibliothèques libres livrées avec SVG Print Layout"
         echo "=================================================="
         echo ""
@@ -249,9 +252,10 @@ write_licenses() {
             mkdir -p "$root/share/licenses/$short"
             cp -rL "$MINGW_PREFIX/share/licenses/$short/." "$root/share/licenses/$short/"
         fi
-        printf '%-28s %-14s %s\n' "$short" \
-            "$(pacman -Qi "$pkg" | awk -F' *: *' '$1 ~ /^Version/ { print $2; exit }')" \
-            "$(pacman -Qi "$pkg" | awk -F' *: *' '$1 ~ /^Licenses/ { print $2; exit }')" >> "$list"
+        # « Licenses : spdx:LGPL-2.1-or-later » : on garde tout ce qui suit le premier « : ».
+        printf '%-26s %-34s %s\n' "$short" \
+            "$(pacman -Qi "$pkg" | awk '/^Version/ { sub(/^[^:]*: */, ""); print; exit }')" \
+            "$(pacman -Qi "$pkg" | awk '/^Licenses/ { sub(/^[^:]*: */, ""); print; exit }')" >> "$list"
     done
     echo "    $(echo "$owners" | wc -w) bibliothèques décrites dans share/licenses/COMPOSANTS.txt"
 }

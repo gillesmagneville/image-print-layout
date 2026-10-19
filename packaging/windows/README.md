@@ -84,9 +84,9 @@ Le dossier livré est organisé comme un préfixe, ce que les bibliothèques att
 svgprintlayout-X.Y.Z-windows-x64/
 ├── bin/
 │   ├── svgprintlayout.exe          le programme (avec son icône et ses propriétés)
-│   └── *.dll                       cairo, librsvg, pango, glib, fontconfig... (une centaine)
+│   └── *.dll                       cairo, librsvg, pango, glib, fontconfig... (43 à la dernière construction de la CI)
 ├── etc/fonts/                      configuration de fontconfig
-├── lib/gdk-pixbuf-2.0/2.10.0/      chargeurs d'images (PNG, JPEG, GIF, BMP, WebP) et leur cache
+├── lib/gdk-pixbuf-2.0/2.10.0/      chargeurs d'images (PNG, JPEG, GIF, BMP) et leur cache
 ├── share/licenses/                 licence de chaque bibliothèque, et COMPOSANTS.txt (liste, versions)
 ├── LICENSE, README.md, CHANGELOG.md
 ```
@@ -96,6 +96,8 @@ ne savent donc pas où chercher leurs données. Au démarrage, le programme les 
 indique (`engine.ConfigureRuntime`, qui n'agit que si ce dossier est là). Il demande aussi
 à pango d'utiliser fontconfig, comme sous Linux, pour que les polices d'un document
 soient trouvées, ou remplacées, de la même façon partout.
+
+Le `.zip` pèse une quinzaine de Mo et l'installeur une douzaine (compression solide).
 
 Les polices viennent de Windows (`C:\Windows\Fonts`, et les polices installées par
 l'utilisateur) : **le paquet n'en embarque aucune**. Un dessin qui demande IBM Plex

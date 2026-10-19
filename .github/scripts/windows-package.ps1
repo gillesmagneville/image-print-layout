@@ -47,8 +47,14 @@ function Test-Portable {
     Write-Host "--- COMPOSANTS.txt"
     Get-Content "$root\share\licenses\COMPOSANTS.txt" | Select-Object -First 40 | ForEach-Object { Write-Host $_ }
     $env:Path = $cleanPath
-    & "$root\bin\svgprintlayout.exe" -version
+    $versionLine = (& "$root\bin\svgprintlayout.exe" -version) -join " "
     Assert-Success "svgprintlayout.exe -version"
+    Write-Host $versionLine
+    # Les versions des bibliothèques doivent ressembler à des versions (la lecture
+    # de celle de librsvg a donné des nombres absurdes sous Windows).
+    if ($versionLine -notmatch 'librsvg [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}, cairo [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$') {
+        throw "la ligne de version est invalide : $versionLine"
+    }
     & "$root\bin\svgprintlayout.exe" -selftest
     Assert-Success "svgprintlayout.exe -selftest"
 }

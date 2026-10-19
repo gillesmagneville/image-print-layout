@@ -124,7 +124,10 @@ type Doc interface {
 svg-print-layout/
 ├── go.mod
 ├── VERSION                    # version courante (SemVer), voir CONTRIBUTING.md
-├── cmd/svgprintlayout/        # point d'entrée : câble les paquets
+├── build-deb.sh               # construisent les paquets dans dist/ (voir « Paquets »)
+├── build-rpm.sh
+├── build-windows.ps1          # relais vers packaging/windows/
+├── cmd/svgprintlayout/        # point d'entrée : câble les paquets ; -version, -selftest
 ├── internal/
 │   ├── model/                 # types de données partagés, sans logique
 │   ├── units/                 # conversions SVG / px / pt / mm, longueurs SVG,
@@ -139,12 +142,53 @@ svg-print-layout/
 │   ├── app/                   # état de l'application et commandes
 │   ├── ui/                    # interface GTK4 (cgo)
 │   └── repocheck/             # tests sur le dépôt lui-même (en-têtes, versions, docs)
+├── packaging/                 # données et modèles des paquets .deb, .rpm et Windows
 ├── docs/                      # rapports de jalon (M0.md)
 └── testdata/                  # SVG de référence
 ```
 
 Chaque paquet de `internal/` est décrit dans ce document ; un test échoue s'il en manque un.
 Les paquets hors `ui` et `engine` n'utilisent pas cgo, et un test le vérifie.
+
+### Paquets
+
+Trois scripts construisent les paquets dans `dist/` (non versionné), à partir du code et du
+fichier `VERSION`, qu'ils ne modifient jamais : une version se change par une pull request
+« Release ».
+
+| Paquet | Script | Outil de construction |
+| --- | --- | --- |
+| `.deb` (Debian, Ubuntu) | `build-deb.sh` | `dpkg-deb`, dépendances par `dpkg-shlibdeps` |
+| `.rpm` (Fedora, RHEL) | `build-rpm.sh` | `rpmbuild`, dépendances déduites du binaire |
+| Windows : `.zip` portable et installeur | `build-windows.ps1`, `packaging/windows/` | MSYS2 UCRT64 (Go, gcc, librsvg, cairo), NSIS |
+
+- **Outils natifs.** `dpkg-deb` et `rpmbuild` sont sur toute machine de la famille, sans
+  Ruby ni dépôt de modules (fpm et nfpm ne sont pas utilisés) ; ils empaquettent un dossier
+  que les scripts préparent, sans rien compiler.
+- **Numéros.** Une version d'avant-publication (`0.1.0-dev`) se classe avant la finale :
+  `0.1.0~dev-1` chez Debian, release `0.1.dev` chez RPM.
+- **Reproductibilité.** `-trimpath`, `-buildvcs=false`, un identifiant de construction vide,
+  `SOURCE_DATE_EPOCH` (date du dernier commit), ordre, propriétaires et permissions fixés :
+  deux constructions donnent le même fichier, à versions de Go, de librsvg et de cairo égales.
+- **Paquets liés à leur machine de construction.** Les dépendances d'un `.deb` ou d'un `.rpm`
+  sont déduites du binaire : on construit sur la distribution visée (Ubuntu 24.04 et suivantes
+  pour le `.deb` ; les noms en `t64` n'existent pas avant).
+- **Disposition Windows.** Le dossier livré est un préfixe (`bin/` pour le programme et ses
+  DLL, `etc/fonts/`, `lib/gdk-pixbuf-2.0/`, `share/licenses/`) : le programme peut être
+  installé n'importe où. Fontconfig, gdk-pixbuf et pango ne savent pas où est leur
+  configuration dans ce cas ; `engine.ConfigureRuntime` la leur indique au démarrage (sous
+  Windows, quand ce dossier existe). Pango utilise fontconfig, comme sous Linux : les polices
+  d'un document sont résolues, et remplacées, de la même façon partout (§12). Le paquet
+  n'embarque aucune police ; il embarque la licence de chaque bibliothèque. Un script
+  d'installation NSIS ne supprime que les fichiers qu'il a installés.
+- **Test de fumée.** `svgprintlayout -selftest` charge un SVG intégré (fond, bloc, texte
+  accentué, image PNG incorporée), le mesure, le dessine et l'exporte en PDF, et vérifie
+  qu'une police est incorporée et que deux exports sont identiques. Le script Windows le
+  lance sur le dossier du paquet avec le seul PATH de Windows avant de produire le `.zip` ;
+  la CI le lance sur chaque paquet installé.
+- **Ce que les paquets ne font pas encore** : ils n'installent qu'un programme sans interface
+  (`-version`, `-selftest`) ; l'interface GTK4 et ses dépendances viendront avec M0b et M2.
+  Rien n'est signé, et aucun dépôt de paquets n'existe.
 
 ## 5. Modèle géométrique
 
@@ -534,7 +578,7 @@ Un test vérifie que chacun des deux contrôles échoue quand une page est déca
 - **Trois niveaux.** Go pur (modèle, unités, mise en page, analyse, projet) avec `go test` partout sans cgo ; intégration du moteur (chargement, tuiles, export) avec librsvg installé ; interface sous Xvfb sur Linux, plus une liste de contrôle manuelle sur Windows.
 - **Tests de propriétés** sur `layout` : papiers, marges, échelles et coupures tirés au hasard, avec pour invariants la couverture exacte, `w` constant, `s` inchangé par les commandes et des états cohérents.
 - **Jeu d'essai.** Le Mini-CAD réel n'est pas dans le dépôt : il décrit une infrastructure réelle. Les tests le prennent quand `SVGPL_MINICAD` donne son chemin. Le générateur déterministe `internal/testsvg` produit un équivalent public de 1 280 × 5 479 unités (fond gris, blocs avec texte, bandeau pleine largeur, rectangle transformé) ; il doit aussi servir de test de charge avec 100 000 éléments (pas encore fait).
-- **Intégration continue** : un job `engine` sur Ubuntu avec `librsvg2-dev`, `poppler-utils` et `fonts-ibm-plex` (en place) ; sur Windows sous MSYS2 UCRT64 avec le paquet `mingw-w64-ucrt-x86_64-gtk4` et ses dépendances (M0b).
+- **Intégration continue** : un job `engine` sur Ubuntu avec `librsvg2-dev`, `poppler-utils` et `fonts-ibm-plex` (en place) ; un job `linux-packages` (construction du `.deb` et du `.rpm`, lintian, AppStream, installation, `-selftest`, constructions identiques) et un job `windows-package` sous MSYS2 UCRT64 (construction par `build-windows.ps1`, `-selftest` de la version portable et du programme installé, désinstallation) — en place ; l'interface GTK4 sous Windows, avec le paquet `mingw-w64-ucrt-x86_64-gtk4` et ses dépendances (M0b).
 - **Références.** Les rasters de référence sont stockés par plateforme, avec tolérance, et jamais comparés d'une plateforme à l'autre.
 
 ## 14. Plan de livraison
@@ -550,7 +594,7 @@ Six jalons, dont M0 est le point de décision : le calcul de pages (M1) ne dépe
 | M4. Fond et export | Détection et remplacement du fond, export PDF, vérifications, aperçu de page | Tests 8 à 13 passés |
 | M5. Projet, paquets, recette | Enregistrement et réouverture dans l'interface, paquet .deb, installateur Windows, recette complète | Les 14 tests réussissent sur Ubuntu, sur Windows 10 et sur Windows 11 |
 
-**État.** Le squelette du dépôt, le paquet `units` et le prototype du moteur (M0a, `docs/M0.md`) existent. M0 n'est pas terminé : l'interface GTK4 et le build sous Windows (M0b) restent à faire. Le `CHANGELOG.md` tient le détail.
+**État.** Le squelette du dépôt, le paquet `units`, le prototype du moteur (M0a, `docs/M0.md`) et les scripts qui construisent les paquets `.deb`, `.rpm` et Windows (pour un programme sans interface) existent. M0 n'est pas terminé : l'interface GTK4 et son build sous Windows (M0b) restent à faire. Le `CHANGELOG.md` tient le détail.
 
 Après la v1, le §14 du cahier reste la liste des suites possibles. L'aperçu du PDF réel relu par un moteur PDF indépendant (le cahier demande « un aperçu du PDF final ») est le premier candidat : la v1 s'en tient à l'aperçu produit par la même fonction de dessin, ce qui est fidèle au PDF par construction.
 
@@ -575,7 +619,7 @@ Après M0a (`docs/M0.md`) :
 - **Fidélité de librsvg** : avancé. Le rendu concorde avec celui de Chromium (écart moyen d'un niveau de gris) ; la comparaison avec Inkscape reste à faire.
 - **Déterminisme** : avancé. Établi sur une machine, avec dates fixées ; il reste à constater entre versions et entre machines.
 - **Éléments rastérisés** : non avancé, le Mini-CAD n'a aucun filtre.
-- **Packaging Windows** : non avancé, c'est M0b.
+- **Packaging Windows** : avancé pour le moteur seul. Le paquet (DLL de cairo et de librsvg, fontconfig, chargeurs d'images) se construit sous MSYS2 UCRT64 et passe `-selftest` avec le seul PATH de Windows en CI ; la comparaison du plan produit sous Windows et sous Linux, et GTK4, restent à faire (M0b).
 - **Police absente** : le risque est plus grand qu'on ne le pensait, car la substitution est silencieuse et le PDF incorpore la police de remplacement. La détection devient obligatoire, pas seulement souhaitable.
 - **Temps d'export** proportionnel au nombre de pages (environ 0,25 s par page sur le Mini-CAD), et rendu d'une fenêtre d'aperçu de 0,24 à 0,41 s : à traiter par un cache de tuiles en M2.
 

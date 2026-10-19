@@ -102,6 +102,16 @@ Le contrat complet est dans `ARCHITECTURE.md`. Les règles à ne pas enfreindre 
   redessine pas deux fois la même image à l'identique. Comparez la géométrie écrite dans le
   PDF, ou des moyennes par carrés (voir « Test de couture » dans `ARCHITECTURE.md`).
 
+- Les scripts de construction des paquets (`build-deb.sh`, `build-rpm.sh`,
+  `build-windows.ps1`) passent sous `shellcheck` sans avertissement. Un changement qui les
+  touche se vérifie en construisant le paquet, en l'installant et en lançant
+  `svgprintlayout -selftest` ; la CI le fait pour les trois formats. Deux constructions du
+  même code doivent donner des fichiers identiques : ne mettez dans un paquet ni date, ni
+  chemin de la machine, ni ordre de fichiers laissé au hasard.
+- Les fichiers `.ps1` et `installer.nsi` sont en UTF-8 **avec** marque d'ordre des octets
+  (BOM), nécessaire à Windows PowerShell 5.1 et à NSIS pour lire les accents ; les scripts
+  lus par bash gardent des fins de ligne Unix (`.gitattributes`).
+
 ## Ajouter un paquet dans `internal/`
 
 Décrivez-le dans la section « Disposition du dépôt » de `ARCHITECTURE.md` : un test échoue
@@ -122,6 +132,8 @@ est dans le fichier `VERSION`, que l'on injecte à la compilation :
 ```bash
 go build -ldflags "-X main.version=$(cat VERSION)" ./cmd/svgprintlayout
 ```
+
+Les scripts de construction des paquets lisent `VERSION` et ne le modifient jamais.
 
 Une release est une pull request à part, « Release X.Y.Z », qui met à jour `VERSION` et
 déplace les notes de `[Non publié]` sous le nouveau numéro dans `CHANGELOG.md` ; le tag

@@ -25,7 +25,7 @@ Ordre de grandeur du test d'acceptation : 200 mm de largeur pour un dessin de 1 
 
 ## 2. Décisions structurantes
 
-Sept décisions portent la conception ; les quatre premières garantissent les exigences les plus strictes du cahier : aucun redimensionnement silencieux et un aperçu fidèle au PDF.
+Huit décisions portent la conception ; les quatre premières garantissent les exigences les plus strictes du cahier : aucun redimensionnement silencieux et un aperçu fidèle au PDF.
 
 1. **Un seul plan de pages, deux surfaces.** Un module pur calcule le plan (échelle, bandes, positions). L'aperçu et le PDF le dessinent avec la même fonction, sur deux surfaces différentes, donc ils ne peuvent pas diverger.
 2. **Le dessin n'est jamais découpé, seulement fenêtré.** Chaque page est le même dessin, translaté puis recadré par un clip rectangulaire aux lignes de coupure. Un trait ou un texte qui traverse une coupure est recadré exactement, sans calcul géométrique sur les chemins.
@@ -34,6 +34,7 @@ Sept décisions portent la conception ; les quatre premières garantissent les e
 5. **Rendu SVG délégué à cairo et librsvg**, par une couche cgo mince derrière une interface `Engine`. On n'écrit pas d'interpréteur SVG en Go : on obtient la fidélité (texte, dégradés, masques) et un PDF vectoriel avec clip natif.
 6. **Interface GTK4 via gotk4.** Elle partage les bibliothèques graphiques du moteur (cairo, pango) : un seul ensemble à embarquer sous Windows.
 7. **Logique en Go pur**, testable sans cgo : modèle, unités, mise en page, analyse du SVG, projet. Les tests de calcul tournent partout, sans bibliothèque graphique.
+8. **Quatre langues dès la première interface** : français, anglais, espagnol, allemand. Aucun texte destiné à l'utilisateur n'est écrit dans le code : il porte une clé, que le paquet `i18n` traduit (§4, « Langues »).
 
 La décision 5 est le principal pari technique. Le jalon M0 la valide sur le fichier réel avant tout développement d'interface ; le §3 décrit le repli si elle échoue.
 
@@ -82,7 +83,7 @@ Le reste s'appuie sur la bibliothèque standard (XML, JSON, SHA-256). La relectu
 
 ## 4. Architecture modulaire
 
-Le code se répartit en sept modules sur quatre niveaux, posés sur trois paquets de fondation (`model`, `units`, `diag`). La règle : la logique de calcul ne dépend ni de l'interface ni de cgo.
+Le code se répartit en sept modules sur quatre niveaux, posés sur quatre paquets de fondation (`model`, `units`, `diag`, `i18n`). La règle : la logique de calcul ne dépend ni de l'interface ni de cgo.
 
 ```
 ui        Interface GTK4 : fenêtre, panneaux, aperçu, gestes de souris         [cgo]
@@ -95,8 +96,8 @@ ui        Interface GTK4 : fenêtre, panneaux, aperçu, gestes de souris        
              engine   Moteur de rendu : cairo + librsvg, chargement, boîtes  [cgo]
                       des blocs, tuiles d'aperçu et PDF multipage
 
-Fondation : model · units · diag
-            types du projet, conversions d'unités, diagnostics partagés ; importés par tous
+Fondation : model · units · diag · i18n
+            types du projet, conversions d'unités, diagnostics partagés, traduction ; importés par tous
 ```
 
 Les flèches vont de l'appelant vers l'appelé. (En M0, le paquet `engine` expose des types concrets, `Load`, `Doc`, `Render`, `ExportPDF` et `PageSpec` ; l'interface ci-dessous en sera extraite en M2, quand `svgdoc` et `export` en auront besoin. `ExportPDF` y prend une liste de `PageSpec`, et non un `layout.Plan` : `engine` ne dépend pas de `layout`, et c'est `export` qui traduit le plan.) Seuls `ui` et `engine` dépendent de cgo : `svgdoc` et `export` n'appellent `engine` que par l'interface `Engine`, qu'un faux moteur remplace dans les tests. Le point d'entrée `cmd/svgprintlayout` se contente de câbler ces paquets.
@@ -132,7 +133,8 @@ svg-print-layout/
 │   ├── model/                 # types de données partagés, sans logique
 │   ├── units/                 # conversions SVG / px / pt / mm, longueurs SVG,
 │   │                          #   formats papier, marges, zone utile, échelle
-│   ├── diag/                  # diagnostics destinés à l'utilisateur
+│   ├── diag/                  # diagnostics destinés à l'utilisateur (code et valeurs, sans texte)
+│   ├── i18n/                  # traduction : français, anglais, espagnol, allemand ; nombres
 │   ├── layout/                # plan de pages, états, coupures automatiques
 │   ├── project/               # fichier projet .svgpl
 │   ├── svgdoc/                # copie de travail, analyse du SVG, détection du fond
@@ -152,6 +154,21 @@ svg-print-layout/
 
 Chaque paquet de `internal/` est décrit dans ce document ; un test échoue s'il en manque un.
 Les paquets hors `ui` et `engine` n'utilisent pas cgo, et un test le vérifie.
+
+### Langues
+
+L'interface est en français, en anglais, en espagnol et en allemand ; le paquet `i18n` (Go pur, rien à installer : les textes sont compilés dans le programme) les fournit.
+
+- **Une clé par texte.** Le code demande `tr.T("panel.paper.title")` ; le texte vient du catalogue de la langue (`catalog_fr.go`, `catalog_en.go`, `catalog_es.go`, `catalog_de.go`). Le français est le catalogue de référence : une clé absente d'une langue est complétée par l'anglais, puis par le français, et une clé inconnue de tous s'affiche telle quelle. Les tests rendent ces cas impossibles en pratique : les quatre catalogues ont exactement les mêmes clés, aucun texte vide, les mêmes paramètres, et toute clé demandée dans le code existe.
+- **Des paramètres nommés.** Un texte écrit `{count}`, `{path}` ou `{w}` ; une traduction place les valeurs dans l'ordre de sa langue. Les nombres décimaux s'écrivent avec la virgule en français, en espagnol et en allemand, avec le point en anglais ; `Number` fixe le nombre de décimales.
+- **Les pluriels.** `tr.N("pages.count", n)` lit `pages.count.one` ou `pages.count.other` selon la langue (le français compte 0 au singulier, les trois autres non).
+- **Lire un nombre.** `ParseNumber` accepte la virgule comme le point et ignore les espaces, y compris l'espace insécable des milliers : une personne qui tape « 200,5 » ou « 200.5 » dans un champ de largeur obtient la même valeur, quelle que soit la langue de l'interface.
+- **Typographie française.** Le catalogue français s'écrit avec des espaces ordinaires ; au démarrage, l'espace insécable est mise avant « : », « ; », « ? », « ! » et dans les guillemets, pour qu'un libellé ne se coupe pas avant son deux-points.
+- **Choix de la langue.** Le réglage est un code (`fr`, `en`, `es`, `de`) ou `auto`. `auto` suit le système : variables `LANGUAGE`, `LC_ALL`, `LC_MESSAGES`, `LANG` sous Linux, langue de l'utilisateur sous Windows (`GetUserDefaultLocaleName`). Une langue du système qui n'est pas l'une des quatre donne l'anglais. L'option `-lang` de la ligne de commande l'emporte ; le choix fait dans l'interface sera enregistré dans les préférences de l'utilisateur (hors du fichier projet : le projet ne dépend pas de la langue de celui qui l'ouvre).
+- **Messages d'erreur et diagnostics.** Un diagnostic (`diag`) porte un code et des valeurs, jamais un texte : l'interface le traduit par la clé `diag.<code>`. Ainsi une erreur de moteur ou d'export s'affiche dans la langue de l'utilisateur sans que les paquets de calcul connaissent les langues.
+- **Composants de GTK.** Les boutons des boîtes de dialogue standard (« Annuler », « Ouvrir »…) sont traduits par GTK lui-même, à partir de la langue choisie : l'interface la lui donnera avant de l'initialiser, et le paquet Windows embarquera les catalogues de GTK pour ces quatre langues.
+- **Ce qui reste en français.** Les sorties de diagnostic `-version` et `-selftest` (utiles au support, relues par les scripts de paquets) ; les documents du dépôt (`ARCHITECTURE.md`, `CONTRIBUTING.md`, journal des modifications) ; les identifiants et commentaires du code, en anglais.
+- **Ajouter un texte ou une langue.** Un texte : ajouter la clé aux quatre catalogues (le test dit lesquels l'oublient). Une langue : un catalogue, son nom dans `Name` et `Languages`, sa règle de pluriel dans `isSingular`, son séparateur décimal dans `Number`.
 
 ### Paquets
 
@@ -626,7 +643,7 @@ Six jalons, dont M0 est le point de décision : le calcul de pages (M1) ne dépe
 | M4. Fond et export | Détection et remplacement du fond, export PDF, vérifications, aperçu de page | Tests 8 à 13 passés |
 | M5. Projet, paquets, recette | Enregistrement et réouverture dans l'interface, paquet .deb, installateur Windows, recette complète | Les 14 tests réussissent sur Ubuntu, sur Windows 10 et sur Windows 11 |
 
-**État.** Le squelette du dépôt, le paquet `units`, le prototype du moteur (M0a, `docs/M0.md`) et les scripts qui construisent les paquets `.deb`, `.rpm` et Windows (pour un programme sans interface) existent. M0 n'est pas terminé : l'interface GTK4 et son build sous Windows (M0b) restent à faire. Le `CHANGELOG.md` tient le détail.
+**État.** Le squelette du dépôt, le paquet `units`, le prototype du moteur (M0a, `docs/M0.md`) et les scripts qui construisent les paquets `.deb`, `.rpm` et Windows (pour un programme sans interface) existent. M0 n'est pas terminé : l'interface GTK4 et son build sous Windows (M0b) restent à faire. Le paquet de traduction `i18n` existe. Le `CHANGELOG.md` tient le détail.
 
 Après la v1, le §14 du cahier reste la liste des suites possibles. L'aperçu du PDF réel relu par un moteur PDF indépendant (le cahier demande « un aperçu du PDF final ») est le premier candidat : la v1 s'en tient à l'aperçu produit par la même fonction de dessin, ce qui est fidèle au PDF par construction.
 
@@ -662,7 +679,7 @@ Après M0a (`docs/M0.md`) :
 3. **Mode B.** La définition du §1 convient-elle : échelle qui fait tenir la portion choisie dans la hauteur utile ?
 4. **Aperçu du PDF final (§9.2).** La v1 le fournit avec la même fonction de dessin que l'export. Faut-il en plus relire le fichier PDF avec un moteur PDF indépendant dès la v1 ?
 5. **Texte dans le PDF.** Le moteur le donne sans effort : texte sélectionnable, polices incorporées en sous-ensembles. Reste à décider si c'est une garantie du produit, ou seulement l'apparence.
-6. **Langue de l'interface.** Français seul en v1 ?
+6. **Langue de l'interface.** *Tranché : français, anglais, espagnol et allemand dès la première version de l'interface (§4, « Langues »).*
 7. **Versions d'Ubuntu à prendre en charge.** La version de librsvg varie selon la version d'Ubuntu, ce qui touche la fidélité et le déterminisme.
 
 ## Sources

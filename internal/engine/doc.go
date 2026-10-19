@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-only
+
 // Package engine isolates the rendering back end behind two small
 // interfaces (Engine and Doc): load an SVG, measure block boxes, render a
 // preview tile, export the page plan to PDF.

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-only
+
 // Package layout is the geometric core: given the document size, the paper
 // settings, the global scale and the cut positions (stored in document
 // units), it computes the page plan — bands, physical sizes, positions on the

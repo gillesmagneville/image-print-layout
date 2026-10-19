@@ -1,31 +1,48 @@
+# SPDX-License-Identifier: GPL-3.0-only
+
 name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
 
-# The pure-Go packages (units, layout, model, project, ...) must build and
-# test without cgo, on both target platforms. Packages that need GTK4, cairo
-# or librsvg will get their own job once the M0 prototype lands.
+permissions:
+  contents: read
+
+# A newer push to the same branch/PR makes the older run pointless.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# The packages other than ui and engine are pure Go and must build and test
+# without cgo, on both target platforms. ui and engine (GTK4, cairo, librsvg)
+# will get their own job once the M0 prototype lands.
 env:
   CGO_ENABLED: "0"
 
 jobs:
-  test:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+  fmt:
+    name: Formatting
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - name: gofmt
-        if: runner.os == 'Linux'
-        run: test -z "$(gofmt -l .)"
-      - name: go vet
-        run: go vet ./...
-      - name: go test
-        run: go test ./...
+      - run: test -z "$(gofmt -l .)"
+
+  test:
+    name: Vet and tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go vet ./...
+      - run: go test ./...

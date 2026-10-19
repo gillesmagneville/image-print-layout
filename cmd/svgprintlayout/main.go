@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-only
+
 // Command svgprintlayout is the entry point of SVG Print Layout.
 //
 // At this stage (M0 skeleton) it only reports its version: the graphical

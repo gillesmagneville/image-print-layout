@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-only
+
 // Package export drives the multipage PDF export: pre-export verifications
 // (no unintended cropping, exact page sizes, cuts matching the preview,
 // content inside the margins, background as requested) and the post-export

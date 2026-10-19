@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-only
+
 // Package model holds the plain data types shared by the other packages
 // (document description, layout settings, cut lines, background options).
 //

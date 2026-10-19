@@ -25,13 +25,16 @@ func repoRoot(t *testing.T) string {
 	return root
 }
 
+// read returns the text of a file with Unix line endings: on Windows, git
+// checks text files out with CRLF, which would break every pattern anchored on
+// the end of a line. The byte order mark, if any, is kept.
 func read(t *testing.T, path string) string {
 	t.Helper()
 	b, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return string(b)
+	return strings.ReplaceAll(string(b), "\r\n", "\n")
 }
 
 // walk calls fn for every tracked-looking file under root, skipping .git.

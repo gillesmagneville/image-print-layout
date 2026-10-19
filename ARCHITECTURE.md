@@ -55,8 +55,8 @@ Pourquoi C :
 - **Fidélité.** [librsvg](https://gnome.pages.gitlab.gnome.org/librsvg/Rsvg-2.0/overview.html) ne gère ni script, ni animation, ni polices SVG ; il s'appuie sur les polices du système via Cairo et Pango.
 - **Toute surface cairo.** Le même code dessine sur une surface image pour l'aperçu et sur une surface PDF pour l'export, et un document chargé peut être rendu autant de fois que nécessaire.
 - **Aucun fond par défaut.** librsvg ne peint pas de fond : le fond de page est rempli par l'application (§8).
-- **Cadrage.** `rsvg_handle_render_document` met le document à l'échelle proportionnellement dans un viewport et le centre. On lui donne un viewport de même proportion que le dessin, pour ne dépendre d'aucun centrage implicite.
-- **Boîtes des éléments.** [librsvg mesure un élément par son identifiant](https://valadoc.org/librsvg-2.0/Rsvg.Handle.get_geometry_for_element.html), sans tenir compte des clips. L'analyse ajoute des identifiants à la copie de travail pour mesurer chaque bloc (§7).
+- **Cadrage.** `rsvg_handle_render_document` met le document à l'échelle proportionnellement dans un viewport et le centre. On lui donne un viewport de même proportion que le dessin, pour ne dépendre d'aucun centrage implicite. Le moteur impose 96 dpi à librsvg, dont la résolution par défaut est de 90 : sans cela, les longueurs en `mm`, `in` ou `pt` seraient mal converties (M0, `docs/M0.md`).
+- **Boîtes des éléments.** [librsvg mesure un élément par son identifiant](https://valadoc.org/librsvg-2.0/Rsvg.Handle.get_geometry_for_element.html), sans tenir compte des clips. Le moteur utilise `rsvg_handle_get_geometry_for_layer`, qui donne la boîte dans le repère du document (la variante « element » la donne relative à l'élément) ; sur le Mini-CAD, les 36 groupes, 121 rectangles et 459 textes sont mesurés, aucun hors du document. L'analyse ajoute des identifiants à la copie de travail pour mesurer chaque bloc (§7).
 
 Coûts assumés :
 
@@ -78,7 +78,7 @@ GTK4 est retenu. Comme `Engine` renvoie des images (§4), Fyne reste un repli po
 
 Si la fidélité ou le packaging Windows ne passent pas, le moteur D prend le relais derrière la même interface `Engine`. Le calcul de pages, l'analyse du SVG, le projet et l'interface ne changent pas ; seuls l'aperçu et l'export changent de moteur.
 
-Le reste s'appuie sur la bibliothèque standard (XML, JSON, SHA-256). La relecture du PDF produit, pour les vérifications du §11, utilisera une bibliothèque Go de lecture PDF à choisir en M0.
+Le reste s'appuie sur la bibliothèque standard (XML, JSON, SHA-256). La relecture du PDF produit, pour les vérifications du §11, n'exige pas de bibliothèque PDF : M0 montre que les flux de contenu de cairo sont du Flate, que `compress/zlib` décompresse, et que le clip et le décalage de chaque page s'y lisent directement (§11).
 
 ## 4. Architecture modulaire
 
@@ -99,7 +99,7 @@ Fondation : model · units · diag
             types du projet, conversions d'unités, diagnostics partagés ; importés par tous
 ```
 
-Les flèches vont de l'appelant vers l'appelé. Seuls `ui` et `engine` dépendent de cgo : `svgdoc` et `export` n'appellent `engine` que par l'interface `Engine`, qu'un faux moteur remplace dans les tests. Le point d'entrée `cmd/svgprintlayout` se contente de câbler ces paquets.
+Les flèches vont de l'appelant vers l'appelé. (En M0, le paquet `engine` expose des types concrets, `Load`, `Doc`, `Render`, `ExportPDF` et `PageSpec` ; l'interface ci-dessous en sera extraite en M2, quand `svgdoc` et `export` en auront besoin. `ExportPDF` y prend une liste de `PageSpec`, et non un `layout.Plan` : `engine` ne dépend pas de `layout`, et c'est `export` qui traduit le plan.) Seuls `ui` et `engine` dépendent de cgo : `svgdoc` et `export` n'appellent `engine` que par l'interface `Engine`, qu'un faux moteur remplace dans les tests. Le point d'entrée `cmd/svgprintlayout` se contente de câbler ces paquets.
 
 Le dépôt GitHub s'appelle `svg-print-layout`, le module Go `github.com/gillesmagneville/svg-print-layout` et le binaire `svgprintlayout`. La disposition des fichiers est donnée après l'interface `Engine`.
 
@@ -134,10 +134,12 @@ svg-print-layout/
 │   ├── project/               # fichier projet .svgpl
 │   ├── svgdoc/                # copie de travail, analyse du SVG, détection du fond
 │   ├── engine/                # moteur de rendu derrière l'interface Engine (cgo)
+│   ├── testsvg/               # générateur de SVG d'essai déterministe (Go pur)
 │   ├── export/                # export PDF et vérifications
 │   ├── app/                   # état de l'application et commandes
 │   ├── ui/                    # interface GTK4 (cgo)
 │   └── repocheck/             # tests sur le dépôt lui-même (en-têtes, versions, docs)
+├── docs/                      # rapports de jalon (M0.md)
 └── testdata/                  # SVG de référence
 ```
 
@@ -247,7 +249,9 @@ Le clip est le rectangle de la bande, jamais celui de la zone utile : c'est lui 
 
 ### Partage du dessin entre les pages
 
-Le document est rendu une seule fois dans une surface d'enregistrement cairo, puis peint sur chaque page. Le PDF ne devrait donc pas contenir le dessin autant de fois qu'il a de pages. La mesure en M0 le confirme ; sinon, le repli est une surface de rendu par page avec clip, au prix d'un fichier plus gros.
+Chaque page redessine le document directement sous son clip : cairo n'écrit dans le PDF que les opérations qui touchent la fenêtre, donc le fichier ne contient pas le dessin autant de fois qu'il a de pages. M0 l'a mesuré sur le Mini-CAD : 77 080 octets pour 4 pages, 71 695 pour le dessin entier sur une seule page. Le texte reste du texte, avec ses polices incorporées en sous-ensembles.
+
+Le plan initial était de dessiner le document une fois dans une surface d'enregistrement cairo, puis de la peindre sur chaque page. Il est abandonné : avec cairo 1.18, le PDF n'écrit alors qu'un seul objet dont l'étendue est celle de son premier usage, les pages suivantes sortent vides, et le texte devient des contours (`docs/M0.md`). Le coût est un temps d'export proportionnel au nombre de pages (environ 0,25 s par page sur le Mini-CAD).
 
 ### Aperçu
 
@@ -255,7 +259,7 @@ En vue Document, le dessin est peint en tuiles et les limites de page sont des s
 
 ### Export
 
-Pour chaque page : taille de page fixée, fond de page (§8), sauvegarde du contexte, clip, matrice, peinture du dessin, restauration, page suivante. L'exporteur lit `s` dans le plan et ne le modifie pas.
+Pour chaque page : taille de page fixée, fond de page (§8), sauvegarde du contexte, clip, matrice, rendu du document, restauration, page suivante. L'exporteur lit `s` dans le plan et ne le modifie pas. Les positions de clip et de chemin sont écrites par cairo en virgule fixe 24.8, soit au 1/256 de point (0,0014 mm) : la position d'une coupure dans le PDF est exacte à cette précision, sous la tolérance de 0,005 mm du §5.
 
 ## 7. Moteur de mise en page
 
@@ -460,14 +464,14 @@ Sept contrôles portent sur le plan avant l'export, et deux sur le PDF relu apr�
 | 8 | PDF relu : nombre de pages égal au nombre de bandes | Erreur |
 | 9 | PDF relu : taille de chaque page égale au papier demandé, tolérance 0,02 mm | Erreur |
 
-Le contrôle 9 compare des points : un A4 vaut 595,28 × 841,89 pt. La correspondance des coupures avec l'aperçu vient de la construction (même plan, §6) ; l'exporteur la prouve en écrivant dans un manifeste interne les rectangles de clip réellement utilisés, comparés au plan. La vérification visuelle équivalente est faite par les tests (§13).
+Le contrôle 9 compare des points : un A4 vaut 595,28 × 841,89 pt. La correspondance des coupures avec l'aperçu vient de la construction (même plan, §6) ; les contrôles 8 et 9 relisent le PDF écrit, sans bibliothèque PDF, et ce même relevé la prouve : le rectangle de clip et le décalage du dessin de chaque page se lisent dans le flux de contenu, et sont comparés au plan à 1/256 de point près (c'est la méthode des tests de `engine`, `docs/M0.md`). La vérification visuelle équivalente est faite par les tests (§13).
 
 ### Déterminisme
 
-- **Pas d'horodatage ni d'identifiant aléatoire** dans le PDF : métadonnées fixes, aucune date de création.
+- **Pas d'horodatage ni d'identifiant aléatoire** dans le PDF : cairo écrit par défaut les dates de création et de modification, le moteur les fixe à `2000-01-01T00:00:00Z`. Le champ « producteur » contient la version de cairo.
 - **Entrées stables** : les instructions de fond sont rejouées dans un ordre fixe, et `layout` est séquentiel, sans parallélisme qui changerait l'ordre des opérations flottantes.
 - **Limite assumée** : l'égalité d'octets est garantie à versions de cairo et de librsvg, et à polices, identiques. Entre deux machines différentes, les tests comparent des rasters avec une tolérance plutôt que des octets.
-- **À prouver en M0** : deux exports successifs du même projet, sur la même machine, donnent des fichiers de même SHA-256.
+- **Prouvé en M0, sur une machine** : trois exports du même document (dont un après rechargement, à une seconde d'écart) donnent des fichiers de même SHA-256, sur le SVG synthétique et sur le Mini-CAD.
 
 ## 12. Couverture SVG et signalement
 
@@ -493,7 +497,7 @@ L'analyse se fait en deux passes :
 
 Le rapport s'affiche dans la section « Fichier source » avec un compteur par niveau. Cliquer une entrée sélectionne et centre l'élément concerné dans l'aperçu, grâce à sa boîte mesurée. Le rapport peut être copié en texte brut.
 
-Le texte est dessiné avec les polices du système. Son intégration dans le PDF et sa sélectionnabilité sont à vérifier en M0 ; une police absente à l'export est substituée et signalée comme ci-dessus.
+Le texte est dessiné avec les polices du système. M0 montre qu'il reste du texte dans le PDF, sélectionnable, avec des sous-ensembles TrueType incorporés. Il montre aussi qu'une police absente est remplacée **sans rien dire** (IBM Plex remplacée par DejaVu, et le PDF incorpore la police de remplacement) : le signalement ci-dessus est donc la seule protection, et il exige une résolution des polices par fontconfig dans `engine` (M2).
 
 ## 13. Stratégie de tests
 
@@ -513,19 +517,24 @@ Les 14 tests d'acceptation sont tous automatisés sauf le geste de souris, véri
 | 10 | Export d'un PDF multipage | Nombre de pages égal au nombre de bandes | Auto |
 | 11 | Dimensions des pages du PDF | Taille des pages relue : 595,28 × 841,89 pt, tolérance 0,02 mm | Auto |
 | 12 | Largeur identique sur toutes les pages | Plan, puis mesure raster d'un élément pleine largeur sur chaque page | Auto |
-| 13 | Coupures conformes à l'aperçu | Test de couture (ci-dessous) et rectangles de clip égaux au plan | Auto |
+| 13 | Coupures conformes à l'aperçu | Test de couture (ci-dessous) : clip et décalage lus dans le PDF égaux au plan, et pixels par carrés | Auto |
 | 14 | Réouverture du projet | Enregistrer, recharger, égalité profonde des réglages ; JSON de référence | Auto |
 
 ### Test de couture
 
-On rastérise le PDF produit, on découpe chaque page à sa fenêtre de contenu, on recolle les fenêtres dans l'ordre, puis on compare le résultat au rendu du document entier à la même résolution. L'écart toléré aux coutures est de un pixel. Ce test établit à la fois l'absence de perte ou de doublon aux coupures et l'égalité de largeur : c'est lui qui répond au critère final du cahier, un PDF fidèle à l'aperçu sans redimensionnement silencieux.
+Deux contrôles complémentaires, car aucun n'est à la fois exact et robuste (mesures et raisons dans `docs/M0.md`) :
+
+- **La géométrie écrite dans le PDF.** On lit dans le flux de contenu de chaque page le rectangle de clip et l'endroit où le dessin est peint, et on les compare au plan, à 1/256 de point près. C'est le contrôle exact, valable pour toute position de coupure ; il établit aussi l'égalité de largeur.
+- **Les pixels.** On rastérise le PDF produit, on découpe chaque page à sa fenêtre de contenu, et on la compare au rendu du document entier à la même échelle, par carrés de 16 × 16 pixels dont on compare la moyenne de gris (24 niveaux tolérés ; 14 mesurés au plus). Ce contrôle voit un contenu perdu, répété ou déplacé de quelques millimètres. Il ne compare pas pixel par pixel : un rastériseur place les glyphes sur une grille d'un quart de pixel et cale les traits fins sur la grille de pixels, si bien qu'un écart d'un centième de pixel à l'origine d'une page déplace un trait d'un pixel entier.
+
+Un test vérifie que chacun des deux contrôles échoue quand une page est décalée. Ensemble, ils répondent au critère final du cahier : un PDF fidèle à l'aperçu, sans redimensionnement silencieux.
 
 ### Organisation
 
 - **Trois niveaux.** Go pur (modèle, unités, mise en page, analyse, projet) avec `go test` partout sans cgo ; intégration du moteur (chargement, tuiles, export) avec librsvg installé ; interface sous Xvfb sur Linux, plus une liste de contrôle manuelle sur Windows.
 - **Tests de propriétés** sur `layout` : papiers, marges, échelles et coupures tirés au hasard, avec pour invariants la couverture exacte, `w` constant, `s` inchangé par les commandes et des états cohérents.
-- **Jeu d'essai.** Le Mini-CAD réel n'est pas fourni. Un générateur déterministe produit un SVG de 1 280 × 5 479 unités (fond gris, blocs avec texte, bandeau pleine largeur) ; il sert aussi de test de charge avec 100 000 éléments. Le vrai fichier le remplace dès qu'il est disponible.
-- **Intégration continue** sur Ubuntu avec les paquets système, et sur Windows sous MSYS2 UCRT64 avec le paquet `mingw-w64-ucrt-x86_64-gtk4` et ses dépendances.
+- **Jeu d'essai.** Le Mini-CAD réel n'est pas dans le dépôt : il décrit une infrastructure réelle. Les tests le prennent quand `SVGPL_MINICAD` donne son chemin. Le générateur déterministe `internal/testsvg` produit un équivalent public de 1 280 × 5 479 unités (fond gris, blocs avec texte, bandeau pleine largeur, rectangle transformé) ; il doit aussi servir de test de charge avec 100 000 éléments (pas encore fait).
+- **Intégration continue** : un job `engine` sur Ubuntu avec `librsvg2-dev`, `poppler-utils` et `fonts-ibm-plex` (en place) ; sur Windows sous MSYS2 UCRT64 avec le paquet `mingw-w64-ucrt-x86_64-gtk4` et ses dépendances (M0b).
 - **Références.** Les rasters de référence sont stockés par plateforme, avec tolérance, et jamais comparés d'une plateforme à l'autre.
 
 ## 14. Plan de livraison
@@ -541,32 +550,42 @@ Six jalons, dont M0 est le point de décision : le calcul de pages (M1) ne dépe
 | M4. Fond et export | Détection et remplacement du fond, export PDF, vérifications, aperçu de page | Tests 8 à 13 passés |
 | M5. Projet, paquets, recette | Enregistrement et réouverture dans l'interface, paquet .deb, installateur Windows, recette complète | Les 14 tests réussissent sur Ubuntu, sur Windows 10 et sur Windows 11 |
 
-**État.** Le squelette du dépôt et le paquet `units` existent ; M0 n'est pas commencé. Le `CHANGELOG.md` tient le détail.
+**État.** Le squelette du dépôt, le paquet `units` et le prototype du moteur (M0a, `docs/M0.md`) existent. M0 n'est pas terminé : l'interface GTK4 et le build sous Windows (M0b) restent à faire. Le `CHANGELOG.md` tient le détail.
 
 Après la v1, le §14 du cahier reste la liste des suites possibles. L'aperçu du PDF réel relu par un moteur PDF indépendant (le cahier demande « un aperçu du PDF final ») est le premier candidat : la v1 s'en tient à l'aperçu produit par la même fonction de dessin, ce qui est fidèle au PDF par construction.
 
 ## 15. Risques et questions ouvertes
 
-Les cinq premiers risques se tranchent au jalon M0 ; aucun développement d'interface n'est engagé avant son verdict.
+Les cinq premiers risques se tranchent au jalon M0 ; aucun développement d'interface n'est engagé avant son verdict. M0a en a tranché un et avancé deux (voir sous le tableau).
 
 | Risque | Effet | Parade | Tranché en |
 | --- | --- | --- | --- |
 | Packaging Windows de GTK4, librsvg et leurs dépendances | Installateur lourd, ou build impossible | Build sous MSYS2 UCRT64, essai sur une machine Windows propre, moteur D en repli | M0 |
 | Fidélité de librsvg sur le Mini-CAD réel (texte, polices) | Rendu différent de l'original | Essai du vrai fichier, comparé à un rendu d'Inkscape | M0 |
-| Taille du PDF : le dessin répété à chaque page | Fichier N fois plus gros | Dessin enregistré une fois puis peint sur chaque page ; sinon une surface par page avec clip | M0 |
+| Taille du PDF : le dessin répété à chaque page | Fichier N fois plus gros | Rendu direct sur chaque page, sous clip : cairo n'écrit que ce qui touche la fenêtre (la surface d'enregistrement est écartée, §6) | M0a, tranché : ×1,08 |
 | Résolution des éléments rastérisés (filtres) dans le PDF | Flou ou pixels visibles à l'impression | Mesure, avertissement dès l'analyse, étude du réglage de la résolution de repli | M0 |
 | Déterminisme dépendant des versions de cairo et de librsvg | Octets différents d'une machine à l'autre | Versions figées dans les paquets Windows ; comparaison par rasters entre plateformes | M0 puis M5 |
 | Maturité de gotk4 | Fuites mémoire, plantages | Interface mince, moteur indépendant de gotk4, scénarios sous Xvfb, repli Fyne | M2 |
 | Documents très lourds | Chargement et tuiles lents, mémoire | Test à 100 000 éléments, cache LRU, chargement hors du fil de l'interface | M2 |
 | Police absente sur la machine d'export | Texte substitué | Détection et avertissement avant l'export | M2 |
 
+Après M0a (`docs/M0.md`) :
+
+- **Taille du PDF** : tranché, ×1,08 sur le Mini-CAD.
+- **Fidélité de librsvg** : avancé. Le rendu concorde avec celui de Chromium (écart moyen d'un niveau de gris) ; la comparaison avec Inkscape reste à faire.
+- **Déterminisme** : avancé. Établi sur une machine, avec dates fixées ; il reste à constater entre versions et entre machines.
+- **Éléments rastérisés** : non avancé, le Mini-CAD n'a aucun filtre.
+- **Packaging Windows** : non avancé, c'est M0b.
+- **Police absente** : le risque est plus grand qu'on ne le pensait, car la substitution est silencieuse et le PDF incorpore la police de remplacement. La détection devient obligatoire, pas seulement souhaitable.
+- **Temps d'export** proportionnel au nombre de pages (environ 0,25 s par page sur le Mini-CAD), et rendu d'une fenêtre d'aperçu de 0,24 à 0,41 s : à traiter par un cache de tuiles en M2.
+
 ### Questions ouvertes
 
-1. **Fichier réel.** Pouvez-vous fournir le Mini-CAD, et un second SVG représentatif, pour valider M0 ?
+1. **Fichier réel.** Le Mini-CAD a été fourni et sert à M0a (non versionné). Un second SVG représentatif, avec filtres, images ou polices incorporées, serait utile pour les éléments rastérisés.
 2. **Coupures verticales.** Sont-elles bien hors v1, comme le suggèrent le §14 du cahier et le test 12 ?
 3. **Mode B.** La définition du §1 convient-elle : échelle qui fait tenir la portion choisie dans la hauteur utile ?
 4. **Aperçu du PDF final (§9.2).** La v1 le fournit avec la même fonction de dessin que l'export. Faut-il en plus relire le fichier PDF avec un moteur PDF indépendant dès la v1 ?
-5. **Texte dans le PDF.** Faut-il garantir un texte sélectionnable avec polices incorporées, ou l'apparence suffit-elle ?
+5. **Texte dans le PDF.** Le moteur le donne sans effort : texte sélectionnable, polices incorporées en sous-ensembles. Reste à décider si c'est une garantie du produit, ou seulement l'apparence.
 6. **Langue de l'interface.** Français seul en v1 ?
 7. **Versions d'Ubuntu à prendre en charge.** La version de librsvg varie selon la version d'Ubuntu, ce qui touche la fidélité et le déterminisme.
 

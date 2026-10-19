@@ -16,8 +16,8 @@ concurrency:
   cancel-in-progress: true
 
 # The packages other than ui and engine are pure Go and must build and test
-# without cgo, on both target platforms. ui and engine (GTK4, cairo, librsvg)
-# will get their own job once the M0 prototype lands.
+# without cgo, on both target platforms. The engine (cairo, librsvg) has its own
+# job below; ui (GTK4) and the Windows build of both will follow with M0b.
 env:
   CGO_ENABLED: "0"
 
@@ -46,3 +46,19 @@ jobs:
           go-version-file: go.mod
       - run: go vet ./...
       - run: go test ./...
+
+  engine:
+    name: Engine (librsvg and cairo, ubuntu-latest)
+    runs-on: ubuntu-latest
+    env:
+      # Overrides the workflow-wide CGO_ENABLED=0. The tests that read PDFs
+      # need poppler; with CI set, a missing tool fails instead of skipping.
+      CGO_ENABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends librsvg2-dev poppler-utils fonts-ibm-plex
+      - run: go vet ./internal/engine ./internal/testsvg
+      - run: go test -count=1 -v ./internal/engine ./internal/testsvg

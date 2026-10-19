@@ -38,6 +38,11 @@ discuter avant qu'après. Les fonctions listées comme hors périmètre dans
    `CGO_ENABLED=0`. N'utilisez pas de fonctionnalité plus récente que la version de Go
    indiquée dans `go.mod`.
 
+   Si vous touchez au moteur de rendu (`internal/engine`), lancez aussi ses tests avec cgo
+   (`sudo apt-get install librsvg2-dev poppler-utils fonts-ibm-plex`, puis
+   `CGO_ENABLED=1 go test ./internal/engine ./internal/testsvg`) : c'est ce que fait le job
+   `engine` de l'intégration continue.
+
 3. Décrivez dans la pull request ce qui change et pourquoi, et dites ce que vous avez
    vérifié et ce que vous n'avez pas pu vérifier.
 
@@ -89,8 +94,13 @@ Le contrat complet est dans `ARCHITECTURE.md`. Les règles à ne pas enfreindre 
 - Pour `layout`, préférez des tests de propriétés (papiers, marges, échelles et coupures
   tirés au hasard avec une graine fixe) aux seuls exemples : couverture exacte des bandes,
   largeur constante, échelle inchangée par les commandes.
-- Les SVG de référence vont dans `testdata/`. Le Mini-CAD réel n'y est pas encore ; un
-  générateur déterministe le remplacera en attendant (voir `ARCHITECTURE.md`).
+- Les SVG de référence vont dans `testdata/`. Le Mini-CAD réel n'y est pas : il décrit une
+  infrastructure réelle. Le générateur déterministe `internal/testsvg` en fournit un
+  équivalent, et `SVGPL_MINICAD=/chemin/du/fichier.svg` fait passer les tests du moteur sur
+  le vrai fichier (voir `docs/M0.md`).
+- Un test de rendu ne compare jamais deux rasters pixel par pixel : un rastériseur ne
+  redessine pas deux fois la même image à l'identique. Comparez la géométrie écrite dans le
+  PDF, ou des moyennes par carrés (voir « Test de couture » dans `ARCHITECTURE.md`).
 
 ## Ajouter un paquet dans `internal/`
 

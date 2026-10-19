@@ -4,7 +4,7 @@
 
 Application de bureau (Linux/Ubuntu et Windows 10/11, écrite en Go) pour **mettre en page, découper et imprimer un document vectoriel SVG sur plusieurs feuilles de papier standard**, puis l'exporter en **PDF multipage vectoriel**.
 
-> **État : squelette du dépôt (étape M0 à venir).** Rien n'est encore utilisable : le dépôt contient l'organisation des paquets, la bibliothèque de conversions d'unités et de formats papier (testée), et la CI. Le prototype M0, qui valide le moteur de rendu et la bibliothèque graphique, est la prochaine étape.
+> **État : prototype du moteur de rendu (M0a).** Rien n'est encore utilisable : le dépôt contient l'organisation des paquets, la bibliothèque de conversions d'unités et de formats papier, un prototype du moteur (librsvg + cairo : rendu d'une fenêtre et export PDF multipage, validé sur le Mini-CAD, voir [`docs/M0.md`](docs/M0.md)) et la CI. Le prototype de l'interface GTK4 et le build sous Windows (M0b) sont la prochaine étape.
 
 ## Principe
 
@@ -31,13 +31,15 @@ internal/
   layout/    calcul des pages, bandes, états, coupures automatiques       (Go pur)
   project/   fichier projet .svgpl (JSON versionné, écriture déterministe) (Go pur)
   svgdoc/    lecture du SVG : dimensions, unités, fonctions non prises en charge, fond
-  engine/    moteur de rendu derrière une interface (librsvg + cairo prévus)
+  engine/    moteur de rendu : librsvg + cairo par cgo (prototype M0a)
   export/    export PDF multipage et vérifications avant/après
   app/       état de l'application et cas d'usage, indépendants de l'interface
   diag/      messages et avertissements destinés à l'utilisateur
-  ui/        interface graphique (GTK4 via gotk4 à valider en M0)
+  ui/        interface graphique (GTK4 via gotk4 à valider en M0b)
+  testsvg/   générateur de SVG d'essai déterministe                      (Go pur)
   repocheck/ tests sur le dépôt lui-même (en-têtes de licence, versions, documentation)
-testdata/    SVG de référence (Mini-CAD à ajouter)
+docs/        rapports de jalon (M0.md)
+testdata/    SVG de référence
 ```
 
 Le sens des dépendances va de `ui` vers `app`, puis vers `layout`, `project`, `svgdoc` et `export` ; `svgdoc` et `export` n'appellent `engine` que par son interface. Seuls `ui` et `engine` utilisent cgo : tous les autres paquets se testent partout, sans bibliothèque graphique installée.
@@ -47,6 +49,7 @@ Le sens des dépendances va de `ui` vers `app`, puis vers `layout`, `project`, `
 - [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md) : pourquoi le projet existe, ses principes et son périmètre.
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) : le contrat technique (paquets, interfaces, formules, format de projet, vérifications, plan de livraison). Il fait foi pour tout ce qui est concret.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) : signaler un bug, proposer une amélioration, contribuer du code.
+- [`docs/M0.md`](docs/M0.md) : rapport du prototype du moteur de rendu (mesures, découvertes, ce qui reste à valider).
 - [`CHANGELOG.md`](CHANGELOG.md) : l'historique des changements.
 
 ## Développement
@@ -62,7 +65,16 @@ go run ./cmd/svgprintlayout -version
 
 La CI (GitHub Actions) exécute ces commandes sous Ubuntu et Windows, avec `CGO_ENABLED=0`.
 
-Les dépendances natives (GTK4, cairo, librsvg, polices système) seront documentées ici une fois le prototype M0 validé, avec la procédure pour Ubuntu et pour Windows (MSYS2).
+Le moteur de rendu (`internal/engine`) demande cgo, librsvg et cairo, et ses tests lisent des PDF avec poppler. Sous Ubuntu 24.04 :
+
+```sh
+sudo apt-get install librsvg2-dev poppler-utils fonts-ibm-plex
+CGO_ENABLED=1 go test ./internal/engine ./internal/testsvg
+```
+
+Sans `CGO_ENABLED=1`, le paquet `engine` est vide et le reste se compile et se teste sans bibliothèque graphique. Un outil de poppler absent fait sauter le test concerné, sauf quand la variable `CI` est définie.
+
+Les dépendances de l'interface (GTK4) et la procédure pour Windows (MSYS2) seront documentées ici une fois le volet M0b validé.
 
 ## Licence
 

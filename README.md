@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: GPL-3.0-only -->
+
 # svg-print-layout
 
 Application de bureau (Linux/Ubuntu et Windows 10/11, écrite en Go) pour **mettre en page, découper et imprimer un document vectoriel SVG sur plusieurs feuilles de papier standard**, puis l'exporter en **PDF multipage vectoriel**.
@@ -34,16 +36,25 @@ internal/
   app/       état de l'application et cas d'usage, indépendants de l'interface
   diag/      messages et avertissements destinés à l'utilisateur
   ui/        interface graphique (GTK4 via gotk4 à valider en M0)
+  repocheck/ tests sur le dépôt lui-même (en-têtes de licence, versions, documentation)
 testdata/    SVG de référence (Mini-CAD à ajouter)
 ```
 
-Le sens des dépendances va de `ui` vers `app`, puis vers `layout`, `svgdoc`, `engine`, `export` et `project`. Les paquets de calcul (`units`, `layout`, `model`, `project`) n'utilisent pas cgo, de sorte qu'ils se testent partout, sans bibliothèque graphique installée.
+Le sens des dépendances va de `ui` vers `app`, puis vers `layout`, `project`, `svgdoc` et `export` ; `svgdoc` et `export` n'appellent `engine` que par son interface. Seuls `ui` et `engine` utilisent cgo : tous les autres paquets se testent partout, sans bibliothèque graphique installée.
+
+## Documentation
+
+- [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md) : pourquoi le projet existe, ses principes et son périmètre.
+- [`ARCHITECTURE.md`](ARCHITECTURE.md) : le contrat technique (paquets, interfaces, formules, format de projet, vérifications, plan de livraison). Il fait foi pour tout ce qui est concret.
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) : signaler un bug, proposer une amélioration, contribuer du code.
+- [`CHANGELOG.md`](CHANGELOG.md) : l'historique des changements.
 
 ## Développement
 
 Prérequis pour l'instant : Go 1.24 ou plus récent.
 
 ```sh
+gofmt -l .          # ne doit rien afficher
 go vet ./...
 go test ./...
 go run ./cmd/svgprintlayout -version
@@ -55,4 +66,4 @@ Les dépendances natives (GTK4, cairo, librsvg, polices système) seront documen
 
 ## Licence
 
-Ce projet est distribué sous la licence [GNU General Public License v3.0](LICENSE) (GPL-3.0).
+Ce projet est distribué sous la licence [GNU General Public License v3.0](LICENSE) (GPL-3.0-only).

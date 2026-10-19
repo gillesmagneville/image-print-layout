@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-only
+
 // Package units converts between SVG lengths, CSS pixels, points and
 // millimetres, and holds the catalogue of standard paper sizes.
 //

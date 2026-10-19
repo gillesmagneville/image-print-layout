@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: GPL-3.0-only -->
+
 # Jeux de test
 
 Ce dossier accueillera les SVG de référence.

@@ -16,9 +16,10 @@ concurrency:
   cancel-in-progress: true
 
 # The packages other than ui and engine are pure Go and must build and test
-# without cgo, on both target platforms. The engine (cairo, librsvg) has its own
-# job below, and so do the installable packages (.deb and .rpm, then the
-# Windows installer); ui (GTK4) will follow with M0b.
+# without cgo, on both target platforms (ui is then a stub that only says the
+# program was built without its window). The engine (cairo, librsvg) and the
+# window (GTK4) have their own jobs below, and so do the installable packages
+# (.deb and .rpm, then the Windows installer).
 env:
   CGO_ENABLED: "0"
 
@@ -61,8 +62,59 @@ jobs:
         with:
           go-version-file: go.mod
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends librsvg2-dev poppler-utils fonts-ibm-plex
-      - run: go vet ./cmd/svgprintlayout ./internal/engine ./internal/testsvg
-      - run: go test -count=1 -v ./cmd/svgprintlayout ./internal/engine ./internal/testsvg
+      - run: go vet ./internal/engine ./internal/testsvg
+      - run: go test -count=1 -v ./internal/engine ./internal/testsvg
+
+  # The window: everything is built with cgo (the program links GTK4), and the
+  # tests of the window run on a virtual screen. gotk4 compiles slowly the
+  # first time; setup-go keeps the build cache between runs.
+  ui:
+    name: Window (GTK4, ubuntu-latest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CGO_ENABLED: "1"
+      GSK_RENDERER: cairo
+      GTK_A11Y: none
+      NO_AT_BRIDGE: "1"
+      LIBGL_ALWAYS_SOFTWARE: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Install GTK4 and the tools of the virtual screen
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends librsvg2-dev libgtk-4-dev libgirepository1.0-dev \
+            poppler-utils fonts-ibm-plex adwaita-icon-theme xvfb xauth imagemagick
+      - run: go vet ./...
+      - name: Tests of the window and of the program, on a virtual screen
+        run: xvfb-run -a -s "-screen 0 1300x820x24" go test -count=1 -v ./internal/ui ./cmd/svgprintlayout
+      - name: Build, then open the window in each language
+        run: |
+          go build -o "$RUNNER_TEMP/svgprintlayout" ./cmd/svgprintlayout
+          mkdir screenshots
+          cat > "$RUNNER_TEMP/sample.svg" <<'SVG'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="5479" viewBox="0 0 1280 5479">
+            <rect width="1280" height="5479" fill="#f4f5f8"/>
+            <rect width="1280" height="84" fill="#2b3a55"/>
+            <text x="24" y="52" font-family="IBM Plex Sans, sans-serif" font-size="28" fill="#ffffff">Plan de test</text>
+            <rect x="40" y="150" width="1200" height="60" fill="#ffffff" stroke="#8790a3" stroke-width="1.2"/>
+            <rect x="40" y="2600" width="1200" height="60" fill="#ffffff" stroke="#8790a3" stroke-width="1.2"/>
+            <rect x="40" y="5300" width="1200" height="60" fill="#ffffff" stroke="#8790a3" stroke-width="1.2"/>
+          </svg>
+          SVG
+          for lang in fr en es de; do
+            .github/scripts/screenshot.sh "$RUNNER_TEMP/svgprintlayout" "$lang" "screenshots/$lang-empty.png"
+            .github/scripts/screenshot.sh "$RUNNER_TEMP/svgprintlayout" "$lang" "screenshots/$lang-document.png" "$RUNNER_TEMP/sample.svg"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: screenshots/*.png
+          retention-days: 14
 
   linux-packages:
     name: Linux packages (.deb and .rpm)
@@ -75,7 +127,8 @@ jobs:
       - name: Install the build and check tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends librsvg2-dev rpm lintian appstream desktop-file-utils
+          sudo apt-get install -y --no-install-recommends librsvg2-dev libgtk-4-dev libgirepository1.0-dev \
+            rpm lintian appstream desktop-file-utils xvfb xauth imagemagick adwaita-icon-theme
       # The scripts ask which version to build and for a confirmation, like a
       # user's run: "o" answers the confirmation, --no-version-change keeps
       # VERSION as it is. The packages are written at the root of the repository.
@@ -95,6 +148,8 @@ jobs:
           svgprintlayout -version
           svgprintlayout -selftest
           man -w svgprintlayout
+          for lang in fr es de; do test -f "/usr/share/man/$lang/man1/svgprintlayout.1.gz"; done
+          .github/scripts/screenshot.sh /usr/bin/svgprintlayout en "$RUNNER_TEMP/installed.png"
           sudo apt-get remove -y svgprintlayout
           test ! -e /usr/bin/svgprintlayout
       - name: Run the program from the .rpm
@@ -153,6 +208,13 @@ jobs:
           path: |
             *_windows-portable.zip
             *_windows-setup.exe
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-screenshots
+          path: screenshots/*.png
+          if-no-files-found: ignore
           retention-days: 14
       - name: Check that build-windows.ps1 -Clean removes the packages
         shell: powershell

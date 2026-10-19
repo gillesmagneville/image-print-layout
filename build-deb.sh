@@ -43,7 +43,7 @@ version d'avant-publication (0.1.0-dev) est publiée par --minor ou --patch
 Le paquet est créé à la racine du dépôt : svgprintlayout_<version>-1_<arch>.deb
 
 Prérequis (Debian, Ubuntu) :
-  sudo apt install golang-go build-essential pkg-config librsvg2-dev dpkg-dev
+  sudo apt install golang-go build-essential pkg-config librsvg2-dev libgtk-4-dev libgirepository1.0-dev dpkg-dev
 
 Pour une construction identique d'une fois sur l'autre, la date des fichiers
 est celle du dernier commit ; SOURCE_DATE_EPOCH la remplace si elle est définie.
@@ -97,6 +97,8 @@ command -v gcc >/dev/null 2>&1 || erreur "gcc n'est pas installé. Installe-le a
 command -v pkg-config >/dev/null 2>&1 || erreur "pkg-config n'est pas installé. Installe-le avec : sudo apt install pkg-config"
 pkg-config --exists librsvg-2.0 cairo || erreur "les bibliothèques de développement de librsvg et de cairo sont absentes.
   Installe-les avec : sudo apt install librsvg2-dev"
+pkg-config --exists gtk4 gobject-introspection-1.0 || erreur "les bibliothèques de développement de GTK 4 sont absentes (GTK 4.14 ou plus récent).
+  Installe-les avec : sudo apt install libgtk-4-dev libgirepository1.0-dev"
 
 case "$(uname -m)" in
     x86_64)  DEB_ARCH="amd64" ;;
@@ -229,7 +231,7 @@ mkdir -p "$BUILD_DIR"
 # adresse aléatoire (durcissement). Le numéro de version du paquet est inscrit
 # dans le programme (svgprintlayout -version), même si le fichier VERSION du
 # projet n'est mis à jour qu'après un build réussi (voir plus bas).
-echo ">>> Compilation (cgo, librsvg, cairo)..."
+echo ">>> Compilation (cgo, GTK4, librsvg, cairo)..."
 BINARY="$WORK_DIR/$PACKAGE_NAME"
 ( cd "$PROJECT_DIR" && CGO_ENABLED=1 go build -trimpath -buildvcs=false -buildmode=pie \
     -ldflags "-s -w -buildid= -X main.version=$NEW_VERSION" -o "$BINARY" ./cmd/svgprintlayout )
@@ -242,8 +244,14 @@ install -D -m 0644 "$PROJECT_DIR/metainfo/$APP_ID.desktop" "$BUILD_DIR/usr/share
 install -D -m 0644 "$PROJECT_DIR/metainfo/$APP_ID.metainfo.xml" "$BUILD_DIR/usr/share/metainfo/$APP_ID.metainfo.xml"
 install -D -m 0644 "$PROJECT_DIR/icons/svgprintlayout.svg" "$BUILD_DIR/usr/share/icons/hicolor/scalable/apps/svgprintlayout.svg"
 install -D -m 0644 "$PROJECT_DIR/icons/svgprintlayout-256.png" "$BUILD_DIR/usr/share/icons/hicolor/256x256/apps/svgprintlayout.png"
+# Page de manuel : en anglais dans man1 (langue de repli), traduite dans le
+# dossier de chaque langue (man-db choisit selon la langue de l'utilisateur).
 install -d -m 0755 "$BUILD_DIR/usr/share/man/man1"
 gzip -9n -c "$PROJECT_DIR/docs/svgprintlayout.1" > "$BUILD_DIR/usr/share/man/man1/$PACKAGE_NAME.1.gz"
+for LANGUE in fr es de; do
+    install -d -m 0755 "$BUILD_DIR/usr/share/man/$LANGUE/man1"
+    gzip -9n -c "$PROJECT_DIR/docs/$LANGUE/svgprintlayout.1" > "$BUILD_DIR/usr/share/man/$LANGUE/man1/$PACKAGE_NAME.1.gz"
+done
 
 DOC_DIR="$BUILD_DIR/usr/share/doc/$PACKAGE_NAME"
 install -D -m 0644 "$PROJECT_DIR/README.md" "$DOC_DIR/README.md"
@@ -267,12 +275,12 @@ install -D -m 0644 "$PROJECT_DIR/debian/lintian-overrides" "$BUILD_DIR/usr/share
 # dossiers et les dates, pour que le paquet ne dépende pas non plus du moment
 # de la construction.
 echo ">>> Normalisation des permissions..."
-chmod 0644 "$DOC_DIR/changelog.gz" "$DOC_DIR/changelog.Debian.gz" "$BUILD_DIR/usr/share/man/man1/$PACKAGE_NAME.1.gz"
+chmod 0644 "$DOC_DIR/changelog.gz" "$DOC_DIR/changelog.Debian.gz" "$BUILD_DIR"/usr/share/man/man1/*.gz "$BUILD_DIR"/usr/share/man/*/man1/*.gz
 find "$BUILD_DIR" -type d -exec chmod 755 {} +
 
 # Dépendances : dpkg-shlibdeps lit les bibliothèques que le binaire charge et
-# en déduit les paquets (avec les versions minimales). Quand l'interface GTK4
-# sera liée au programme, libgtk-4-1 apparaîtra ici sans rien changer.
+# en déduit les paquets (avec les versions minimales) : librsvg, cairo et GTK 4
+# (libgtk-4-1) pour la fenêtre.
 echo ">>> Calcul des dépendances (dpkg-shlibdeps)..."
 SHLIBS_TMP="$(mktemp -d)"
 trap 'rm -rf "${SHLIBS_TMP:?}"' EXIT

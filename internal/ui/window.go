@@ -41,7 +41,7 @@ func Run(opts Options) int {
 	if setting != i18n.Auto {
 		// GTK translates its own texts (the buttons of the file chooser...)
 		// from this variable, read before the toolkit starts.
-		os.Setenv("LANGUAGE", string(lang))
+		setenv("LANGUAGE", string(lang))
 	}
 
 	application := gtk.NewApplication(AppID, gio.ApplicationFlagsNone)

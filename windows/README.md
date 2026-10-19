@@ -73,8 +73,8 @@ Aucun changement du code ne peut le supprimer.
 
 | Outil | Rôle | Installation proposée par le script |
 | --- | --- | --- |
-| [MSYS2](https://www.msys2.org) | Fournit, pour Windows, Go, le compilateur C, librsvg et cairo (environnement UCRT64) | Oui, avec `winget` (dans `C:\msys64`) |
-| Paquets MSYS2 : `go`, `gcc`, `pkgconf`, `librsvg`, `cairo`, `zip`, `git` | La chaîne de construction | Oui, avec `pacman`, après une mise à jour de MSYS2 |
+| [MSYS2](https://www.msys2.org) | Fournit, pour Windows, Go, le compilateur C, GTK 4, librsvg et cairo (environnement UCRT64) | Oui, avec `winget` (dans `C:\msys64`) |
+| Paquets MSYS2 : `go`, `gcc`, `pkgconf`, `librsvg`, `cairo`, `gtk4`, `gobject-introspection`, `adwaita-icon-theme`, `hicolor-icon-theme`, `zip`, `git` | La chaîne de construction, et ce que la fenêtre embarque | Oui, avec `pacman`, après une mise à jour de MSYS2 |
 | [NSIS](https://nsis.sourceforge.io/) | Produit l'installeur `.exe` (facultatif) | Oui, avec `winget` |
 
 Sans NSIS, seule la version portable est produite ; ce n'est pas une erreur.
@@ -97,21 +97,38 @@ Le dossier livré est organisé comme un préfixe, ce que les bibliothèques att
 ```
 svgprintlayout-X.Y.Z-windows-x64/
 ├── bin/
-│   ├── svgprintlayout.exe          le programme (avec son icône et ses propriétés)
-│   └── *.dll                       cairo, librsvg, pango, glib, fontconfig... (43 à la dernière construction de la CI)
+│   ├── svgprintlayout.exe          la fenêtre (sous-système Windows : pas de console derrière)
+│   ├── svgprintlayout-console.exe  le même programme en console : -version, -selftest, messages d'erreur
+│   └── *.dll                       GTK 4, cairo, librsvg, pango, glib, fontconfig...
 ├── etc/fonts/                      configuration de fontconfig
-├── lib/gdk-pixbuf-2.0/2.10.0/      chargeurs d'images (PNG, JPEG, GIF, BMP) et leur cache
+├── lib/gdk-pixbuf-2.0/2.10.0/      chargeurs d'images (PNG, JPEG, GIF, BMP, WebP, SVG) et leur cache
+├── share/glib-2.0/schemas/         schémas de réglages de GTK (sans eux, GTK s'arrête à l'ouverture d'un sélecteur de fichier)
+├── share/icons/                    thèmes d'icônes Adwaita et hicolor (images des boutons)
+├── share/locale/                   traductions des textes propres à GTK (français, espagnol, allemand)
 ├── share/licenses/                 licence de chaque bibliothèque, et COMPOSANTS.txt (liste, versions)
 ├── LICENSE, README.md, CHANGELOG.md
 ```
 
 Un programme Windows n'est pas installé sous un préfixe fixe : fontconfig et gdk-pixbuf
 ne savent donc pas où chercher leurs données. Au démarrage, le programme les leur
-indique (`engine.ConfigureRuntime`, qui n'agit que si ce dossier est là). Il demande aussi
+indique (`engine.ConfigureRuntime`, qui n'agit que si ce dossier est là). GLib et GTK
+retrouvent leurs schémas, leurs icônes et leurs traductions à partir de l'emplacement de
+leurs DLL, ce qui impose le dossier `bin/` à côté de `share/`. Le programme demande aussi
 à pango d'utiliser fontconfig, comme sous Linux, pour que les polices d'un document
 soient trouvées, ou remplacées, de la même façon partout.
 
-Le `.zip` pèse une quinzaine de Mo et l'installeur une douzaine (compression solide).
+Il y a deux exécutables parce qu'un programme Windows à fenêtre n'écrit nulle part dans
+un terminal, et qu'un programme console ouvre une fenêtre noire derrière ses fenêtres.
+`svgprintlayout.exe` est celui des raccourcis ; dans un terminal, utilisez
+`svgprintlayout-console.exe -version` pour joindre la version à un signalement de problème.
+
+Les paquets pèsent plusieurs dizaines de Mo (GTK 4 et ses dépendances) ; la CI donne la
+taille exacte de chaque construction.
+
+**Langues.** La fenêtre suit la langue de Windows (français, anglais, espagnol ou
+allemand, l'anglais sinon) ; le menu de la fenêtre ou `-lang` en choisit une autre, et
+le choix est enregistré dans `%AppData%\svgprintlayout\settings.json`. L'installeur
+suit lui aussi la langue de Windows.
 
 Les polices viennent de Windows (`C:\Windows\Fonts`, et les polices installées par
 l'utilisateur) : **le paquet n'en embarque aucune**. Un dessin qui demande IBM Plex
@@ -127,11 +144,14 @@ quand tout a réussi, il écrit la nouvelle version dans `VERSION`. Le script ba
 
 1. vérifie les paquets MSYS2 (et les installe avec `--install-deps`) ;
 2. fabrique la ressource Windows (icône, propriétés du fichier) avec `windres` ;
-3. compile le programme avec Go et cgo (librsvg et cairo de MSYS2) ;
-4. prépare le dossier du paquet : le programme, les DLL dont il dépend (trouvées avec
-   `ldd`, de proche en proche : les DLL de Windows lui-même sont exclues), les chargeurs
-   d'images et leur cache, la configuration de fontconfig, les licences ;
-5. **lance le programme avec `-selftest` et le seul PATH de Windows** : si une DLL, une
+3. compile le programme avec Go et cgo (GTK 4, librsvg et cairo de MSYS2), deux fois : en
+   sous-système Windows (la fenêtre) et en sous-système console, et vérifie le
+   sous-système de chacun ;
+4. prépare le dossier du paquet : les deux programmes, les DLL dont ils dépendent
+   (trouvées avec `ldd`, de proche en proche : les DLL de Windows lui-même sont exclues),
+   les chargeurs d'images et leur cache, la configuration de fontconfig, les schémas,
+   les icônes et les traductions de GTK, les licences ;
+5. **lance le programme console avec `-selftest` et le seul PATH de Windows** : si une DLL, une
    police ou un chargeur d'images manque, la construction s'arrête là, sans produire de
    paquet cassé ;
 6. crée le `.zip` (ordre des fichiers et dates fixés), puis l'installeur avec NSIS.
@@ -167,10 +187,14 @@ Ne les enregistrez pas sans BOM.
 La CI (job `windows-package`, sur `windows-latest`) fait exactement ce que fait un
 utilisateur : elle exécute `.\build-windows.ps1 -Patch -Oui` dans Windows PowerShell 5.1 (et vérifie que
 `VERSION` est mis à jour après la construction), puis
-décompresse le `.zip` et lance `svgprintlayout.exe -selftest` avec le seul PATH de
-Windows, puis installe en silence avec l'installeur, lance `-selftest` depuis le dossier
-installé, et désinstalle en vérifiant que rien ne reste ; enfin `-Clean` doit retirer les
-paquets.
+décompresse le `.zip`, lance `svgprintlayout-console.exe -selftest` avec le seul PATH de
+Windows, puis **ouvre la fenêtre** dans les quatre langues (le programme crée un fichier
+avec `-ready-file` quand la fenêtre est affichée et le document dessiné) et en enregistre
+une capture d'écran, déposée en artefact `windows-screenshots` ; elle installe ensuite en
+silence avec l'installeur, lance `-selftest` et la fenêtre depuis le dossier installé,
+et désinstalle en vérifiant que rien ne reste ; enfin `-Clean` doit retirer les
+paquets. Le rendu logiciel de GTK est demandé pour ces essais (`GSK_RENDERER=cairo`) :
+une machine virtuelle n'a pas de carte graphique.
 
 L'installeur a aussi été compilé et exécuté sous Wine, sur Linux, avec une arborescence
 d'essai : installation, mise à jour par-dessus une installation, désinstallation.
@@ -194,6 +218,11 @@ La base de paquets de MSYS2 est périmée. Dans un terminal MSYS2 UCRT64, `pacma
 `ldd` ne voit pas une DLL de MSYS2 : c'est le signe que le script n'a pas été lancé dans
 un terminal UCRT64, ou qu'un paquet est à moitié installé (`pacman -S --needed` le
 répare).
+
+**La fenêtre ne s'ouvre pas, ou une ligne de commande n'affiche rien**
+`svgprintlayout.exe` est le programme à fenêtre : lancé depuis un terminal il n'écrit rien.
+Utilisez `svgprintlayout-console.exe` pour voir les messages (`-version`, `-selftest`, ou
+le message d'une erreur de démarrage).
 
 **« l'auto-test du programme échoue hors de MSYS2 »**
 Le paquet est incomplet. Le message d'`-selftest`, affiché juste au-dessus, dit ce qui

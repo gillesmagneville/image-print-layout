@@ -17,7 +17,8 @@ concurrency:
 
 # The packages other than ui and engine are pure Go and must build and test
 # without cgo, on both target platforms. The engine (cairo, librsvg) has its own
-# job below; ui (GTK4) and the Windows build of both will follow with M0b.
+# job below, and so do the installable packages (.deb and .rpm, then the
+# Windows installer); ui (GTK4) will follow with M0b.
 env:
   CGO_ENABLED: "0"
 
@@ -60,5 +61,110 @@ jobs:
         with:
           go-version-file: go.mod
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends librsvg2-dev poppler-utils fonts-ibm-plex
-      - run: go vet ./internal/engine ./internal/testsvg
-      - run: go test -count=1 -v ./internal/engine ./internal/testsvg
+      - run: go vet ./cmd/svgprintlayout ./internal/engine ./internal/testsvg
+      - run: go test -count=1 -v ./cmd/svgprintlayout ./internal/engine ./internal/testsvg
+
+  linux-packages:
+    name: Linux packages (.deb and .rpm)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Install the build and check tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends librsvg2-dev rpm lintian appstream desktop-file-utils
+      - name: Build the .deb and the .rpm
+        run: |
+          ./build-deb.sh
+          ./build-rpm.sh
+      - name: Check the .deb with lintian, AppStream and desktop-file-validate
+        run: |
+          lintian --fail-on error dist/*.deb
+          dpkg-deb --extract dist/*.deb "$RUNNER_TEMP/deb"
+          desktop-file-validate "$RUNNER_TEMP"/deb/usr/share/applications/*.desktop
+          appstreamcli validate --no-net "$RUNNER_TEMP"/deb/usr/share/metainfo/*.metainfo.xml
+      - name: Install the .deb, run it, remove it
+        run: |
+          sudo apt-get install -y ./dist/*.deb
+          svgprintlayout -version
+          svgprintlayout -selftest
+          man -w svgprintlayout
+          sudo apt-get remove -y svgprintlayout
+          test ! -e /usr/bin/svgprintlayout
+      - name: Run the program from the .rpm
+        run: |
+          rpm -qpi dist/*.rpm
+          rpm -qpl dist/*.rpm
+          mkdir "$RUNNER_TEMP/rpm"
+          rpm2cpio dist/*.rpm | (cd "$RUNNER_TEMP/rpm" && cpio -idm)
+          "$RUNNER_TEMP/rpm/usr/bin/svgprintlayout" -selftest
+      - name: Check that building twice gives the same files
+        run: |
+          sha256sum dist/*.deb dist/*.rpm > "$RUNNER_TEMP/first.sha"
+          ./build-deb.sh >/dev/null
+          ./build-rpm.sh >/dev/null
+          sha256sum --check "$RUNNER_TEMP/first.sha"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-packages
+          path: |
+            dist/*.deb
+            dist/*.rpm
+          retention-days: 14
+
+  windows-package:
+    name: Windows package (portable and installer)
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install NSIS
+        shell: pwsh
+        run: choco install nsis --no-progress -y
+      # The same entry point as a user's: it checks MSYS2 and its packages,
+      # installs what is missing (-Oui answers yes), then builds both packages
+      # and runs the program with only Windows' own PATH. Windows PowerShell
+      # 5.1 on purpose: it is what a user has.
+      - name: Build with build-windows.ps1
+        shell: powershell
+        run: .\build-windows.ps1 -Oui
+      - name: Run the portable version from a clean PATH
+        shell: pwsh
+        run: |
+          $version = (Get-Content VERSION -Raw).Trim()
+          Expand-Archive "dist\svgprintlayout_${version}_windows-portable.zip" -DestinationPath "$env:RUNNER_TEMP\portable"
+          $root = (Get-ChildItem "$env:RUNNER_TEMP\portable" -Directory | Select-Object -First 1).FullName
+          Get-Content "$root\lib\gdk-pixbuf-2.0\2.10.0\loaders.cache" -ErrorAction SilentlyContinue | Select-Object -First 12
+          Get-Content "$root\share\licenses\COMPOSANTS.txt" | Select-Object -First 40
+          $env:Path = "$env:SystemRoot\System32;$env:SystemRoot"
+          & "$root\bin\svgprintlayout.exe" -version
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          & "$root\bin\svgprintlayout.exe" -selftest
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+      - name: Install, run and uninstall with the installer
+        shell: pwsh
+        run: |
+          $version = (Get-Content VERSION -Raw).Trim()
+          $setup = "dist\svgprintlayout_${version}_windows-setup.exe"
+          $target = "$env:RUNNER_TEMP\installed"
+          Start-Process -FilePath $setup -ArgumentList "/S", "/D=$target" -Wait
+          if (-not (Test-Path "$target\bin\svgprintlayout.exe")) { throw "the installer did not install the program" }
+          if (-not (Test-Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\SVGPrintLayout")) { throw "the uninstall entry is missing" }
+          $env:Path = "$env:SystemRoot\System32;$env:SystemRoot"
+          & "$target\bin\svgprintlayout.exe" -selftest
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          # _?= makes the uninstaller run in place and wait, instead of copying
+          # itself to a temporary folder and returning at once.
+          Start-Process -FilePath "$target\Uninstall.exe" -ArgumentList "/S", "_?=$target" -Wait
+          if (Test-Path "$target\bin") { throw "the uninstaller left the program behind" }
+          if (Test-Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\SVGPrintLayout") { throw "the uninstall entry is still there" }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-package
+          path: |
+            dist/*_windows-portable.zip
+            dist/*_windows-setup.exe
+          retention-days: 14

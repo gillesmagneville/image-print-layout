@@ -1,0 +1,3 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Ce paquet n'est pas destiné à Debian : il n'y a pas de rapport de bogue à fermer.
+svgprintlayout: initial-upload-closes-no-bugs

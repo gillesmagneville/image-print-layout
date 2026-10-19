@@ -1,0 +1,32 @@
+.\" SPDX-License-Identifier: GPL-3.0-only
+.TH SVGPRINTLAYOUT 1 "" "svg-print-layout" "Commandes utilisateur"
+.SH NOM
+svgprintlayout \- met en page un dessin SVG sur plusieurs feuilles et l'exporte en PDF
+.SH SYNOPSIS
+.B svgprintlayout
+[\fB\-version\fR | \fB\-selftest\fR]
+.SH DESCRIPTION
+.B svgprintlayout
+prépare l'impression d'un document vectoriel SVG de dimensions quelconques sur
+plusieurs feuilles de papier standard : on choisit le format, les marges et la
+largeur du dessin, on place les coupures à la souris, puis on exporte un seul
+PDF multipage vectoriel. Le dessin garde une échelle unique et le fichier SVG
+d'origine n'est jamais modifié.
+.PP
+Le programme est en cours de développement : l'interface graphique n'est pas
+encore disponible, seules les options ci\-dessous fonctionnent.
+.SH OPTIONS
+.TP
+.B \-version
+Affiche la version du programme, la plate\-forme et les versions des
+bibliothèques de rendu (librsvg, cairo), puis quitte. À joindre à tout
+signalement de problème.
+.TP
+.B \-selftest
+Vérifie que le moteur de rendu fonctionne sur cette machine : charge un SVG
+intégré, le mesure, le dessine, l'exporte en PDF et contrôle que la police est
+incorporée. Quitte avec le code 0 si tout fonctionne, 1 sinon.
+.SH VOIR AUSSI
+https://github.com/gillesmagneville/svg-print-layout
+.SH AUTEUR
+Gilles MAGNEVILLE. Distribué sous la licence GNU GPL version 3.

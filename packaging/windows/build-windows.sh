@@ -325,9 +325,18 @@ Lancez plutôt .\\build-windows.ps1 depuis PowerShell, à la racine du dépôt."
     ensure_packages
     [ "$CHECK_DEPS" = true ] && exit 0
 
+    # Le paquet Go de MSYS2 est compilé avec -trimpath : son programme ne sait
+    # pas retrouver tout seul son dossier d'installation. On le lui donne, sauf
+    # si l'utilisateur a déjà choisi.
+    if [ -z "${GOROOT:-}" ] && [ -d "$MINGW_PREFIX/lib/go" ]; then
+        GOROOT="$(cygpath -m "$MINGW_PREFIX/lib/go")"
+        export GOROOT
+    fi
+
     read_version
     set_source_date_epoch
     check_go_prerequisites
+    step "Go : $(go version)"
     require_tool windres "Il fait partie du paquet MSYS2 mingw-w64-ucrt-x86_64-binutils (installé avec gcc)."
     require_tool ldd "Il fait partie de MSYS2 (paquet msys2-runtime)."
     require_tool zip "pacman -S zip"

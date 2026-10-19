@@ -7,6 +7,7 @@ package engine
 import (
 	"image/color"
 	"math"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -142,9 +143,12 @@ func TestRenderWindow(t *testing.T) {
 	}
 }
 
+// Both versions must look like versions: on Windows, reading librsvg's version
+// variables through cgo once gave 1257383423.1259480575.1258431999.
 func TestVersionsAreReported(t *testing.T) {
 	rsvg, cairo := Versions()
-	if !strings.Contains(rsvg, ".") || !strings.Contains(cairo, ".") {
+	version := regexp.MustCompile(`^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$`)
+	if !version.MatchString(rsvg) || !version.MatchString(cairo) {
 		t.Errorf("Versions() = %q, %q", rsvg, cairo)
 	}
 	t.Logf("librsvg %s, cairo %s", rsvg, cairo)

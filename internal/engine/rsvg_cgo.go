@@ -16,6 +16,21 @@ package engine
 // cgo generates, hence the non-const data pointer; the cairo callback type is
 // reached through an unsafe.Pointer conversion.
 extern cairo_status_t goCairoWrite(void *closure, unsigned char *data, unsigned int length);
+
+// librsvg's version numbers are variables exported by the library. They are
+// read here, in C, and not through cgo's own access to C variables: on
+// Windows, where the library is a DLL, that access reads the import thunk
+// instead of the value and returns garbage.
+static unsigned int svgpl_rsvg_version(int part) {
+	switch (part) {
+	case 0:
+		return rsvg_major_version;
+	case 1:
+		return rsvg_minor_version;
+	default:
+		return rsvg_micro_version;
+	}
+}
 */
 import "C"
 
@@ -293,6 +308,6 @@ func (d *Doc) ExportPDF(out io.Writer, pages []PageSpec, opt PDFOptions) error {
 // Versions returns the librsvg and cairo versions the program runs with:
 // byte-identical PDFs are only promised for identical versions.
 func Versions() (librsvg, cairo string) {
-	return fmt.Sprintf("%d.%d.%d", C.rsvg_major_version, C.rsvg_minor_version, C.rsvg_micro_version),
+	return fmt.Sprintf("%d.%d.%d", C.svgpl_rsvg_version(0), C.svgpl_rsvg_version(1), C.svgpl_rsvg_version(2)),
 		C.GoString(C.cairo_version_string())
 }

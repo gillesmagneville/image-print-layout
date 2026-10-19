@@ -4,7 +4,7 @@
 
 Application de bureau (Linux/Ubuntu et Windows 10/11, écrite en Go) pour **mettre en page, découper et imprimer un document vectoriel SVG sur plusieurs feuilles de papier standard**, puis l'exporter en **PDF multipage vectoriel**.
 
-> **État : prototype du moteur de rendu (M0a).** Rien n'est encore utilisable : le dépôt contient l'organisation des paquets, la bibliothèque de conversions d'unités et de formats papier, un prototype du moteur (librsvg + cairo : rendu d'une fenêtre et export PDF multipage, validé sur le Mini-CAD, voir [`docs/M0.md`](docs/M0.md)) et la CI. Le prototype de l'interface GTK4 et le build sous Windows (M0b) sont la prochaine étape.
+> **État : prototype du moteur de rendu (M0a).** Rien n'est encore utilisable : le dépôt contient l'organisation des paquets, la bibliothèque de conversions d'unités et de formats papier, un prototype du moteur (librsvg + cairo : rendu d'une fenêtre et export PDF multipage, validé sur le Mini-CAD, voir [`docs/M0.md`](docs/M0.md)), les scripts qui construisent les paquets `.deb`, `.rpm` et Windows (qui n'installent pour l'instant qu'un programme sans interface, voir [`packaging/README.md`](packaging/README.md)) et la CI. Le prototype de l'interface GTK4 est la prochaine étape.
 
 ## Principe
 
@@ -24,7 +24,9 @@ Règles fondamentales, reprises du cahier des charges :
 ## Organisation du code
 
 ```
-cmd/svgprintlayout/   point d'entrée
+cmd/svgprintlayout/   point d'entrée (-version, -selftest)
+packaging/   données et modèles des paquets .deb, .rpm et Windows
+build-deb.sh, build-rpm.sh, build-windows.ps1   construisent les paquets (voir Paquets)
 internal/
   units/     conversions SVG / px / pt / mm, formats papier, marges      (Go pur, testé)
   model/     types de données partagés                                    (Go pur)
@@ -75,6 +77,29 @@ CGO_ENABLED=1 go test ./internal/engine ./internal/testsvg
 Sans `CGO_ENABLED=1`, le paquet `engine` est vide et le reste se compile et se teste sans bibliothèque graphique. Un outil de poppler absent fait sauter le test concerné, sauf quand la variable `CI` est définie.
 
 Les dépendances de l'interface (GTK4) et la procédure pour Windows (MSYS2) seront documentées ici une fois le volet M0b validé.
+
+## Paquets
+
+Trois scripts, à la racine, construisent les paquets dans `dist/` à partir du code et du
+numéro de `VERSION` (qu'ils ne modifient jamais) :
+
+```sh
+./build-deb.sh              # Debian, Ubuntu : dist/svgprintlayout_<version>_amd64.deb
+./build-rpm.sh              # Fedora, RHEL : dist/svgprintlayout-<version>-<release>.x86_64.rpm
+```
+
+```powershell
+.\build-windows.ps1         # Windows 10 et 11 : un .zip portable et un installeur .exe
+```
+
+Chaque script répond à `--help` (`-Help` sous PowerShell) et vérifie ses prérequis. Les
+détails (contenu des paquets, numéros de version, construction reproductible,
+dépannage) sont dans [`packaging/README.md`](packaging/README.md) et
+[`packaging/windows/README.md`](packaging/windows/README.md).
+
+Le programme installé sait s'auto-vérifier : `svgprintlayout -selftest` contrôle le
+moteur de rendu (bibliothèques, polices, images incorporées, export PDF) sur la machine
+où il tourne. C'est la première commande à lancer en cas de problème.
 
 ## Licence
 

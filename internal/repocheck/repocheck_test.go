@@ -34,7 +34,8 @@ func read(t *testing.T, path string) string {
 	return string(b)
 }
 
-// walk calls fn for every tracked-looking file under root, skipping .git.
+// walk calls fn for every tracked-looking file under root, skipping .git and
+// the output of package builds (dist/).
 func walk(t *testing.T, root string, fn func(path, rel string)) {
 	t.Helper()
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
@@ -42,7 +43,7 @@ func walk(t *testing.T, root string, fn func(path, rel string)) {
 			return err
 		}
 		if d.IsDir() {
-			if d.Name() == ".git" {
+			if d.Name() == ".git" || (d.Name() == "dist" && path == filepath.Join(root, "dist")) {
 				return filepath.SkipDir
 			}
 			return nil
@@ -61,13 +62,15 @@ func walk(t *testing.T, root string, fn func(path, rel string)) {
 
 const spdx = "SPDX-License-Identifier: GPL-3.0-only"
 
-// Every source, document and CI file says under which licence it is
-// distributed, in its first three lines.
+// Every source, script, document, packaging and CI file says under which
+// licence it is distributed, in its first three lines. (A byte order mark at
+// the start of a PowerShell or NSIS file does not matter: the test looks for
+// the text.)
 func TestEveryFileHasTheLicenceHeader(t *testing.T) {
 	root := repoRoot(t)
 	walk(t, root, func(path, rel string) {
 		switch filepath.Ext(rel) {
-		case ".go", ".md", ".yml", ".yaml", ".sh":
+		case ".go", ".md", ".yml", ".yaml", ".sh", ".ps1", ".nsi", ".nsh", ".in", ".desktop", ".xml", ".1":
 		default:
 			return
 		}

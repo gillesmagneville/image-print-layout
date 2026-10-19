@@ -16,6 +16,26 @@ rendu (M0a) ; le prototype de l'interface GTK4 et le build sous Windows (M0b) so
 
 ### Ajouté
 
+- **Paquets** : `./build-deb.sh`, `./build-rpm.sh` et `.\build-windows.ps1` construisent
+  dans `dist/` un `.deb`, un `.rpm`, une version portable (`.zip`) et un installeur NSIS de
+  Windows, avec les outils natifs de chaque plate-forme (`dpkg-deb`, `rpmbuild`, MSYS2 et
+  NSIS). Les paquets Linux contiennent le programme, l'entrée de menu, les métadonnées
+  AppStream, l'icône et la page de manuel, avec des dépendances déduites du binaire ; le
+  paquet Windows embarque aussi les DLL de cairo et de librsvg, fontconfig, les chargeurs
+  d'images et la licence de chaque bibliothèque. Les constructions sont reproductibles, et
+  les scripts ne modifient jamais `VERSION`. Voir `packaging/README.md`.
+- **`-version` et `-selftest`** : le programme affiche sa version et celles de librsvg et de
+  cairo, et vérifie son moteur de rendu sur la machine où il tourne (chargement, mesure,
+  rendu, image PNG incorporée, police incorporée au PDF, export déterministe). Les paquets
+  s'en servent comme test de fumée.
+- **`engine.ConfigureRuntime`** : sous Windows, oriente fontconfig, gdk-pixbuf et pango vers
+  les données livrées à côté du programme.
+- **CI** : un job `linux-packages` (construction, lintian, AppStream, installation et
+  désinstallation du `.deb`, essai du `.rpm`, constructions identiques) et un job
+  `windows-package` (construction par `build-windows.ps1`, essai de la version portable
+  avec le seul PATH de Windows, installation et désinstallation silencieuses).
+- **`repocheck`** : l'en-tête de licence est aussi exigé dans les scripts PowerShell, les
+  scripts NSIS, les modèles et les fichiers d'empaquetage ; le dossier `dist/` est ignoré.
 - **`engine` (prototype M0a)** : chargement d'un SVG par librsvg (résolution imposée à 96 dpi),
   taille du document, boîte d'un élément dans le repère du document, rendu d'une fenêtre en
   image, et export PDF multipage : chaque page redessine le document sous un clip

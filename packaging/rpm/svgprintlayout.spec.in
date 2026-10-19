@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Modèle du fichier .spec, rempli par build-rpm.sh (les @MOTS@). Il n'y a ni
+# %prep, ni %build, ni %install : le programme est compilé et installé dans
+# un dossier temporaire par le script, rpmbuild ne fait que l'empaqueter.
+
+# Le binaire est déjà dépouillé à l'édition de liens ; pas de paquet debuginfo.
+%global debug_package %{nil}
+%global __strip /bin/true
+%define _build_id_links none
+
+# Un même contenu donne un même paquet : dates fixées par SOURCE_DATE_EPOCH.
+%define use_source_date_epoch_as_buildtime 1
+%define clamp_mtime_to_source_date_epoch 1
+%define _buildhost reproducible
+
+Name:           @NAME@
+Version:        @VERSION@
+Release:        @RELEASE@
+Summary:        @SUMMARY@
+License:        GPL-3.0-only
+URL:            @URL@
+Packager:       @MAINTAINER@
+
+%description
+SVG Print Layout prépare l'impression d'un document vectoriel SVG de
+dimensions quelconques sur plusieurs feuilles de papier standard : on choisit
+le format, les marges et la largeur du dessin, on place les coupures à la
+souris, puis on exporte un seul PDF multipage vectoriel.
+
+Le dessin garde une échelle unique : aucune page n'est réduite en silence
+pour faire tenir une portion trop haute. Le fichier SVG d'origine n'est
+jamais modifié.
+
+# Met à jour les caches de l'icône et du menu ; un échec n'est pas une erreur.
+%post
+/usr/bin/gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor >/dev/null 2>&1 || :
+/usr/bin/update-desktop-database -q /usr/share/applications >/dev/null 2>&1 || :
+
+%postun
+/usr/bin/gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor >/dev/null 2>&1 || :
+/usr/bin/update-desktop-database -q /usr/share/applications >/dev/null 2>&1 || :
+

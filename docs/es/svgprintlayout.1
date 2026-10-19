@@ -1,0 +1,57 @@
+.\" SPDX-License-Identifier: GPL-3.0-only
+.TH SVGPRINTLAYOUT 1 "2026-10-19" "svg-print-layout 0.1.0" "Comandos de usuario"
+.SH NOMBRE
+svgprintlayout \- reparte un dibujo SVG en varias hojas y lo exporta como PDF
+.SH SINOPSIS
+.B svgprintlayout
+[\fB\-lang\fR \fIidioma\fR] [\fIarchivo.svg\fR]
+.br
+.B svgprintlayout
+[\fB\-version\fR | \fB\-selftest\fR]
+.SH DESCRIPCIÓN
+.B svgprintlayout
+prepara la impresión de un documento vectorial SVG de cualquier tamaño en
+varias hojas de papel estándar: se elige el formato, los márgenes y el ancho
+del dibujo, se colocan los cortes con el ratón y se exporta un único PDF
+vectorial de varias páginas. El dibujo conserva una única escala y el archivo
+SVG original nunca se modifica.
+.PP
+La ventana tiene tres zonas: los ajustes a la izquierda, la vista previa
+interactiva en el centro y la lista de páginas a la derecha. El programa está
+en desarrollo: la ventana abre un archivo SVG y lo muestra entero; la
+maquetación, los cortes y la exportación a PDF todavía no están disponibles
+en ella.
+.PP
+La interfaz está disponible en francés, inglés, español y alemán. Sigue el
+idioma del sistema, salvo que se elija otro en el menú de la ventana o con
+.BR \-lang .
+.SH OPCIONES
+.TP
+.BI \-lang " idioma"
+Idioma de la interfaz para esta ejecución: \fBfr\fR, \fBen\fR, \fBes\fR o
+\fBde\fR. Sin esta opción se aplica el idioma elegido en el menú o, en su
+defecto, el del sistema (variables LANGUAGE, LC_ALL, LC_MESSAGES y LANG).
+.TP
+.B \-version
+Muestra la versión del programa, la plataforma y las versiones de las
+bibliotecas de representación (librsvg, cairo), y termina. Debe adjuntarse a
+cualquier informe de problema.
+.TP
+.B \-selftest
+Comprueba que el motor de representación funciona en esta máquina: carga un
+SVG integrado, lo mide, lo dibuja, lo exporta a PDF y verifica que la fuente
+queda incrustada. Termina con el código 0 si todo funciona y con 1 en caso
+contrario.
+.TP
+.BI \-ready-file " archivo"
+Crea este archivo cuando la ventana ya se muestra y el documento está
+dibujado. Pensado para las pruebas y la documentación.
+.SH ARCHIVOS
+.TP
+.I ~/.config/svgprintlayout/settings.json
+Las preferencias del usuario (el idioma de la interfaz). En Windows:
+.IR %AppData%\esvgprintlayout\esettings.json .
+.SH VÉASE TAMBIÉN
+https://github.com/gillesmagneville/svg-print-layout
+.SH AUTOR
+Gilles MAGNEVILLE. Distribuido bajo la licencia GNU GPL versión 3.

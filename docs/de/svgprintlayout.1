@@ -1,0 +1,58 @@
+.\" SPDX-License-Identifier: GPL-3.0-only
+.TH SVGPRINTLAYOUT 1 "2026-10-19" "svg-print-layout 0.1.0" "Benutzerbefehle"
+.SH NAME
+svgprintlayout \- verteilt eine SVG\-Zeichnung auf mehrere Blätter und exportiert sie als PDF
+.SH SYNOPSE
+.B svgprintlayout
+[\fB\-lang\fR \fISprache\fR] [\fIDatei.svg\fR]
+.br
+.B svgprintlayout
+[\fB\-version\fR | \fB\-selftest\fR]
+.SH BESCHREIBUNG
+.B svgprintlayout
+bereitet ein SVG\-Vektordokument beliebiger Größe für den Druck auf mehreren
+Blättern Standardpapier vor: Man wählt Format, Ränder und Breite der
+Zeichnung, setzt die Schnitte mit der Maus und exportiert ein einziges
+mehrseitiges Vektor\-PDF. Die Zeichnung behält einen einzigen Maßstab, und die
+ursprüngliche SVG\-Datei wird nie verändert.
+.PP
+Das Fenster hat drei Bereiche: die Einstellungen links, die interaktive
+Vorschau in der Mitte und die Seitenliste rechts. Das Programm befindet sich
+in Entwicklung: Das Fenster öffnet eine SVG\-Datei und zeigt sie vollständig;
+Seitenlayout, Schnitte und PDF\-Export sind darin noch nicht verfügbar.
+.PP
+Die Oberfläche gibt es auf Französisch, Englisch, Spanisch und Deutsch. Sie
+folgt der Systemsprache, es sei denn, im Menü des Fensters oder mit
+.B \-lang
+wird eine Sprache gewählt.
+.SH OPTIONEN
+.TP
+.BI \-lang " Sprache"
+Sprache der Oberfläche für diesen Aufruf: \fBfr\fR, \fBen\fR, \fBes\fR oder
+\fBde\fR. Ohne diese Option gilt die im Menü gewählte Sprache, sonst die
+Systemsprache (Variablen LANGUAGE, LC_ALL, LC_MESSAGES und LANG).
+.TP
+.B \-version
+Gibt die Version des Programms, die Plattform und die Versionen der
+Darstellungsbibliotheken (librsvg, cairo) aus und beendet sich. Jeder
+Fehlermeldung beizufügen.
+.TP
+.B \-selftest
+Prüft, ob die Darstellungs\-Engine auf diesem Rechner funktioniert: lädt ein
+eingebautes SVG, misst und zeichnet es, exportiert es als PDF und prüft, ob die
+Schrift eingebettet ist. Beendet sich mit Code 0, wenn alles funktioniert,
+sonst mit 1.
+.TP
+.BI \-ready-file " Datei"
+Legt diese Datei an, sobald das Fenster angezeigt und das Dokument gezeichnet
+ist. Für Tests und Dokumentation gedacht.
+.SH DATEIEN
+.TP
+.I ~/.config/svgprintlayout/settings.json
+Die Einstellungen der Benutzerin oder des Benutzers (die Sprache der
+Oberfläche). Unter Windows:
+.IR %AppData%\esvgprintlayout\esettings.json .
+.SH SIEHE AUCH
+https://github.com/gillesmagneville/svg-print-layout
+.SH AUTOR
+Gilles MAGNEVILLE. Verbreitet unter der GNU GPL Version 3.

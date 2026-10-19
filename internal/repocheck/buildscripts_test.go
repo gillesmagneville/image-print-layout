@@ -83,3 +83,24 @@ func TestVersionIsWrittenOnlyAfterTheBuild(t *testing.T) {
 		t.Error("windows/build-windows.sh must not write VERSION: build-windows.ps1 does it after the build")
 	}
 }
+
+// Windows PowerShell 5.1 and NSIS need a byte order mark (BOM) to read accents,
+// and a doubled one (easy to get when a tool adds a BOM to a file that has one)
+// makes PowerShell read the second as part of the first command.
+func TestPowerShellAndNsisFilesHaveExactlyOneBOM(t *testing.T) {
+	root := repoRoot(t)
+	bom := "\xef\xbb\xbf"
+	walk(t, root, func(path, rel string) {
+		switch filepath.Ext(rel) {
+		case ".ps1", ".nsi":
+		default:
+			return
+		}
+		text := read(t, path)
+		if !strings.HasPrefix(text, bom) {
+			t.Errorf("%s has no byte order mark (UTF-8 BOM)", rel)
+		} else if strings.HasPrefix(text, bom+bom) {
+			t.Errorf("%s starts with two byte order marks", rel)
+		}
+	})
+}

@@ -10,11 +10,31 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 ## [Non publié]
 
 Aucune version n'est encore publiée : l'application n'est pas utilisable. Le dépôt contient
-le squelette, les documents de référence et la bibliothèque d'unités ; le prototype M0 est la
-prochaine étape.
+le squelette, les documents de référence, la bibliothèque d'unités et le prototype du moteur de
+rendu (M0a) ; le prototype de l'interface GTK4 et le build sous Windows (M0b) sont la prochaine
+étape.
 
 ### Ajouté
 
+- **`engine` (prototype M0a)** : chargement d'un SVG par librsvg (résolution imposée à 96 dpi),
+  taille du document, boîte d'un élément dans le repère du document, rendu d'une fenêtre en
+  image, et export PDF multipage : chaque page redessine le document sous un clip
+  rectangulaire, à une échelle unique, avec dates fixes (deux exports sont identiques à
+  l'octet), polices incorporées et texte sélectionnable. Écrit en cgo (`librsvg-2.0`,
+  `cairo`) ; sans cgo, le paquet est vide et le reste du dépôt se compile.
+- **`testsvg`** : générateur déterministe d'un SVG d'essai de 1 280 × 5 479 unités (fond gris,
+  bandeau, blocs avec texte, rectangle transformé), équivalent public du Mini-CAD.
+- **Tests du moteur** : taille exacte des pages du PDF, exports identiques, texte et polices,
+  taille du fichier indépendante du nombre de pages, et test de couture en deux contrôles — la
+  géométrie lue dans le PDF (clip et décalage de chaque page, exacts à 1/256 de point) et les
+  pixels par carrés de 16 × 16 — qui échouent tous deux quand une page est décalée. Le vrai
+  Mini-CAD, qui n'est pas dans le dépôt, passe les mêmes tests avec `SVGPL_MINICAD`.
+- **`docs/M0.md`** : rapport du volet M0a. Verdict : le moteur librsvg + cairo est retenu ;
+  la surface d'enregistrement cairo, qui vidait les pages 2 à 4, est abandonnée au profit
+  d'un rendu direct par page ; une police absente est remplacée sans avertissement, ce qui
+  rend la détection du §12 d'`ARCHITECTURE.md` indispensable.
+- **Intégration continue** : un job `engine` sous Ubuntu (`librsvg2-dev`, `poppler-utils`,
+  `fonts-ibm-plex`, cgo activé) pour `engine` et `testsvg`.
 - **Squelette du dépôt** : module Go `github.com/gillesmagneville/svg-print-layout`, point
   d'entrée `svgprintlayout` (qui n'affiche encore que sa version avec `-version`), un paquet
   par rôle dans `internal/` (`model`, `units`, `diag`, `layout`, `project`, `svgdoc`,

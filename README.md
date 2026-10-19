@@ -24,7 +24,7 @@ Règles fondamentales, reprises du cahier des charges :
 ## Organisation du code
 
 ```
-cmd/svgprintlayout/   point d'entrée (-version, -selftest)
+cmd/svgprintlayout/   point d'entrée (-version, -selftest, -lang)
 build-deb.sh, build-rpm.sh, build-windows.ps1   construisent les paquets (voir Paquets)
 debian/, metainfo/, icons/, windows/   fichiers qu'ils empaquettent ; docs/svgprintlayout.1 : page de manuel
 internal/
@@ -36,7 +36,8 @@ internal/
   engine/    moteur de rendu : librsvg + cairo par cgo (prototype M0a)
   export/    export PDF multipage et vérifications avant/après
   app/       état de l'application et cas d'usage, indépendants de l'interface
-  diag/      messages et avertissements destinés à l'utilisateur
+  diag/      avertissements et erreurs destinés à l'utilisateur (un code et des valeurs)
+  i18n/      traduction : français, anglais, espagnol, allemand ; nombres  (Go pur, testé)
   ui/        interface graphique (GTK4 via gotk4 à valider en M0b)
   testsvg/   générateur de SVG d'essai déterministe                      (Go pur)
   repocheck/ tests sur le dépôt lui-même (en-têtes de licence, versions, documentation)

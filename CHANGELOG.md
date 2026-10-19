@@ -9,6 +9,16 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Ajouté
+
+- **Quatre langues** : le paquet `internal/i18n` traduit l'interface en français, en anglais,
+  en espagnol et en allemand (clés, paramètres nommés, pluriels, nombres avec virgule ou
+  point, lecture d'un nombre tapé dans l'une ou l'autre notation), détecte la langue du
+  système (Linux : `LANGUAGE`, `LC_ALL`, `LC_MESSAGES`, `LANG` ; Windows : langue de
+  l'utilisateur) et ajoute l'option `-lang`. Des tests vérifient que les quatre catalogues ont
+  les mêmes clés, les mêmes paramètres et aucun texte vide, et que le code ne demande que des
+  clés qui existent.
+
 ## [0.1.0] - 2026-10-19
 
 Première version. Le dépôt contient le squelette, les documents de référence, la bibliothèque

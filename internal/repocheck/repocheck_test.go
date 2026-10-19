@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -140,5 +141,30 @@ func TestArchitectureNamesEveryPackage(t *testing.T) {
 		if !strings.Contains(architecture, "── "+e.Name()+"/") {
 			t.Errorf("ARCHITECTURE.md, \"Disposition du dépôt\", does not list internal/%s", e.Name())
 		}
+	}
+}
+
+var architectureSection = regexp.MustCompile(`(?m)^## (\d+)\. `)
+
+// lastArchitectureSection is the number of the last numbered section of
+// ARCHITECTURE.md ("Risques et questions ouvertes").
+const lastArchitectureSection = 15
+
+// ARCHITECTURE.md numbers its sections from 1 to the last with no gap, in
+// order: the other documents and the comments of the code refer to them
+// (§6, §11...), and a section lost when the file is rewritten would otherwise
+// go unnoticed until someone looks for it.
+func TestArchitectureSectionsAreAllThere(t *testing.T) {
+	root := repoRoot(t)
+	var got []string
+	for _, m := range architectureSection.FindAllStringSubmatch(read(t, filepath.Join(root, "ARCHITECTURE.md")), -1) {
+		got = append(got, m[1])
+	}
+	var want []string
+	for n := 1; n <= lastArchitectureSection; n++ {
+		want = append(want, strconv.Itoa(n))
+	}
+	if strings.Join(got, " ") != strings.Join(want, " ") {
+		t.Errorf("ARCHITECTURE.md has the sections %s, want %s", strings.Join(got, " "), strings.Join(want, " "))
 	}
 }

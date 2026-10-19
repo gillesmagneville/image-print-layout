@@ -222,6 +222,397 @@ versionnés : `.gitignore`).
   Rien n'est signé, aucun dépôt de paquets n'existe, et l'architecture arm64 est reconnue
   par les scripts Linux sans avoir été essayée.
 
+## 5. Modèle géométrique
+
+Tout repose sur trois repères et une échelle unique : les unités du document, les millimètres sur la feuille et les points du PDF.
+
+| Repère | Unité | Sert à |
+| --- | --- | --- |
+| Document | Unité utilisateur SVG, origine en haut à gauche | Stocker les coupures et mesurer les éléments |
+| Feuille | Millimètre, origine au coin haut gauche de la feuille | Marges, positions, affichage des dimensions |
+| PDF et cairo | Point (1/72 pouce) | Dessiner ; 1 mm = 72 / 25,4 = 2,834646 points, valeur fixe |
+
+### Dimensions du document
+
+Les unités utilisateur sont celles de la `viewBox`. Pour la taille native, utilisée par l'échelle à 100 % :
+
+- `width` et `height` en unité absolue (mm, cm, pouce, pt, pc, px) : conversion standard.
+- Sans unité, en pourcentage ou absents : une unité vaut un pixel CSS à 96 dpi, soit 25,4 / 96 = 0,26458 mm.
+- Ni `viewBox` ni dimensions : étendue du contenu mesurée par librsvg ; si elle est vide, erreur explicite.
+
+Si le Mini-CAD est en pixels, ses 1 280 × 5 479 unités font 338,7 × 1 449,7 mm à 100 %.
+
+### Échelle
+
+L'échelle `s` est un nombre unique, en mm par unité, stocké à un seul endroit. Aucune page n'en garde une copie : elles la lisent.
+
+```latex
+s = \frac{L}{W_d} \qquad h_i = (y_i - y_{i-1})\, s \qquad w = W_d\, s = L
+```
+
+`W_d` est la largeur du document en unités, `L` la largeur choisie en mm, `y_i` la position de la coupure i en unités, `h_i` la hauteur de la page i en mm.
+
+| Mode | Calcul de `s` |
+| --- | --- |
+| A. Largeur | `L` = largeur utile du papier (largeur du papier moins marges gauche et droite) |
+| B. Hauteur | `s` = hauteur utile divisée par la hauteur en unités de la portion choisie, par défaut la première page. La largeur obtenue est ensuite comparée à la largeur utile |
+| C. Manuel | `L` saisie en mm, ou facteur `f` en % : `s` = `f` × échelle native |
+
+La largeur est affichée en mm et en cm. Le test d'acceptation donne `s` = 200 / 1 280 = 0,15625 mm par unité, soit 856,1 mm de hauteur totale.
+
+### Feuille et zone utile
+
+| Format | Portrait, largeur × hauteur (mm) |
+| --- | --- |
+| A0 | 841 × 1 189 |
+| A1 | 594 × 841 |
+| A2 | 420 × 594 |
+| A3 | 297 × 420 |
+| A4 | 210 × 297 |
+| A5 | 148 × 210 |
+| Letter | 215,9 × 279,4 |
+| Legal | 215,9 × 355,6 |
+| Tabloid | 279,4 × 431,8 |
+| Personnalisé | saisi en mm |
+
+Le paysage échange largeur et hauteur. La zone utile vaut le papier moins les quatre marges, réglées indépendamment.
+
+### Précision numérique
+
+Tous les calculs sont en `float64`, et l'arrondi n'a lieu qu'à l'affichage (0,1 mm). Les comparaisons de dimensions tolèrent 0,005 mm : une largeur de 200 mm dans une zone utile de 200 mm ne doit jamais être refusée à cause d'une erreur d'arrondi. Les coupures sont enregistrées telles quelles, sans arrondi.
+
+## 6. Pipeline de rendu et d'export PDF
+
+Le document est chargé une fois, le plan calculé une fois, puis une seule fonction dessine chaque page : sur une surface image pour l'aperçu, sur une surface PDF pour l'export.
+
+```
+SVG source              lu en lecture seule, jamais modifié
+    │
+    ▼
+Copie de travail        fond remplacé ou retiré ici seulement
+    │
+    ▼
+Document chargé         chargé une seule fois, dessin gardé en mémoire
+    │
+    ├── taille du dessin ──▶ Plan de pages ◀── Réglages
+    │                        fonction pure :    papier, marges, échelle,
+    │                        bandes, positions  alignements, coupures
+    │                        en mm, états
+    │                              │
+    │ le dessin                    │ le plan
+    ▼                              ▼
+Dessin des pages : une page = un clip, un décalage, une échelle
+    │
+    ├──▶ Aperçu        même fonction, surface image
+    │
+    └──▶ Export PDF    même fonction, surface PDF multipage
+              │
+              ▼
+         Vérifications : PDF relu (nombre de pages, dimensions, manifeste de clips)
+```
+
+Le plan reste la seule source des positions : l'aperçu comme l'export le lisent, et aucun des deux ne recalcule l'échelle.
+
+### Fenêtre d'une page
+
+Une page est le même dessin, décalé puis recadré. Les valeurs sont en mm ; elles passent en points à l'instant du dessin.
+
+```latex
+M_i = T(x_i,\, y_i) \cdot S(s) \cdot T(0,\, -y_{i-1}) \qquad \text{clip} = [x_i,\, x_i + w] \times [y_i,\, y_i + h_i]
+```
+
+Le clip est le rectangle de la bande, jamais celui de la zone utile : c'est lui qui matérialise la coupure. Un trait ou un texte qui la traverse est donc recadré exactement, et rien n'est recalculé sur les chemins.
+
+### Partage du dessin entre les pages
+
+Chaque page redessine le document directement sous son clip : cairo n'écrit dans le PDF que les opérations qui touchent la fenêtre, donc le fichier ne contient pas le dessin autant de fois qu'il a de pages. M0 l'a mesuré sur le Mini-CAD : 77 080 octets pour 4 pages, 71 695 pour le dessin entier sur une seule page. Le texte reste du texte, avec ses polices incorporées en sous-ensembles.
+
+Le plan initial était de dessiner le document une fois dans une surface d'enregistrement cairo, puis de la peindre sur chaque page. Il est abandonné : avec cairo 1.18, le PDF n'écrit alors qu'un seul objet dont l'étendue est celle de son premier usage, les pages suivantes sortent vides, et le texte devient des contours (`docs/M0.md`). Le coût est un temps d'export proportionnel au nombre de pages (environ 0,25 s par page sur le Mini-CAD).
+
+### Aperçu
+
+En vue Document, le dessin est peint en tuiles et les limites de page sont des surimpressions. En vue Feuilles, chaque page est peinte avec sa propre matrice sur une feuille blanche. Coupures, poignées et numéros appartiennent à l'interface : ils ne sont jamais dans le PDF.
+
+### Export
+
+Pour chaque page : taille de page fixée, fond de page (§8), sauvegarde du contexte, clip, matrice, rendu du document, restauration, page suivante. L'exporteur lit `s` dans le plan et ne le modifie pas. Les positions de clip et de chemin sont écrites par cairo en virgule fixe 24.8, soit au 1/256 de point (0,0014 mm) : la position d'une coupure dans le PDF est exacte à cette précision, sous la tolérance de 0,005 mm du §5.
+
+## 7. Moteur de mise en page
+
+Le paquet `layout` est une fonction pure : mêmes paramètres, même plan. Il ne lit aucun fichier, ne touche à aucune interface et ne modifie jamais l'échelle.
+
+**Entrées** : taille du document, échelle `s`, papier et orientation, marges, alignements, coupures `y_1 < … < y_k` en unités, surcharges de position par page. **Sortie** : un plan, c'est-à-dire pour chaque page ses bornes en unités (`y_{i-1}`, `y_i`), sa largeur et sa hauteur de contenu en mm, sa position sur la feuille, son rectangle de clip, son état et ses messages.
+
+Les bandes sont `[0, y_1]`, `[y_1, y_2]`, … `[y_k, H_d]`. Elles couvrent le document sans trou ni chevauchement par construction, et un test le vérifie.
+
+### Positionnement
+
+| Réglage | Position sur la feuille |
+| --- | --- |
+| Horizontal : gauche | `x` = marge gauche |
+| Horizontal : centré | `x` = marge gauche + (largeur utile − `w`) / 2 |
+| Horizontal : droite | `x` = largeur du papier − marge droite − `w` |
+| Horizontal : personnalisé | `x` = marge gauche + décalage saisi |
+| Vertical : en haut | `y` = marge haute + décalage saisi |
+| Vertical : centré | `y` = marge haute + (hauteur utile − `h_i`) / 2 |
+
+Ces formules n'utilisent `s` qu'à travers `w` et `h_i`. Changer un alignement ne peut donc pas changer la largeur du dessin, et un test le garantit.
+
+### États des pages
+
+Le contenu d'une page occupe le rectangle `[x, x+w] × [y, y+h_i]`.
+
+| État | Condition | Effet |
+| --- | --- | --- |
+| Conforme | Le rectangle est dans la zone utile (tolérance 0,005 mm) | Export autorisé |
+| Dépassement de marge | Dans la feuille, hors zone utile | Avertissement, confirmation à l'export |
+| Dépassement de feuille | Hors de la feuille | Export bloqué |
+| Page vide | Aucun bloc mesuré dans la bande | Avertissement |
+
+### Corrections proposées, jamais appliquées seules
+
+Quand une page dépasse en hauteur, le plan fournit quatre propositions chiffrées, chacune derrière un bouton :
+
+1. **Ajouter une coupure** à la position la plus favorable de la bande (voir plus bas).
+2. **Déplacer la coupure voisine** à la hauteur maximale que la page accepte.
+3. **Réduire l'échelle** à la valeur qui fait tenir la bande la plus haute, avec la largeur qui en résulte (par exemple « 78 %, largeur 156 mm »).
+4. **Changer de format** : premier format dont la zone utile contient la bande la plus haute à l'échelle actuelle.
+
+Pour un dépassement en largeur, seules les propositions 3 et 4 existent. Aucune n'est appliquée sans un clic, ce qui garantit l'absence de réduction silencieuse.
+
+### Coupures
+
+Une coupure porte un identifiant, un axe (réservé, `y` seul en v1) et une position en unités. Invariants : `0 < y < H_d`, ordre strict, écart minimal de 0,5 mm physique avec les bords et les autres coupures. Ajouter, déplacer et supprimer sont des commandes pures qui renvoient un nouvel état ; une propriété testée établit que `s` est identique avant et après chacune d'elles.
+
+Pendant le glisser, la coupure s'aimante aux vides détectés dans un rayon de 8 pixels d'écran ; maintenir Alt désactive l'aimantation.
+
+### Blocs et détection de traversée
+
+Les **blocs** sont les groupes de plus haut niveau qui portent du contenu visible, en descendant dans les calques Inkscape. Le rectangle de fond détecté (§8) est exclu, sinon toute position le traverserait. Le moteur mesure chaque bloc ; `layout` ne manipule que ces boîtes.
+
+Une coupure traverse un bloc si sa position est strictement à l'intérieur de la boîte du bloc (tolérance 0,05 unité). Elle reçoit alors une icône d'avertissement, et le panneau de droite nomme les blocs traversés.
+
+### Coupures automatiques
+
+1. **Nombre de pages minimal** : `n_min` = plafond de (hauteur du document en mm / hauteur utile).
+2. **Vides** : l'union des intervalles verticaux des blocs, complémentée, donne les zones où rien n'est traversé. Le coût d'une position est le nombre de blocs qu'elle traverse, nul dans un vide.
+3. **Recherche** pour `n` de `n_min` à `n_min + 2` : programmation dynamique sur les positions candidates (centre de chaque vide et positions idéales `j × H_d / n`), avec comme contraintes que chaque bande tienne dans la hauteur utile et ne soit pas inférieure à 40 % de la bande idéale. Critères, dans l'ordre : moins de blocs traversés, puis bandes les plus équilibrées.
+4. **Proximité** : le centre d'un vide maximise la distance aux blocs voisins ; un vide de moins de 2 mm physiques compte comme « à proximité » et produit un avertissement.
+5. **Résultat** : une proposition, appliquée par une seule commande annulable. Si aucune solution n'existe jusqu'à `n_min + 2`, la meilleure est renvoyée avec ses avertissements. L'utilisateur déplace ensuite chaque coupure.
+
+## 8. Gestion du fond
+
+Trois fonds n'ont rien à voir entre eux : le fond d'un élément du SVG, le fond de la page PDF et la couleur de la zone de travail de l'interface. L'application ne mélange jamais les trois.
+
+| Fond | Qui le produit | Réglage |
+| --- | --- | --- |
+| Document | Un élément du SVG, détecté par l'analyse | Conserver, remplacer par du blanc, supprimer |
+| Page | L'application, avant de peindre le dessin | Blanc opaque par défaut, ou transparent |
+| Zone de travail | L'interface, avec la couleur du thème | Aucun : jamais exportée |
+
+librsvg ne peint aucun fond de lui-même. Le document n'a donc de fond que si un de ses éléments en fournit un.
+
+**Fond de page.** En blanc opaque, chaque page PDF reçoit un rectangle blanc de la taille de la feuille, peint avant le dessin. En transparent, ce rectangle est omis. Un PDF n'a pas de fond propre : un visualiseur affiche le plus souvent du blanc, de sorte que « transparent » ne change le résultat que si le PDF est placé sur autre chose.
+
+**Aperçu.** Il peint dans cet ordre la zone de travail (gris neutre), puis la feuille avec la couleur de page, puis le dessin. Un fond gris du SVG n'est donc jamais confondu avec la couleur de l'interface.
+
+### Détection du rectangle de fond
+
+Le candidat est un `rect`, ou un chemin à quatre segments orthogonaux, qui remplit les conditions suivantes :
+
+- sa boîte, une fois appliquées les transformations de ses ancêtres, couvre au moins 99 % de la `viewBox` (tolérance de 0,5 unité par bord) ;
+- son remplissage n'est pas `none` ;
+- il est le premier peint, dans l'ordre du document, parmi les candidats.
+
+Si rien ne correspond, le réglage affiche « Aucun fond détecté » et les choix de remplacement sont grisés.
+
+### Opérations sur la copie de travail
+
+| Choix | Opération |
+| --- | --- |
+| Conserver | Aucune |
+| Remplacer par du blanc | Le remplissage de l'élément devient `#ffffff`, opacité 1 |
+| Supprimer | L'élément est retiré de l'arbre |
+
+Le choix est enregistré dans le projet comme une instruction : mode et identifiant de l'élément, ou à défaut son chemin d'indices (par exemple `/svg/g[1]/rect[1]`). Elle est rejouée à chaque chargement. Le fichier SVG source n'est jamais écrit.
+
+L'aperçu est immédiat : la copie modifiée est rechargée dans le moteur, hors du fil de l'interface, puis redessinée. Après l'export, un pixel de la marge haute doit être blanc opaque si ce fond a été demandé (§11).
+
+## 9. Interface graphique
+
+Une seule fenêtre à trois zones, sans dialogue pour les opérations courantes : les réglages se font dans les panneaux et la souris agit directement sur l'aperçu. La barre de titre porte Ouvrir un SVG, Ouvrir et Enregistrer le projet, Exporter en PDF et le menu.
+
+### Panneau gauche : paramètres
+
+Des sections repliables, dans l'ordre du cahier : fichier source (chemin, taille native, nombre d'avertissements d'analyse), papier, marges, échelle, positionnement, fond, export. Les marges sont quatre champs indépendants avec un bouton pour les lier. Une valeur saisie s'applique après 150 ms sans frappe : il n'y a pas de bouton Appliquer.
+
+### Zone centrale : aperçu interactif
+
+Deux vues, choisies par onglet :
+
+- **Document** (par défaut) : le dessin entier, avec les lignes de coupure, les limites et les numéros de page.
+- **Feuilles** : les pages côte à côte telles qu'elles seront imprimées, avec marges et positionnement.
+
+Une `GtkDrawingArea` peint, dans l'ordre : zone de travail, feuilles, dessin par tuiles, limites et numéros de page, lignes de coupure, poignées.
+
+| Geste | Effet |
+| --- | --- |
+| Molette | Défilement vertical |
+| Ctrl + molette | Zoom autour du curseur |
+| Clic milieu ou Espace + glisser | Déplacement de la vue |
+| Double-clic sur le dessin, ou outil « Ajouter une coupure » | Nouvelle coupure à cette position |
+| Glisser une ligne (zone de saisie de 6 pixels) | Déplacement ; infobulle en unités et en mm ; aimantation aux vides |
+| Suppr | Supprime la coupure sélectionnée |
+| Flèches | Déplacent de 1 unité ; Maj : 10 ; Ctrl : 0,1 mm |
+| Clic droit sur une ligne | Supprimer, ou saisir une position précise |
+
+Pendant un glisser, seul le calque des coupures est redessiné : le dessin vient du cache de tuiles et le plan est recalculé à chaque mouvement, ce qui est peu coûteux puisque `layout` est pur.
+
+**Tuiles.** 512 × 512 pixels, en cache LRU par niveau de zoom. Elles sont produites hors du fil de l'interface, avec un compteur de génération qui abandonne les tuiles devenues obsolètes. En attente, on affiche la tuile du niveau précédent, floue.
+
+### Panneau droit : liste des pages
+
+Une `GtkColumnView` avec : numéro, largeur × hauteur (mm), échelle, début et fin (en unités et en mm depuis le haut du document), état, bouton d'aperçu. Sélectionner une ligne la met en surbrillance dans l'aperçu, et inversement.
+
+En tête : nombre de pages, largeur du contenu en mm et en cm, échelle. En pied : les corrections proposées (§7) quand une page dépasse.
+
+Le bouton d'aperçu ouvre la page rendue telle qu'elle sera exportée, avec la même fonction de dessin sur une surface image. « Aperçu complet » fait de même pour toutes les pages avant l'export.
+
+### Annulation et tâches longues
+
+- **Annuler et rétablir** : chaque modification est une commande qui produit un nouvel état immuable du projet. Un glisser compte pour une seule entrée d'historique. Ctrl+Z et Ctrl+Maj+Z ; une astérisque signale les changements non enregistrés, avec confirmation à la fermeture.
+- **Fil de l'interface** : le moteur est piloté par un acteur unique (une goroutine), si bien qu'un document chargé n'est jamais utilisé par deux fils à la fois. Les résultats reviennent au fil GTK par `glib.IdleAdd`.
+- **Export** : barre de progression, annulable.
+- **Erreurs** : chaque message dit ce qui a échoué, pourquoi et quoi faire, sans code technique brut.
+
+## 10. Format de projet
+
+Le projet est un fichier JSON lisible et versionné, d'extension `.svgpl`. Il enregistre des réglages, jamais le dessin : le SVG reste dans son fichier d'origine, et rien de dérivé (nombre de pages, états, dimensions de page) n'est stocké, tout est recalculé.
+
+```json
+{
+  "format": "svgprintlayout-project",
+  "version": 1,
+  "source": {
+    "path": "schemas/mini-cad.svg",
+    "absolutePath": "/home/…/schemas/mini-cad.svg",
+    "sha256": "…",
+    "width": 1280,
+    "height": 5479
+  },
+  "paper": { "format": "A4", "orientation": "portrait", "customMm": null },
+  "marginsMm": { "top": 10, "bottom": 10, "left": 5, "right": 5 },
+  "scale": { "mode": "width", "widthMm": 200 },
+  "placement": { "horizontal": "center", "vertical": "top", "offsetXMm": 0, "offsetYMm": 0 },
+  "background": { "document": "whiten", "element": "rect4521", "page": "white" },
+  "cuts": [
+    { "axis": "y", "position": 1380.5 },
+    { "axis": "y", "position": 2760 },
+    { "axis": "y", "position": 4120.25 }
+  ],
+  "pageOverrides": [ { "page": 2, "vertical": "center" } ],
+  "export": { "outputPath": "mini-cad.pdf" }
+}
+```
+
+Règles de lecture et d'écriture :
+
+- **Écriture déterministe.** UTF-8, clés dans un ordre fixe, indentation de 2 espaces, nombres en représentation décimale la plus courte, écriture atomique (fichier temporaire puis renommage). Un même projet donne les mêmes octets.
+- **Versions.** `version` est un entier. Chaque évolution ajoute une fonction de migration `vN → vN+1`, testée sur des fichiers d'exemple. Un fichier d'une version plus récente est refusé avec un message clair, jamais ouvert partiellement.
+- **Chemins.** Relatif au fichier projet, avec `/` comme séparateur sur toutes les plateformes, et repli sur le chemin absolu. Si le SVG est introuvable, un dialogue propose de le localiser et les réglages sont conservés.
+- **Intégrité de la source.** Le SHA-256 et les dimensions sont enregistrés. Si le hash a changé à la réouverture, un avertissement non bloquant explique que les coupures sont en unités du document et peuvent ne plus tomber là où elles avaient été placées. Si les dimensions ont changé, les coupures devenues hors du document sont signalées puis retirées après confirmation.
+- **Surcharges par page.** Ajouter une coupure copie la surcharge de la page coupée sur les deux pages obtenues. Supprimer une coupure garde celle de la page du dessus.
+- **Source intacte.** Le SVG n'est jamais ouvert en écriture ; un test compare son SHA-256 avant et après chaque scénario.
+
+## 11. Vérifications avant export et déterminisme
+
+Sept contrôles portent sur le plan avant l'export, et deux sur le PDF relu après. Une erreur bloque ; un avertissement demande une confirmation. Ils couvrent un à un les points du §9.2 du cahier.
+
+| # | Contrôle | Si échec |
+| --- | --- | --- |
+| 1 | Coupures en ordre strict, toutes dans `]0, H_d[`, écart minimal respecté | Erreur |
+| 2 | La somme des hauteurs de bandes vaut `H_d` (tolérance 1e-9 unité) | Erreur |
+| 3 | Toutes les pages ont la même largeur `w = W_d × s` | Erreur |
+| 4 | Aucun contenu hors de la feuille (rien n'est rogné par le bord) | Erreur |
+| 5 | Contenu dans la zone utile, sinon dépassement de marge | Avertissement |
+| 6 | Fond demandé cohérent avec le fond détecté | Avertissement |
+| 7 | Fonctions SVG non prises en charge, polices substituées (§12) | Avertissement listé |
+| 8 | PDF relu : nombre de pages égal au nombre de bandes | Erreur |
+| 9 | PDF relu : taille de chaque page égale au papier demandé, tolérance 0,02 mm | Erreur |
+
+Le contrôle 9 compare des points : un A4 vaut 595,28 × 841,89 pt. La correspondance des coupures avec l'aperçu vient de la construction (même plan, §6) ; les contrôles 8 et 9 relisent le PDF écrit, sans bibliothèque PDF, et ce même relevé la prouve : le rectangle de clip et le décalage du dessin de chaque page se lisent dans le flux de contenu, et sont comparés au plan à 1/256 de point près (c'est la méthode des tests de `engine`, `docs/M0.md`). La vérification visuelle équivalente est faite par les tests (§13).
+
+### Déterminisme
+
+- **Pas d'horodatage ni d'identifiant aléatoire** dans le PDF : cairo écrit par défaut les dates de création et de modification, le moteur les fixe à `2000-01-01T00:00:00Z`. Le champ « producteur » contient la version de cairo.
+- **Entrées stables** : les instructions de fond sont rejouées dans un ordre fixe, et `layout` est séquentiel, sans parallélisme qui changerait l'ordre des opérations flottantes.
+- **Limite assumée** : l'égalité d'octets est garantie à versions de cairo et de librsvg, et à polices, identiques. Entre deux machines différentes, les tests comparent des rasters avec une tolérance plutôt que des octets.
+- **Prouvé en M0, sur une machine** : trois exports du même document (dont un après rechargement, à une seconde d'écart) donnent des fichiers de même SHA-256, sur le SVG synthétique et sur le Mini-CAD.
+
+## 12. Couverture SVG et signalement
+
+librsvg rend la plupart des documents ; l'application ajoute sa propre analyse pour dire à l'utilisateur, avant l'export, ce qui sera rastérisé, remplacé ou ignoré. Elle ne tente jamais de contourner une limite du moteur : ce qu'il ne dessine pas est signalé, pas reconstitué.
+
+L'analyse se fait en deux passes :
+
+1. **Passe XML** (`svgdoc`) : un parcours unique de la copie de travail, guidé par un catalogue de règles (élément ou attribut, niveau, message).
+2. **Passe moteur** : résolution des familles de polices demandées et vérification des images liées.
+
+| Constat | Niveau | Message |
+| --- | --- | --- |
+| Élément `filter` ou attribut `filter` | Avertissement | Effet rastérisé : il peut apparaître en bitmap dans le PDF |
+| `script`, `animate`, `set` | Avertissement | Ignoré : librsvg ne gère ni script ni animation |
+| Polices SVG (`font`, `glyph`) | Avertissement | Non prises en charge : police du système utilisée à la place |
+| Famille de police absente du système | Avertissement | Police « X » absente, remplacée par « Y » |
+| Image liée par chemin, fichier introuvable | Avertissement | Image liée introuvable, nom et chemin attendus |
+| Image liée par URL distante | Avertissement | Non téléchargée : l'application n'accède jamais au réseau |
+| Image matricielle incorporée | Information | Conservée en bitmap, à sa résolution d'origine |
+| Ni dimension ni `viewBox` exploitable | Erreur | Taille du document indéterminée |
+
+À confirmer en M0 sur des fichiers réels, avant de figer les règles : le comportement face au texte encadré d'Inkscape (`flowRoot`), aux polices web (`@font-face`) et à `foreignObject`.
+
+Le rapport s'affiche dans la section « Fichier source » avec un compteur par niveau. Cliquer une entrée sélectionne et centre l'élément concerné dans l'aperçu, grâce à sa boîte mesurée. Le rapport peut être copié en texte brut.
+
+Le texte est dessiné avec les polices du système. M0 montre qu'il reste du texte dans le PDF, sélectionnable, avec des sous-ensembles TrueType incorporés. Il montre aussi qu'une police absente est remplacée **sans rien dire** (IBM Plex remplacée par DejaVu, et le PDF incorpore la police de remplacement) : le signalement ci-dessus est donc la seule protection, et il exige une résolution des polices par fontconfig dans `engine` (M2).
+
+## 13. Stratégie de tests
+
+Les 14 tests d'acceptation sont tous automatisés sauf le geste de souris, vérifié à la main sur chaque plateforme ; les commandes qu'il déclenche, elles, sont testées automatiquement.
+
+| # | Test d'acceptation | Vérification | Type |
+| --- | --- | --- | --- |
+| 1 | Importer le Mini-CAD | Dimensions lues : 1 280 × 5 479, aucune erreur bloquante | Auto |
+| 2 | A4 portrait | Zone utile 200 × 277 mm avec les marges par défaut | Auto |
+| 3 | Largeur de 200 mm | `s` = 0,15625 et `w` = 200 mm, tolérance 0,005 mm | Auto |
+| 4 | Proportions conservées | Une seule échelle dans le modèle : aucune fonction n'accepte deux facteurs | Auto |
+| 5 | Coupures à la souris | Scénario sous Xvfb pour GTK ; commandes testées en Go pur | Auto, geste à la main |
+| 6 | Ajouter une coupure sans changer la largeur | Propriété : `w` avant égal `w` après, pour tout ajout | Auto |
+| 7 | Déplacer une coupure sans changer l'échelle | Propriété : `s` avant égal `s` après, pour tout déplacement | Auto |
+| 8 | Pages à 10 mm du haut | `y` = 10 mm sur chaque page ; premier pixel non blanc du raster du PDF à 10 mm, tolérance 0,2 mm | Auto |
+| 9 | Fond gris remplacé par du blanc | Fond détecté ; pixels de l'ancienne zone grise blancs dans le raster d'export | Auto |
+| 10 | Export d'un PDF multipage | Nombre de pages égal au nombre de bandes | Auto |
+| 11 | Dimensions des pages du PDF | Taille des pages relue : 595,28 × 841,89 pt, tolérance 0,02 mm | Auto |
+| 12 | Largeur identique sur toutes les pages | Plan, puis mesure raster d'un élément pleine largeur sur chaque page | Auto |
+| 13 | Coupures conformes à l'aperçu | Test de couture (ci-dessous) : clip et décalage lus dans le PDF égaux au plan, et pixels par carrés | Auto |
+| 14 | Réouverture du projet | Enregistrer, recharger, égalité profonde des réglages ; JSON de référence | Auto |
+
+### Test de couture
+
+Deux contrôles complémentaires, car aucun n'est à la fois exact et robuste (mesures et raisons dans `docs/M0.md`) :
+
+- **La géométrie écrite dans le PDF.** On lit dans le flux de contenu de chaque page le rectangle de clip et l'endroit où le dessin est peint, et on les compare au plan, à 1/256 de point près. C'est le contrôle exact, valable pour toute position de coupure ; il établit aussi l'égalité de largeur.
+- **Les pixels.** On rastérise le PDF produit, on découpe chaque page à sa fenêtre de contenu, et on la compare au rendu du document entier à la même échelle, par carrés de 16 × 16 pixels dont on compare la moyenne de gris (24 niveaux tolérés ; 14 mesurés au plus). Ce contrôle voit un contenu perdu, répété ou déplacé de quelques millimètres. Il ne compare pas pixel par pixel : un rastériseur place les glyphes sur une grille d'un quart de pixel et cale les traits fins sur la grille de pixels, si bien qu'un écart d'un centième de pixel à l'origine d'une page déplace un trait d'un pixel entier.
+
+Un test vérifie que chacun des deux contrôles échoue quand une page est décalée. Ensemble, ils répondent au critère final du cahier : un PDF fidèle à l'aperçu, sans redimensionnement silencieux.
+
+### Organisation
+
+- **Trois niveaux.** Go pur (modèle, unités, mise en page, analyse, projet) avec `go test` partout sans cgo ; intégration du moteur (chargement, tuiles, export) avec librsvg installé ; interface sous Xvfb sur Linux, plus une liste de contrôle manuelle sur Windows.
+- **Tests de propriétés** sur `layout` : papiers, marges, échelles et coupures tirés au hasard, avec pour invariants la couverture exacte, `w` constant, `s` inchangé par les commandes et des états cohérents.
+- **Jeu d'essai.** Le Mini-CAD réel n'est pas dans le dépôt : il décrit une infrastructure réelle. Les tests le prennent quand `SVGPL_MINICAD` donne son chemin. Le générateur déterministe `internal/testsvg` produit un équivalent public de 1 280 × 5 479 unités (fond gris, blocs avec texte, bandeau pleine largeur, rectangle transformé) ; il doit aussi servir de test de charge avec 100 000 éléments (pas encore fait).
+- **Intégration continue** : un job `engine` sur Ubuntu avec `librsvg2-dev`, `poppler-utils` et `fonts-ibm-plex` (en place) ; un job `linux-packages` (construction du `.deb` et du `.rpm`, lintian, AppStream, installation, `-selftest`, constructions identiques) et un job `windows-package` sous MSYS2 UCRT64 (construction par `build-windows.ps1`, `-selftest` de la version portable et du programme installé, désinstallation) — en place ; l'interface GTK4 sous Windows, avec le paquet `mingw-w64-ucrt-x86_64-gtk4` et ses dépendances (M0b).
+- **Références.** Les rasters de référence sont stockés par plateforme, avec tolérance, et jamais comparés d'une plateforme à l'autre.
+
 ## 14. Plan de livraison
 
 Six jalons, dont M0 est le point de décision : le calcul de pages (M1) ne dépend pas du moteur et peut avancer en parallèle, alors que M2 à M5 attendent le verdict de M0.

@@ -46,7 +46,10 @@ GTK4 et le build de celle-ci sous Windows (M0b) sont la prochaine étape.
 - **`repocheck`** : l'en-tête de licence est aussi exigé dans les scripts PowerShell, les
   scripts NSIS et les fichiers d'empaquetage ; les trois scripts de construction doivent avoir
   les mêmes options, le même calcul de version, et n'écrire `VERSION` qu'après la
-  construction.
+  construction ; la version de `VERSION` doit être dans le journal des modifications, dans les
+  métadonnées AppStream et dans la page de manuel ; `ARCHITECTURE.md` doit garder ses sections
+  numérotées de 1 à 15 sans trou ; les fichiers sont lus avec des fins de ligne Unix, comme ils
+  le sont dans une copie de travail Windows.
 - **`engine` (prototype M0a)** : chargement d'un SVG par librsvg (résolution imposée à 96 dpi),
   taille du document, boîte d'un élément dans le repère du document, rendu d'une fenêtre en
   image, et export PDF multipage : chaque page redessine le document sous un clip

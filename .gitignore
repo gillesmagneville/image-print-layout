@@ -1,0 +1,19 @@
+# Binaries
+/bin/
+/dist/
+*.exe
+*.test
+
+# Go tooling
+coverage.out
+*.prof
+
+# Generated output of manual / acceptance runs
+/out/
+
+# Editors and OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db

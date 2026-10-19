@@ -31,6 +31,8 @@ function Assert-Success([string]$What) {
 function Invoke-Build {
     .\build-windows.ps1 -Oui
     Assert-Success "build-windows.ps1"
+    Write-Host "--- dist"
+    Get-ChildItem dist -File | ForEach-Object { Write-Host ("{0,12:N0} octets  {1}" -f $_.Length, $_.Name) }
 }
 
 function Test-Portable {
@@ -39,6 +41,7 @@ function Test-Portable {
     $root = (Get-ChildItem $dest -Directory | Select-Object -First 1).FullName
     Write-Host "--- contenu de $root"
     Get-ChildItem $root | ForEach-Object { Write-Host $_.Name }
+    Write-Host ("--- bin : {0} DLL, {1:N0} octets au total" -f (Get-ChildItem "$root\bin" -Filter *.dll).Count, (Get-ChildItem $root -Recurse -File | Measure-Object Length -Sum).Sum)
     Write-Host "--- loaders.cache"
     Get-Content "$root\lib\gdk-pixbuf-2.0\2.10.0\loaders.cache" -ErrorAction SilentlyContinue | Select-Object -First 12 | ForEach-Object { Write-Host $_ }
     Write-Host "--- COMPOSANTS.txt"
@@ -77,6 +80,10 @@ try {
             "installer" { Test-Installer }
         }
     } *>&1 | Tee-Object -FilePath $log
+    # Succès : la fin de la sortie reste lisible dans une annotation, comme en cas d'échec.
+    $summary = ((Get-Content $log -Tail 60 -ErrorAction SilentlyContinue) -join "`n")
+    $summary = $summary.Replace("%", "%25").Replace("`r", "%0D").Replace("`n", "%0A")
+    Write-Host "::notice title=Étape $Step terminée::$summary"
 } catch {
     $tail = ((Get-Content $log -Tail 60 -ErrorAction SilentlyContinue) -join "`n") + "`n" + $_.Exception.Message
     $tail = $tail.Replace("%", "%25").Replace("`r", "%0D").Replace("`n", "%0A")

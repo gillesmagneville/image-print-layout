@@ -49,10 +49,12 @@ function Invoke-Build {
     }
     Write-Host "ok  calcul des versions"
 
-    $help = (.\build-windows.ps1 -Help) -join "`n"
+    # Pas de variable $help : le script chargé par un point a déjà créé $Help, un
+    # [switch] qui refuse une chaîne.
+    $helpText = (.\build-windows.ps1 -Help) -join "`n"
     Assert-Success "build-windows.ps1 -Help"
     foreach ($option in "-Major", "-Minor", "-Patch", "-NoVersionChange", "-Clean", "-Help") {
-        if ($help -notmatch [regex]::Escape($option)) { throw "l'aide ne mentionne pas $option" }
+        if ($helpText -notmatch [regex]::Escape($option)) { throw "l'aide ne mentionne pas $option" }
     }
     Write-Host "ok  aide"
 

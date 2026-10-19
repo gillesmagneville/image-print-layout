@@ -2,9 +2,9 @@
 
 // Command svgprintlayout is the entry point of SVG Print Layout.
 //
-// At this stage (M0) it reports its version and can check its rendering
-// engine: the graphical interface will be wired in internal/ui once the M0
-// prototype has validated the GTK4 binding.
+// Without a mode flag it opens the window (internal/ui). -version reports the
+// version and -selftest checks the rendering engine; both write to the
+// terminal and exit without starting the toolkit.
 package main
 
 import (

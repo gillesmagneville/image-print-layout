@@ -18,6 +18,36 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
   l'utilisateur) et ajoute l'option `-lang`. Des tests vérifient que les quatre catalogues ont
   les mêmes clés, les mêmes paramètres et aucun texte vide, et que le code ne demande que des
   clés qui existent.
+- **Première fenêtre** (`internal/ui`, GTK4 par gotk4 v0.3.1) : trois panneaux (paramètres,
+  aperçu, liste des pages), barre de titre avec « Ouvrir un SVG » et menu (langue, À propos,
+  Quitter). Un SVG s'ouvre sans bloquer la fenêtre (le moteur tourne dans sa propre goroutine)
+  et s'affiche en entier, ajusté à la vue ; un fichier qui n'est pas un SVG est refusé avec un
+  message, le document ouvert reste. La langue se change à chaud (automatique, français,
+  anglais, espagnol, allemand) ; le choix est enregistré dans `settings.json` du dossier de
+  configuration (`internal/app`), hors des projets. Sans cgo, `ui` est un bouchon : le reste du
+  dépôt se construit et se teste comme avant. Les paramètres de page, les coupures et l'export
+  ne sont pas encore dans la fenêtre.
+- **Fichiers du système en quatre langues** : l'entrée de menu (`.desktop`), la fiche AppStream
+  et la page de manuel, en anglais (langue de repli), français, espagnol et allemand ; les
+  pages de manuel traduites sont installées dans le dossier de leur langue. Des tests de
+  `repocheck` vérifient que chaque langue a ses lignes et que les quatre pages de manuel portent
+  la version.
+- **Option `-ready-file`** : crée un fichier quand la fenêtre est affichée et le document
+  dessiné (essais et documentation).
+- **CI** : un job `ui` (GTK4 sous Xvfb : tests de la fenêtre, captures dans les quatre langues
+  en artefact), l'ouverture de la fenêtre du programme installé dans le job `linux-packages`, et
+  dans le job `windows-package` l'ouverture de la fenêtre du paquet portable dans les quatre
+  langues puis de celle du programme installé, avec captures d'écran.
+
+### Modifié
+
+- **Paquets** : les `.deb` et `.rpm` dépendent de GTK 4 (`libgtk-4-1`) ; leurs scripts
+  vérifient la présence de GTK 4 à la construction (Ubuntu 24.04 ou plus récent, GTK 4.14).
+  Le paquet Windows embarque GTK 4 et ce qu'il lui faut (schémas de réglages, thèmes d'icônes
+  Adwaita et hicolor, traductions de GTK) et contient deux programmes : `svgprintlayout.exe`
+  (la fenêtre, sans console) et `svgprintlayout-console.exe` (`-version`, `-selftest`). Le
+  script de construction vérifie le sous-système de chacun. L'installeur NSIS parle les quatre
+  langues.
 
 ## [0.1.0] - 2026-10-19
 

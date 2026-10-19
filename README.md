@@ -4,7 +4,7 @@
 
 Application de bureau (Linux/Ubuntu et Windows 10/11, écrite en Go) pour **mettre en page, découper et imprimer un document vectoriel SVG sur plusieurs feuilles de papier standard**, puis l'exporter en **PDF multipage vectoriel**.
 
-> **État : prototype du moteur de rendu (M0a).** Rien n'est encore utilisable : le dépôt contient l'organisation des paquets, la bibliothèque de conversions d'unités et de formats papier, un prototype du moteur (librsvg + cairo : rendu d'une fenêtre et export PDF multipage, validé sur le Mini-CAD, voir [`docs/M0.md`](docs/M0.md)), les scripts qui construisent les paquets `.deb`, `.rpm` et Windows (qui n'installent pour l'instant qu'un programme sans interface, voir [Paquets](#paquets)) et la CI. Le prototype de l'interface GTK4 est la prochaine étape.
+> **État : prototype (M0).** La mise en page n'est pas encore utilisable. Le dépôt contient la bibliothèque de conversions d'unités et de formats papier, un prototype du moteur (librsvg + cairo : rendu d'une fenêtre et export PDF multipage, validé sur le Mini-CAD, voir [`docs/M0.md`](docs/M0.md)), une première fenêtre GTK4 en **français, anglais, espagnol et allemand** (trois panneaux, ouverture d'un SVG affiché en entier), les scripts qui construisent les paquets `.deb`, `.rpm` et Windows (voir [Paquets](#paquets)) et la CI. Les paramètres de page, les coupures et l'export PDF dans la fenêtre sont la suite (M1 à M4).
 
 ## Principe
 
@@ -24,9 +24,9 @@ Règles fondamentales, reprises du cahier des charges :
 ## Organisation du code
 
 ```
-cmd/svgprintlayout/   point d'entrée (-version, -selftest, -lang)
+cmd/svgprintlayout/   point d'entrée : la fenêtre, ou -version, -selftest, -lang
 build-deb.sh, build-rpm.sh, build-windows.ps1   construisent les paquets (voir Paquets)
-debian/, metainfo/, icons/, windows/   fichiers qu'ils empaquettent ; docs/svgprintlayout.1 : page de manuel
+debian/, metainfo/, icons/, windows/   fichiers qu'ils empaquettent ; docs/svgprintlayout.1 (+ fr/, es/, de/) : pages de manuel
 internal/
   units/     conversions SVG / px / pt / mm, formats papier, marges      (Go pur, testé)
   model/     types de données partagés                                    (Go pur)
@@ -35,10 +35,10 @@ internal/
   svgdoc/    lecture du SVG : dimensions, unités, fonctions non prises en charge, fond
   engine/    moteur de rendu : librsvg + cairo par cgo (prototype M0a)
   export/    export PDF multipage et vérifications avant/après
-  app/       état de l'application et cas d'usage, indépendants de l'interface
+  app/       état de l'application, préférences, cas d'usage, indépendants de l'interface
   diag/      avertissements et erreurs destinés à l'utilisateur (un code et des valeurs)
   i18n/      traduction : français, anglais, espagnol, allemand ; nombres  (Go pur, testé)
-  ui/        interface graphique (GTK4 via gotk4 à valider en M0b)
+  ui/        interface graphique : GTK4 via gotk4 (bouchon sans cgo)
   testsvg/   générateur de SVG d'essai déterministe                      (Go pur)
   repocheck/ tests sur le dépôt lui-même (en-têtes de licence, versions, documentation)
 docs/        rapports de jalon (M0.md)
@@ -57,7 +57,7 @@ Le sens des dépendances va de `ui` vers `app`, puis vers `layout`, `project`, `
 
 ## Développement
 
-Prérequis pour l'instant : Go 1.24 ou plus récent.
+Prérequis : Go 1.24 ou plus récent.
 
 ```sh
 gofmt -l .          # ne doit rien afficher
@@ -77,7 +77,21 @@ CGO_ENABLED=1 go test ./internal/engine ./internal/testsvg
 
 Sans `CGO_ENABLED=1`, le paquet `engine` est vide et le reste se compile et se teste sans bibliothèque graphique. Un outil de poppler absent fait sauter le test concerné, sauf quand la variable `CI` est définie.
 
-Les dépendances de l'interface (GTK4) et la procédure pour Windows (MSYS2) seront documentées ici une fois le volet M0b validé.
+La fenêtre (`internal/ui`) demande en plus GTK 4.14 ou plus récent (gotk4 v0.3.1) : sans cgo, `ui` est un bouchon et le programme dit qu'il a été construit sans interface graphique. Sous Ubuntu 24.04 :
+
+```sh
+sudo apt-get install librsvg2-dev libgtk-4-dev libgirepository1.0-dev poppler-utils fonts-ibm-plex
+go run ./cmd/svgprintlayout                       # la fenêtre
+go run ./cmd/svgprintlayout -lang de plan.svg     # dans une langue, avec un document
+```
+
+Les tests de la fenêtre ouvrent de vraies fenêtres : sans écran (terminal, CI), ils se lancent sur un écran virtuel, avec `sudo apt-get install xvfb xauth` :
+
+```sh
+xvfb-run -a go test ./internal/ui ./cmd/svgprintlayout
+```
+
+La première compilation de gotk4 dure plusieurs minutes ; les suivantes utilisent le cache de Go. Pour Windows (MSYS2 UCRT64), voir [`windows/README.md`](windows/README.md).
 
 ## Paquets
 
@@ -121,14 +135,16 @@ on incrémente avec le premier script et on relance les deux autres avec
 ./build-rpm.sh --no-version-change
 ```
 
-Après une version sans suffixe, ajoutez sa section `## [X.Y.Z]` à `CHANGELOG.md`
-(voir `CONTRIBUTING.md`).
+Après une version sans suffixe, mettez à jour tous les fichiers qui la portent : section
+`## [X.Y.Z]` de `CHANGELOG.md`, `<release>` de la fiche AppStream, ligne `.TH` des quatre
+pages de manuel, états du README et d'`ARCHITECTURE.md` (voir `CONTRIBUTING.md` ; un test
+de `repocheck` échoue tant que l'un d'eux est en retard).
 
 Chaque script vérifie ses prérequis. Les paquets Linux s'installent avec `apt install ./…deb`
 ou `dnf install ./…rpm`. Sous Debian et Ubuntu, les prérequis de construction sont :
 
 ```sh
-sudo apt install golang-go build-essential pkg-config librsvg2-dev dpkg-dev rpm
+sudo apt install golang-go build-essential pkg-config librsvg2-dev libgtk-4-dev libgirepository1.0-dev dpkg-dev rpm
 ```
 
 L'organisation des paquets (contenu, numéros de version `0.1.0~dev-1` / `0.1.dev`,

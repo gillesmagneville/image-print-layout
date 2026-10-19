@@ -3,14 +3,37 @@
 set -euo pipefail
 
 # Construit le paquet Windows de SVG Print Layout : une version portable (.zip)
-# et, si NSIS est installé, un installeur (.exe).
+# et, si NSIS est installé, un installeur (.exe), à la racine du dépôt.
 #
 # Ce script s'exécute dans un terminal MSYS2 UCRT64 (c'est là que se trouvent
 # Go, le compilateur C, librsvg et cairo pour Windows). On le lance de
-# préférence par build-windows.ps1, à la racine du dépôt, qui prépare MSYS2 et
-# NSIS puis l'appelle ; GitHub Actions l'utilise aussi directement.
+# préférence par build-windows.ps1, à la racine du dépôt : celui-ci gère les
+# options et le fichier VERSION comme build-deb.sh, prépare MSYS2 et NSIS, puis
+# appelle ce script avec le numéro de version choisi. Ce script ne modifie
+# jamais le fichier VERSION.
 
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib.sh"
+# ====================== CONFIGURATION ======================
+PACKAGE_NAME="svgprintlayout"
+WINDOWS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$WINDOWS_DIR")"
+# Dossier de travail : celui que build-windows.ps1 choisit (variable
+# SVGPL_BUILD_DIR, en chemin Windows ou MSYS2), à défaut un dossier du
+# répertoire personnel. Fixé par main().
+WORK=""
+# ===========================================================
+
+step() { echo ">>> $*"; }
+
+die() {
+    echo "" >&2
+    echo "Erreur : $*" >&2
+    exit 1
+}
+
+# require_tool COMMANDE "conseil d'installation"
+require_tool() {
+    command -v "$1" >/dev/null 2>&1 || die "$1 est introuvable. $2"
+}
 
 # Paquets MSYS2 nécessaires à la construction (les bibliothèques d'exécution
 # viennent avec librsvg et cairo).
@@ -30,59 +53,101 @@ PIXBUF_LOADERS=(png jpeg gif bmp webp)
 
 show_help() {
     cat << EOF2
-Usage : packaging/windows/build-windows.sh [options]
+Usage : windows/build-windows.sh [options]
 
-Construit, à partir du code du dépôt et du numéro de version du fichier
-VERSION (ce script ne le modifie jamais : une version se change par une pull
-request « Release »), dans dist/ :
+Construit, à la racine du dépôt :
   svgprintlayout_<version>_windows-portable.zip   version portable
   svgprintlayout_<version>_windows-setup.exe      installeur (si NSIS est là)
 
 OPTIONS :
+  --version X.Y.Z   Numéro de version à construire (par défaut : le contenu du
+                    fichier VERSION). Ce script ne modifie jamais VERSION.
   --install-deps    Installe avec pacman les paquets MSYS2 manquants
   --check-deps      Vérifie seulement que les paquets MSYS2 sont présents
-  --no-installer    Ne produit pas l'installeur, même si NSIS est présent
-  --clean           Supprime le dossier de travail et les paquets Windows de dist/
   --help, -h        Affiche cette aide
 
 À lancer dans un terminal « MSYS2 UCRT64 » (pas MSYS ni MINGW64). Plus simple :
-.\\build-windows.ps1 à la racine du dépôt, depuis PowerShell.
+.\\build-windows.ps1 à la racine du dépôt, depuis PowerShell : il accepte
+-Major, -Minor, -Patch et -NoVersionChange, comme build-deb.sh.
+
+Le dossier de travail est la variable d'environnement SVGPL_BUILD_DIR
+(par défaut ~/svgprintlayout-build).
 EOF2
 }
 
 INSTALL_DEPS=false
 CHECK_DEPS=false
-NO_INSTALLER=false
-CLEAN=false
+VERSION=""
 
-WORK="$DIST_DIR/build/windows"
-
-# missing_packages affiche les paquets MSYS2 absents, un par ligne.
-missing_packages() {
-    local p
-    for p in "${MSYS_PACKAGES[@]}"; do
-        pacman -Q "$p" >/dev/null 2>&1 || echo "$p"
-    done
-}
-
+# ensure_packages vérifie les paquets MSYS2 ; avec --install-deps, il installe
+# ceux qui manquent, avec --check-deps il se contente de les lister.
 ensure_packages() {
-    local missing
-    missing="$(missing_packages)"
-    [ -z "$missing" ] && return 0
+    local missing=() p
+    for p in "${MSYS_PACKAGES[@]}"; do
+        pacman -Q "$p" >/dev/null 2>&1 || missing+=("$p")
+    done
+    [ ${#missing[@]} -eq 0 ] && return 0
     if [ "$CHECK_DEPS" = true ]; then
         echo "Paquets MSYS2 manquants :" >&2
-        echo "$missing" | sed 's/^/  /' >&2
+        printf '  %s\n' "${missing[@]}" >&2
         return 1
     fi
     if [ "$INSTALL_DEPS" != true ]; then
         die "paquets MSYS2 manquants :
-$(echo "$missing" | sed 's/^/  /')
-Installez-les avec : pacman -S --needed $(echo $missing)
+$(printf '  %s\n' "${missing[@]}")
+Installez-les avec : pacman -S --needed ${missing[*]}
 ou relancez ce script avec --install-deps."
     fi
     step "Installation des paquets MSYS2 manquants..."
-    # shellcheck disable=SC2086  # un argument par paquet
-    pacman -S --needed --noconfirm $missing
+    pacman -S --needed --noconfirm "${missing[@]}"
+}
+
+# Date des fichiers du paquet : celle du dernier commit, pour que deux
+# constructions du même code donnent le même paquet.
+set_source_date_epoch() {
+    if [ -z "${SOURCE_DATE_EPOCH:-}" ]; then
+        SOURCE_DATE_EPOCH="$(git -c safe.directory="$PROJECT_DIR" -C "$PROJECT_DIR" log -1 --format=%ct 2>/dev/null || true)"
+        SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(date +%s)}"
+    fi
+    export SOURCE_DATE_EPOCH
+}
+
+# read_version fixe VERSION (option --version, à défaut fichier VERSION) et
+# VERSION_BASE, sa partie numérique : une version d'avant-publication
+# (0.1.0-dev) garde son suffixe dans les textes, mais les numéros de version
+# de Windows n'ont que quatre nombres.
+read_version() {
+    if [ -z "$VERSION" ]; then
+        [ -f "$PROJECT_DIR/VERSION" ] || die "fichier VERSION introuvable : $PROJECT_DIR/VERSION"
+        VERSION="$(tr -d '[:space:]' < "$PROJECT_DIR/VERSION")"
+    fi
+    local semver='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$'
+    [[ "$VERSION" =~ $semver ]] || die "« $VERSION » n'est pas une version X.Y.Z ou X.Y.Z-suffixe."
+    VERSION_BASE="${VERSION%%-*}"
+}
+
+check_go_prerequisites() {
+    require_tool go "Installez le paquet MSYS2 mingw-w64-ucrt-x86_64-go."
+    require_tool gcc "Installez le paquet MSYS2 mingw-w64-ucrt-x86_64-gcc."
+    require_tool pkg-config "Installez le paquet MSYS2 mingw-w64-ucrt-x86_64-pkgconf."
+    pkg-config --exists librsvg-2.0 cairo || die "les bibliothèques de développement de librsvg et de cairo sont absentes (paquets MSYS2 mingw-w64-ucrt-x86_64-librsvg et -cairo)."
+}
+
+# build_binary DESTINATION compile le programme. -trimpath, un identifiant de
+# construction vide et l'absence d'informations VCS rendent le binaire
+# indépendant du dossier et de l'heure de la construction. Le numéro de
+# version est inscrit dans le programme (svgprintlayout -version).
+build_binary() {
+    step "Compilation de $PACKAGE_NAME $VERSION (cgo, librsvg, cairo)..."
+    mkdir -p "$(dirname "$1")"
+    ( cd "$PROJECT_DIR" && CGO_ENABLED=1 go build -trimpath -buildvcs=false \
+        -buildmode=exe -ldflags "-s -w -buildid= -X main.version=$VERSION" \
+        -o "$1" ./cmd/svgprintlayout )
+}
+
+# normalize_tree RACINE fixe la date de tout le contenu.
+normalize_tree() {
+    find "${1:?normalize_tree : dossier manquant}" -exec touch -h -d "@$SOURCE_DATE_EPOCH" {} +
 }
 
 # find_makensis affiche le chemin de makensis (NSIS), s'il est installé.
@@ -109,7 +174,7 @@ make_resources() {
     local rc_dir="$WORK/resources"
     local file_version="${VERSION_BASE//./,},0"
     mkdir -p "$rc_dir"
-    cp "$DATA_DIR/svgprintlayout.ico" "$rc_dir/"
+    cp "$WINDOWS_DIR/svgprintlayout.ico" "$rc_dir/"
     cat > "$rc_dir/svgprintlayout.rc" << EOF2
 1 ICON "svgprintlayout.ico"
 1 VERSIONINFO
@@ -274,7 +339,7 @@ write_installer_includes() {
         echo "!define APP_VERSION_NUMERIC \"$VERSION_BASE.0\""
         echo "!define STAGE_DIR \"$win_root\""
         echo "!define OUTPUT_FILE \"$(cygpath -w "$output")\""
-        echo "!define APP_ICON \"$(cygpath -w "$DATA_DIR/svgprintlayout.ico")\""
+        echo "!define APP_ICON \"$(cygpath -w "$WINDOWS_DIR/svgprintlayout.ico")\""
     } > "$dir/build-vars.nsh"
     {
         ( cd "$root" && find . -type f | LC_ALL=C sort ) | while IFS= read -r rel; do
@@ -291,7 +356,7 @@ write_installer_includes() {
 build_installer() {
     local makensis="$1" root="$2" output="$3" dir="$WORK/installer"
     write_installer_includes "$dir" "$root" "$output"
-    cp "$PROJECT_DIR/packaging/windows/installer.nsi" "$dir/installer.nsi"
+    cp "$WINDOWS_DIR/installer.nsi" "$dir/installer.nsi"
     rm -f "${output:?}"
     # « -V2 » et non « /V2 » : MSYS2 prendrait « /V2 » pour un chemin POSIX.
     ( cd "$dir" && "$makensis" -V2 installer.nsi )
@@ -301,10 +366,13 @@ build_installer() {
 main() {
     while [[ $# -gt 0 ]]; do
         case $1 in
+            --version)
+                [ $# -ge 2 ] || die "--version attend un numéro de version (ex : --version 1.2.3)."
+                VERSION="$2"
+                shift 2
+                ;;
             --install-deps) INSTALL_DEPS=true; shift ;;
             --check-deps)   CHECK_DEPS=true; shift ;;
-            --no-installer) NO_INSTALLER=true; shift ;;
-            --clean)        CLEAN=true; shift ;;
             --help|-h)      show_help; exit 0 ;;
             *)
                 echo "Option inconnue : $1"
@@ -314,17 +382,10 @@ main() {
         esac
     done
 
-    if [ "$CLEAN" = true ]; then
-        step "Nettoyage de ${DIST_DIR:?}..."
-        rm -rf "${WORK:?}"
-        find "${DIST_DIR:?}" -maxdepth 1 -name "${PACKAGE_NAME}_*_windows-*" -type f -delete 2>/dev/null || true
-        step "Nettoyage terminé."
-        exit 0
-    fi
-
     [ "${MSYSTEM:-}" = "UCRT64" ] || die "ce script doit s'exécuter dans un terminal MSYS2 UCRT64 (MSYSTEM vaut « ${MSYSTEM:-vide} »).
 Lancez plutôt .\\build-windows.ps1 depuis PowerShell, à la racine du dépôt."
     [ "$(uname -m)" = "x86_64" ] || die "seul Windows 64 bits (x64) est pris en charge."
+    WORK="$(cygpath -u "${SVGPL_BUILD_DIR:-$HOME/svgprintlayout-build}")"
 
     ensure_packages
     [ "$CHECK_DEPS" = true ] && exit 0
@@ -348,8 +409,8 @@ Lancez plutôt .\\build-windows.ps1 depuis PowerShell, à la racine du dépôt."
     local pkgdir="${PACKAGE_NAME}-${VERSION}-windows-x64"
     local binary="$WORK/$PACKAGE_NAME.exe"
     local root="$WORK/$pkgdir"
-    local zip_out="$DIST_DIR/${PACKAGE_NAME}_${VERSION}_windows-portable.zip"
-    local setup_out="$DIST_DIR/${PACKAGE_NAME}_${VERSION}_windows-setup.exe"
+    local zip_out="$PROJECT_DIR/${PACKAGE_NAME}_${VERSION}_windows-portable.zip"
+    local setup_out="$PROJECT_DIR/${PACKAGE_NAME}_${VERSION}_windows-setup.exe"
 
     echo ""
     echo "========================================"
@@ -357,9 +418,9 @@ Lancez plutôt .\\build-windows.ps1 depuis PowerShell, à la racine du dépôt."
     echo "========================================"
 
     rm -rf "${WORK:?}"
-    mkdir -p "$WORK" "$DIST_DIR"
+    mkdir -p "$WORK"
     make_resources "$PROJECT_DIR/cmd/$PACKAGE_NAME"
-    GO_BUILDMODE=exe build_binary "$binary"
+    build_binary "$binary"
     rm -f "$SYSO"
 
     step "Préparation de l'arborescence du paquet..."
@@ -379,27 +440,22 @@ Lancez plutôt .\\build-windows.ps1 depuis PowerShell, à la racine du dépôt."
     ( cd "$WORK" && find "$pkgdir" | LC_ALL=C sort | TZ=UTC zip -X -9 -q "$zip_out" -@ )
 
     local built="$zip_out"
-    if [ "$NO_INSTALLER" = true ]; then
-        step "Installeur ignoré (--no-installer)."
-    else
-        local makensis
-        makensis="$(find_makensis)"
-        if [ -n "$makensis" ]; then
-            step "Création de l'installeur (.exe) avec NSIS..."
-            build_installer "$makensis" "$root" "$setup_out"
-            built="$built
+    local makensis
+    makensis="$(find_makensis)"
+    if [ -n "$makensis" ]; then
+        step "Création de l'installeur (.exe) avec NSIS..."
+        build_installer "$makensis" "$root" "$setup_out"
+        built="$built
    $setup_out"
-        else
-            echo ""
-            echo "NSIS est introuvable : seule la version portable (.zip) est produite."
-            echo "Pour obtenir aussi l'installeur : winget install NSIS.NSIS, puis relancez."
-        fi
+    else
+        echo ""
+        echo "NSIS est introuvable : seule la version portable (.zip) est produite."
+        echo "Pour obtenir aussi l'installeur : winget install NSIS.NSIS, puis relancez."
     fi
 
     echo ""
     echo "✅ Paquet(s) créé(s) avec succès :"
     echo "   $built"
-    echo "   Version (fichier VERSION, inchangée) : $VERSION"
 }
 
 # Le script peut être « sourcé » (pour en tester les fonctions) sans rien lancer.

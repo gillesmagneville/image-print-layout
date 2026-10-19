@@ -3,8 +3,8 @@
 # Les scripts lus par bash doivent garder des fins de ligne Unix, même dans une
 # copie de travail Windows (MSYS2) : un retour chariot casserait leur exécution.
 *.sh   text eol=lf
-*.in   text eol=lf
 *.1    text eol=lf
+VERSION  text eol=lf
 postinst text eol=lf
 postrm   text eol=lf
 *.ico  binary

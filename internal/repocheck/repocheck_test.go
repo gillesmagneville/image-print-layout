@@ -34,8 +34,7 @@ func read(t *testing.T, path string) string {
 	return string(b)
 }
 
-// walk calls fn for every tracked-looking file under root, skipping .git and
-// the output of package builds (dist/).
+// walk calls fn for every tracked-looking file under root, skipping .git.
 func walk(t *testing.T, root string, fn func(path, rel string)) {
 	t.Helper()
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
@@ -43,7 +42,7 @@ func walk(t *testing.T, root string, fn func(path, rel string)) {
 			return err
 		}
 		if d.IsDir() {
-			if d.Name() == ".git" || (d.Name() == "dist" && path == filepath.Join(root, "dist")) {
+			if d.Name() == ".git" {
 				return filepath.SkipDir
 			}
 			return nil
@@ -70,7 +69,7 @@ func TestEveryFileHasTheLicenceHeader(t *testing.T) {
 	root := repoRoot(t)
 	walk(t, root, func(path, rel string) {
 		switch filepath.Ext(rel) {
-		case ".go", ".md", ".yml", ".yaml", ".sh", ".ps1", ".nsi", ".nsh", ".in", ".desktop", ".xml", ".1":
+		case ".go", ".md", ".yml", ".yaml", ".sh", ".ps1", ".nsi", ".nsh", ".desktop", ".xml", ".1":
 		default:
 			return
 		}

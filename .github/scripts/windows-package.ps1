@@ -5,13 +5,15 @@
 # de sa sortie est recopiée dans une annotation d'erreur, que l'on retrouve
 # dans la page de l'exécution (et par l'API) sans télécharger les journaux.
 #
-#   -Step build      construit les paquets avec build-windows.ps1, comme un utilisateur
+#   -Step build      construit les paquets avec build-windows.ps1 -Patch, comme un
+#                    utilisateur, et vérifie la gestion du fichier VERSION
 #   -Step portable   lance la version portable avec le seul PATH de Windows
 #   -Step installer  installe, lance, désinstalle en silence
+#   -Step clean      vérifie que build-windows.ps1 -Clean supprime les paquets
 
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet("build", "portable", "installer")]
+    [ValidateSet("build", "portable", "installer", "clean")]
     [string]$Step
 )
 
@@ -19,7 +21,6 @@ param(
 # script : on vérifie les codes de sortie nous-mêmes.
 $ErrorActionPreference = "Continue"
 
-$version = (Get-Content VERSION -Raw).Trim()
 $log = Join-Path $env:RUNNER_TEMP "$Step.log"
 $cleanPath = "$env:SystemRoot\System32;$env:SystemRoot"
 $uninstallKey = "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\SVGPrintLayout"
@@ -28,16 +29,64 @@ function Assert-Success([string]$What) {
     if ($LASTEXITCODE -ne 0) { throw "$What a échoué (code $LASTEXITCODE)" }
 }
 
+# La version du fichier VERSION, lue à chaque fois : la construction la change.
+function Get-Version { (Get-Content VERSION -Raw).Trim() }
+
 function Invoke-Build {
-    .\build-windows.ps1 -Oui
-    Assert-Success "build-windows.ps1"
-    Write-Host "--- dist"
-    Get-ChildItem dist -File | ForEach-Object { Write-Host ("{0,12:N0} octets  {1}" -f $_.Length, $_.Name) }
+    # Chargé par un point, build-windows.ps1 ne fait que définir ses fonctions.
+    . .\windows\build-windows.ps1
+    $ErrorActionPreference = "Continue"
+    $table = @(
+        @("1.2.3", "major", "2.0.0"), @("1.2.3", "minor", "1.3.0"), @("1.2.3", "patch", "1.2.4"),
+        @("0.1.0", "major", "1.0.0"), @("0.1.0", "minor", "0.2.0"), @("0.1.0", "patch", "0.1.1"),
+        @("0.1.0-dev", "major", "1.0.0"), @("0.1.0-dev", "minor", "0.1.0"), @("0.1.0-dev", "patch", "0.1.0"),
+        @("0.1.2-dev", "patch", "0.1.2"), @("0.1.2-dev", "minor", "0.2.0"),
+        @("1.0.0-rc.1", "major", "1.0.0"), @("1.0.0-rc.1", "minor", "1.0.0"), @("10.9.99", "patch", "10.9.100")
+    )
+    foreach ($row in $table) {
+        $got = Get-NextVersion $row[0] $row[1]
+        if ($got -ne $row[2]) { throw "Get-NextVersion $($row[0]) $($row[1]) donne $got, attendu $($row[2])" }
+    }
+    Write-Host "ok  calcul des versions"
+
+    $help = (.\build-windows.ps1 -Help) -join "`n"
+    Assert-Success "build-windows.ps1 -Help"
+    foreach ($option in "-Major", "-Minor", "-Patch", "-NoVersionChange", "-Clean", "-Help") {
+        if ($help -notmatch [regex]::Escape($option)) { throw "l'aide ne mentionne pas $option" }
+    }
+    Write-Host "ok  aide"
+
+    # -Patch : la version change, une fois les paquets construits ; -Oui répond
+    # à la confirmation et aux propositions d'installation.
+    $before = Get-Version
+    $expected = Get-NextVersion $before "patch"
+    .\build-windows.ps1 -Patch -Oui
+    Assert-Success "build-windows.ps1 -Patch -Oui"
+
+    $bytes = [System.IO.File]::ReadAllBytes((Join-Path (Get-Location) "VERSION"))
+    $text = [System.Text.Encoding]::UTF8.GetString($bytes)
+    if ($text -ne "$expected`n") { throw "VERSION vaut « $($text.TrimEnd()) » après -Patch, attendu « $expected » (sans BOM, avec une fin de ligne Unix)" }
+    Write-Host "ok  VERSION : $before -> $expected"
+
+    Write-Host "--- paquets"
+    Get-ChildItem -File -Filter "svgprintlayout_*" | ForEach-Object { Write-Host ("{0,12:N0} octets  {1}" -f $_.Length, $_.Name) }
+    foreach ($name in "svgprintlayout_${expected}_windows-portable.zip", "svgprintlayout_${expected}_windows-setup.exe") {
+        if (-not (Test-Path $name)) { throw "$name manque à la racine du dépôt" }
+    }
+}
+
+function Test-Clean {
+    .\build-windows.ps1 -Clean
+    Assert-Success "build-windows.ps1 -Clean"
+    $left = @(Get-ChildItem -File -Filter "svgprintlayout_*_windows-*")
+    if ($left.Count -gt 0) { throw "-Clean a laissé : $($left.Name -join ', ')" }
+    if (Test-Path "$env:LOCALAPPDATA\svgprintlayout-build") { throw "-Clean a laissé le dossier de travail" }
 }
 
 function Test-Portable {
+    $version = Get-Version
     $dest = Join-Path $env:RUNNER_TEMP "portable"
-    Expand-Archive "dist\svgprintlayout_${version}_windows-portable.zip" -DestinationPath $dest
+    Expand-Archive "svgprintlayout_${version}_windows-portable.zip" -DestinationPath $dest
     $root = (Get-ChildItem $dest -Directory | Select-Object -First 1).FullName
     Write-Host "--- contenu de $root"
     Get-ChildItem $root | ForEach-Object { Write-Host $_.Name }
@@ -60,7 +109,7 @@ function Test-Portable {
 }
 
 function Test-Installer {
-    $setup = "dist\svgprintlayout_${version}_windows-setup.exe"
+    $setup = Join-Path (Get-Location) "svgprintlayout_$(Get-Version)_windows-setup.exe"
     $target = Join-Path $env:RUNNER_TEMP "installed"
     Start-Process -FilePath $setup -ArgumentList "/S", "/D=$target" -Wait
     if (-not (Test-Path "$target\bin\svgprintlayout.exe")) { throw "l'installeur n'a pas installé le programme" }
@@ -84,6 +133,7 @@ try {
             "build"     { Invoke-Build }
             "portable"  { Test-Portable }
             "installer" { Test-Installer }
+            "clean"     { Test-Clean }
         }
     } *>&1 | Tee-Object -FilePath $log
     # Succès : la fin de la sortie reste lisible dans une annotation, comme en cas d'échec.

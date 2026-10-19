@@ -44,6 +44,14 @@
     <category>VectorGraphics</category>
   </categories>
 
+  <releases>
+    <release version="0.1.0" date="2026-10-19">
+      <description>
+        <p>Première version : moteur de rendu SVG et PDF, paquets Debian, Fedora et Windows. L'interface graphique n'est pas encore là.</p>
+      </description>
+    </release>
+  </releases>
+
   <content_rating type="oars-1.1"/>
 
   <developer id="io.github.gillesmagneville">

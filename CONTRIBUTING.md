@@ -150,8 +150,19 @@ Une release est une pull request à part, « Release X.Y.Z » :
    script met `VERSION` à jour ;
 2. construisez les autres avec `--no-version-change` (`./build-rpm.sh --no-version-change`,
    `.\build-windows.ps1 -NoVersionChange`) ;
-3. déplacez les notes de `[Non publié]` sous `## [X.Y.Z]` dans `CHANGELOG.md` (un test
-   échoue tant que cette section manque pour une version sans suffixe) ;
+3. mettez à jour **tous les fichiers qui nomment la version**, dans la même pull request :
+   - `CHANGELOG.md` : déplacez les notes de `[Non publié]` sous
+     `## [X.Y.Z] - AAAA-MM-JJ` (le plus récent en premier) ;
+   - `metainfo/io.github.gillesmagneville.svgprintlayout.metainfo.xml` : ajoutez
+     `<release version="X.Y.Z" date="AAAA-MM-JJ">` en tête de `<releases>`, avec sa
+     description ;
+   - `docs/svgprintlayout.1` : la date et `svg-print-layout X.Y.Z` de la ligne `.TH` ;
+   - `README.md`, `ARCHITECTURE.md` (§14, « État ») et les rapports de `docs/` quand ce
+     qu'ils annoncent a changé avec la version ;
+
+   `go test ./internal/repocheck` échoue tant que `VERSION`, le CHANGELOG, le fichier
+   AppStream et la page de manuel ne disent pas la même version et la même date ; la CI
+   le lance ;
 4. fusionnez ; le tag `vX.Y.Z` est posé ensuite.
 
 Tant que `VERSION` porte un suffixe (`0.1.0-dev`), aucune version n'est publiée.

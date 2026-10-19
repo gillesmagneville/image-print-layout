@@ -9,10 +9,13 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
-Aucune version n'est encore publiée : l'application n'est pas utilisable. Le dépôt contient
-le squelette, les documents de référence, la bibliothèque d'unités et le prototype du moteur de
-rendu (M0a) ; le prototype de l'interface GTK4 et le build sous Windows (M0b) sont la prochaine
-étape.
+## [0.1.0] - 2026-10-19
+
+Première version. Le dépôt contient le squelette, les documents de référence, la bibliothèque
+d'unités et de formats papier, le prototype du moteur de rendu (M0a), les scripts qui
+construisent les paquets `.deb`, `.rpm` et Windows, et la CI. Le programme n'a pas encore
+d'interface graphique : il n'offre que `-version` et `-selftest`. Le prototype de l'interface
+GTK4 et le build de celle-ci sous Windows (M0b) sont la prochaine étape.
 
 ### Ajouté
 

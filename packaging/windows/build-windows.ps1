@@ -106,12 +106,23 @@ function Find-Nsis {
 }
 
 # Exécute une commande dans un terminal MSYS2 UCRT64, depuis le dossier du
-# dépôt, et renvoie son code de sortie. Sa sortie va à l'écran.
+# dépôt, et renvoie son code de sortie. La sortie (erreurs comprises) est
+# écrite ligne à ligne avec Write-Host : elle s'affiche à l'écran et peut être
+# redirigée vers un fichier, sans se mêler à la valeur renvoyée. Les lignes
+# d'erreur de bash ne doivent pas arrêter le script (Windows PowerShell 5.1 en
+# ferait une erreur fatale avec $ErrorActionPreference = "Stop") : seul le code
+# de sortie compte.
 function Invoke-Msys([string]$Command) {
     $env:MSYSTEM = "UCRT64"
     $env:CHERE_INVOKING = "1"
-    & (Join-Path $script:Msys2Root "usr\bin\bash.exe") -lc $Command | Out-Host
-    return $LASTEXITCODE
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        & (Join-Path $script:Msys2Root "usr\bin\bash.exe") -lc $Command 2>&1 | ForEach-Object { Write-Host "$_" }
+        return $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $previous
+    }
 }
 
 if ($Help) { Show-Help; exit 0 }

@@ -125,42 +125,19 @@ jobs:
         shell: pwsh
         run: choco install nsis --no-progress -y
       # The same entry point as a user's: it checks MSYS2 and its packages,
-      # installs what is missing (-Oui answers yes), then builds both packages
-      # and runs the program with only Windows' own PATH. Windows PowerShell
-      # 5.1 on purpose: it is what a user has.
+      # installs what is missing (-Oui answers yes), then builds both packages.
+      # Windows PowerShell 5.1 on purpose: it is what a user has. The steps
+      # are in a script so that a failure leaves its last lines as an error
+      # annotation on the run.
       - name: Build with build-windows.ps1
         shell: powershell
-        run: .\build-windows.ps1 -Oui
-      - name: Run the portable version from a clean PATH
-        shell: pwsh
-        run: |
-          $version = (Get-Content VERSION -Raw).Trim()
-          Expand-Archive "dist\svgprintlayout_${version}_windows-portable.zip" -DestinationPath "$env:RUNNER_TEMP\portable"
-          $root = (Get-ChildItem "$env:RUNNER_TEMP\portable" -Directory | Select-Object -First 1).FullName
-          Get-Content "$root\lib\gdk-pixbuf-2.0\2.10.0\loaders.cache" -ErrorAction SilentlyContinue | Select-Object -First 12
-          Get-Content "$root\share\licenses\COMPOSANTS.txt" | Select-Object -First 40
-          $env:Path = "$env:SystemRoot\System32;$env:SystemRoot"
-          & "$root\bin\svgprintlayout.exe" -version
-          if ($LASTEXITCODE -ne 0) { exit 1 }
-          & "$root\bin\svgprintlayout.exe" -selftest
-          if ($LASTEXITCODE -ne 0) { exit 1 }
+        run: .\.github\scripts\windows-package.ps1 -Step build
+      - name: Run the portable version with only Windows' own PATH
+        shell: powershell
+        run: .\.github\scripts\windows-package.ps1 -Step portable
       - name: Install, run and uninstall with the installer
-        shell: pwsh
-        run: |
-          $version = (Get-Content VERSION -Raw).Trim()
-          $setup = "dist\svgprintlayout_${version}_windows-setup.exe"
-          $target = "$env:RUNNER_TEMP\installed"
-          Start-Process -FilePath $setup -ArgumentList "/S", "/D=$target" -Wait
-          if (-not (Test-Path "$target\bin\svgprintlayout.exe")) { throw "the installer did not install the program" }
-          if (-not (Test-Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\SVGPrintLayout")) { throw "the uninstall entry is missing" }
-          $env:Path = "$env:SystemRoot\System32;$env:SystemRoot"
-          & "$target\bin\svgprintlayout.exe" -selftest
-          if ($LASTEXITCODE -ne 0) { exit 1 }
-          # _?= makes the uninstaller run in place and wait, instead of copying
-          # itself to a temporary folder and returning at once.
-          Start-Process -FilePath "$target\Uninstall.exe" -ArgumentList "/S", "_?=$target" -Wait
-          if (Test-Path "$target\bin") { throw "the uninstaller left the program behind" }
-          if (Test-Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\SVGPrintLayout") { throw "the uninstall entry is still there" }
+        shell: powershell
+        run: .\.github\scripts\windows-package.ps1 -Step installer
       - uses: actions/upload-artifact@v4
         with:
           name: windows-package

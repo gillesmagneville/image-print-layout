@@ -34,6 +34,18 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
   la version.
 - **Option `-ready-file`** : crée un fichier quand la fenêtre est affichée et le document
   dessiné (essais et documentation).
+- **Systèmes pris en charge** : la famille Debian (Debian 13 et suivantes, Ubuntu 24.04 et
+  suivantes, leurs dérivés), la famille Red Hat (RHEL 10 et ses clones, Fedora) et Windows 10
+  et 11. Le critère est la version des bibliothèques (GTK 4.14, GLib 2.80, librsvg 2.52 au
+  moins, imposées par gotk4 v0.3.1) ; Debian 12, Ubuntu 22.04 et RHEL 9 sont trop anciens.
+  `build-deb.sh` et `build-rpm.sh` vérifient ces versions avant de compiler et le disent en
+  français. Tableau dans le README et dans `ARCHITECTURE.md` (§4).
+- **CI des distributions** : le job `distributions` construit le paquet dans un conteneur de
+  Debian 13, Ubuntu 24.04, Ubuntu 26.04, Fedora, CentOS Stream 10, AlmaLinux 10 et Rocky Linux
+  10, l'installe avec `apt` ou `dnf`, lance `-selftest` puis la fenêtre dans les quatre
+  langues, et vérifie sur Debian 12, Ubuntu 22.04 et AlmaLinux 9 que la construction est
+  refusée avec un message clair. Le résultat de chaque système est dans l'annotation de
+  l'exécution. Le paquet Windows est essayé sur `windows-2022` et `windows-latest`.
 - **CI** : un job `ui` (GTK4 sous Xvfb : tests de la fenêtre, captures dans les quatre langues
   en artefact), l'ouverture de la fenêtre du programme installé dans le job `linux-packages`, et
   dans le job `windows-package` l'ouverture de la fenêtre du paquet portable dans les quatre

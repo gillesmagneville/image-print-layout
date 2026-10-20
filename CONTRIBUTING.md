@@ -9,7 +9,7 @@ proposer une amélioration, ou contribuer du code.
 
 Ouvrez une issue en précisant :
 
-- le système (Ubuntu ou Windows, avec la version) ;
+- le système (la distribution et sa version, ou Windows 10 ou 11) ;
 - la version de l'application (`svgprintlayout -version`) ;
 - ce que vous avez fait, le comportement observé et le comportement attendu ;
 - si possible, le SVG en cause (ou un SVG minimal qui reproduit le problème) et le fichier
@@ -34,7 +34,7 @@ discuter avant qu'après. Les fonctions listées comme hors périmètre dans
    ```
 
    Ces commandes sont exactement celles de l'intégration continue
-   (`.github/workflows/ci.yml`), qui les exécute sous Ubuntu et sous Windows avec
+   (`.github/workflows/ci.yml`), qui les exécute sous Linux et sous Windows avec
    `CGO_ENABLED=0`. N'utilisez pas de fonctionnalité plus récente que la version de Go
    indiquée dans `go.mod`.
 
@@ -49,6 +49,13 @@ discuter avant qu'après. Les fonctions listées comme hors périmètre dans
    ./cmd/svgprintlayout` : c'est le job `ui`, qui dépose aussi des captures de la fenêtre
    dans les quatre langues (artefact `screenshots`). Un texte de l'interface s'ajoute aux
    **quatre** catalogues de `internal/i18n` (le test dit lesquels l'oublient).
+
+   Si vous touchez aux scripts de construction des paquets ou à leurs dépendances, essayez-les
+   sur la distribution visée : le job `distributions` de la CI le fait dans un conteneur par
+   système pris en charge (`.github/scripts/test-distribution.sh debian|redhat`, lancé depuis
+   la racine du dépôt dans le conteneur ; voir `ARCHITECTURE.md`, §4 « Plateformes prises en
+   charge »). Une bibliothèque plus récente que celles de ce tableau ne doit pas être exigée
+   sans qu'on retire le système qui ne l'a pas.
 
 3. Décrivez dans la pull request ce qui change et pourquoi, et dites ce que vous avez
    vérifié et ce que vous n'avez pas pu vérifier.

@@ -178,10 +178,96 @@ jobs:
       - name: Check how the scripts manage VERSION
         run: .github/scripts/test-version-handling.sh
 
-  windows-package:
-    name: Windows package (portable and installer)
-    runs-on: windows-latest
+  # Les paquets Linux sont liés aux bibliothèques de la machine qui les a
+  # construits. Ce job construit donc le paquet dans un conteneur de chaque
+  # distribution visée (famille Debian : .deb ; famille Red Hat : .rpm), l'y
+  # installe avec apt ou dnf, et lance le programme installé. Pour une
+  # distribution connue pour être trop ancienne (« refus attendu » : GTK < 4.14
+  # ou GLib < 2.80), le test vérifie que le script de construction refuse, avec
+  # un message clair. Le résultat de chaque distribution est dans l'annotation
+  # de l'exécution.
+  distributions:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    container: ${{ matrix.image }}
     timeout-minutes: 60
+    # Chemin absolu : après setup-go, le PATH que le lanceur donne au conteneur
+    # de Rocky Linux 10 ne contient plus /usr/bin, et « sh » n'est plus trouvé
+    # (code 127). Le script remet les dossiers système dans le PATH.
+    defaults:
+      run:
+        shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: "Debian 13",                  image: "debian:13",                       family: debian, expect: "" }
+          - { name: "Ubuntu 26.04",               image: "ubuntu:26.04",                    family: debian, expect: "" }
+          - { name: "Ubuntu 24.04",               image: "ubuntu:24.04",                    family: debian, expect: "" }
+          - { name: "Fedora",                     image: "fedora:latest",                   family: redhat, expect: "" }
+          - { name: "CentOS Stream 10",           image: "quay.io/centos/centos:stream10",  family: redhat, expect: "" }
+          - { name: "AlmaLinux 10",               image: "almalinux:10",                    family: redhat, expect: "" }
+          - { name: "Rocky Linux 10",             image: "rockylinux/rockylinux:10",        family: redhat, expect: "" }
+          - { name: "Debian 12 (refus attendu)",  image: "debian:12",                       family: debian, expect: refus }
+          - { name: "Ubuntu 22.04 (refus attendu)", image: "ubuntu:22.04",                  family: debian, expect: refus }
+          - { name: "AlmaLinux 9 (refus attendu)", image: "almalinux:9",                    family: redhat, expect: refus }
+    env:
+      CGO_ENABLED: "1"
+      GSK_RENDERER: cairo
+      GTK_A11Y: none
+      NO_AT_BRIDGE: "1"
+      LIBGL_ALWAYS_SOFTWARE: "1"
+    steps:
+      # git d'abord : le script de construction lit la date du dernier commit.
+      - name: Install git
+        run: |
+          if command -v apt-get > /dev/null; then
+            apt-get update && apt-get install -y --no-install-recommends git ca-certificates tar gzip
+          else
+            dnf -y install git tar gzip
+          fi
+      - uses: actions/checkout@v4
+      - name: PATH before setup-go
+        run: echo "::notice title=PATH avant setup-go::$PATH ; bash=$(command -v bash) ; sh=$(command -v sh)"
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: PATH after setup-go
+        run: echo "::notice title=PATH après setup-go::$PATH ; bash=$(command -v bash) ; sh=$(command -v sh) ; go=$(command -v go)"
+      # Les outils que le script suppose présents : si une image minimale en
+      # manque un, l'annotation le dit (les journaux ne se lisent pas sans
+      # téléchargement).
+      - name: Tools the script needs
+        run: |
+          PATH="$PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+          missing=""
+          for tool in bash env tee tail awk sed grep sort tr seq mktemp dirname; do
+            command -v "$tool" > /dev/null || missing="$missing $tool"
+          done
+          echo "::notice title=Outils::manquants :${missing:- aucun}; shell=$SHELL; $(. /etc/os-release && echo "$PRETTY_NAME")"
+      - name: Build the package, install it, run it
+        run: /usr/bin/bash .github/scripts/test-distribution.sh ${{ matrix.family }} ${{ matrix.expect }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: distribution-${{ matrix.family }}-${{ strategy.job-index }}
+          path: screenshots/*.png
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # Windows 10 et 11 : la CI n'a ni l'un ni l'autre, seulement des Windows
+  # Server. windows-2022 (le plus ancien proposé) sert de repère pour Windows 10,
+  # windows-latest (Windows Server 2025) pour Windows 11 ; la recette sur les
+  # vraies machines reste à faire (§14 de ARCHITECTURE.md).
+  windows-package:
+    name: Windows package (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, windows-latest]
     steps:
       - uses: actions/checkout@v4
       - name: Install NSIS
@@ -204,7 +290,7 @@ jobs:
         run: .\.github\scripts\windows-package.ps1 -Step installer
       - uses: actions/upload-artifact@v4
         with:
-          name: windows-package
+          name: windows-package-${{ matrix.os }}
           path: |
             *_windows-portable.zip
             *_windows-setup.exe
@@ -212,7 +298,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: windows-screenshots
+          name: windows-screenshots-${{ matrix.os }}
           path: screenshots/*.png
           if-no-files-found: ignore
           retention-days: 14

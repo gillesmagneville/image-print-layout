@@ -14,7 +14,7 @@ Ce document dit comment réaliser SVG Print Layout v1.0 tel que défini par le c
 
 Hypothèses retenues pour la v1, à confirmer :
 
-- **Plateformes** : Linux (Ubuntu) et Windows 10 et 11.
+- **Plateformes** : la famille Debian (Debian, Ubuntu et leurs dérivés), la famille Red Hat (RHEL, CentOS Stream et leurs dérivés, Fedora) et Windows 10 et 11. Le critère est la version des bibliothèques, pas le nom de la distribution : voir « Plateformes prises en charge » (§4).
 - **Coupures horizontales uniquement.** Une coupure verticale crée des colonnes de pages, donc un assemblage en mosaïque, hors périmètre (§14 du cahier) et en tension avec le test 12 (largeur identique sur toutes les pages). Le modèle de données garde un champ d'axe pour ne pas fermer la porte.
 - **Mode B (ajustement à la hauteur)** : l'échelle est calculée pour que la portion sélectionnée, par défaut la première page, occupe exactement la hauteur utile. Si la largeur obtenue dépasse la largeur utile, la page passe en état dépassement ; rien n'est réduit en silence.
 - **Marges par défaut** : 10 mm en haut et en bas, 5 mm à gauche et à droite. Elles donnent 200 mm de largeur utile sur A4, ce qui rend le test d'acceptation réalisable sans avertissement.
@@ -75,7 +75,7 @@ Coûts assumés :
 
 GTK4 est retenu. Comme `Engine` renvoie des images (§4), Fyne reste un repli possible pour l'interface seule.
 
-**Version de gotk4.** `github.com/diamondburned/gotk4/pkg` v0.3.1, qui se compile avec GLib 2.80 et GTK 4.14 (Ubuntu 24.04) : la v0.4 demande GLib 2.84 ou plus, que cette Ubuntu n'a pas. La version est celle de `go.mod`. Passer à une version plus récente est un changement à part, qui doit garder le `.deb` constructible sur la plus ancienne Ubuntu prise en charge. gotk4 compile lentement (plusieurs minutes la première fois, le cache de compilation ensuite) ; la CI garde ce cache.
+**Version de gotk4.** `github.com/diamondburned/gotk4/pkg` v0.3.1, qui se compile avec GLib 2.80 et GTK 4.14 (Ubuntu 24.04, RHEL 10) : la v0.4 demande GLib 2.84 ou plus, que ces systèmes n'ont pas. La version est celle de `go.mod`. Passer à une version plus récente est un changement à part, qui doit garder les paquets constructibles sur les plus anciens systèmes pris en charge (Ubuntu 24.04, RHEL 10 et ses clones). gotk4 compile lentement (plusieurs minutes la première fois, le cache de compilation ensuite) ; la CI garde ce cache.
 
 ### Repli si M0 échoue
 
@@ -173,6 +173,50 @@ L'interface est en français, en anglais, en espagnol et en allemand ; le paquet
 - **Ce qui reste en français.** Les sorties de diagnostic `-version` et `-selftest` (utiles au support, relues par les scripts de paquets) ; les documents du dépôt (`ARCHITECTURE.md`, `CONTRIBUTING.md`, journal des modifications) ; les identifiants et commentaires du code, en anglais.
 - **Ajouter un texte ou une langue.** Un texte : ajouter la clé aux quatre catalogues (le test dit lesquels l'oublient). Une langue : un catalogue, son nom dans `Name` et `Languages`, sa règle de pluriel dans `isSingular`, son séparateur décimal dans `Number`.
 
+### Plateformes prises en charge
+
+Trois familles de systèmes. Ce qui décide n'est pas le nom de la distribution mais les versions
+de ses bibliothèques : **GTK 4.14, GLib 2.80, Pango 1.52 et librsvg 2.52 au moins**. Ces seuils
+viennent de gotk4 v0.3.1, qui lie presque toute l'API de GTK 4.14 et de GLib 2.80 : sur un
+système plus ancien, la compilation s'arrête sur des centaines de symboles inconnus. Les
+dépendances des paquets sont ensuite déduites du binaire (§« Paquets »).
+
+| Famille | Pris en charge | Paquet | Essayé par la CI |
+| --- | --- | --- | --- |
+| Debian et dérivés | Debian 13 et suivantes ; Ubuntu 24.04 LTS et suivantes ; les dérivés fondés sur ces versions (Linux Mint 22, Pop!_OS 24.04, elementary OS 8…) | `.deb` | Debian 13, Ubuntu 24.04, Ubuntu 26.04 |
+| Red Hat et dérivés | RHEL 10 et ses clones (CentOS Stream 10, AlmaLinux 10, Rocky Linux 10…) ; Fedora (versions en cours) | `.rpm` | CentOS Stream 10, AlmaLinux 10, Rocky Linux 10, Fedora |
+| Windows | Windows 10 et 11, 64 bits | `.zip` portable et installeur | Windows Server 2022 et Windows Server 2025, qui servent de repères |
+
+| Bibliothèque | Debian 13 | Ubuntu 24.04 | Ubuntu 26.04 | RHEL 10 et clones | Fedora 44 | Windows (MSYS2) |
+| --- | --- | --- | --- | --- | --- | --- |
+| GTK | 4.18.6 | 4.14.5 | 4.22.4 | 4.16.7 | 4.22.5 | 4.24.1 |
+| GLib | 2.84.4 | 2.80.0 | 2.88.0 | 2.80.4 | 2.88.4 | 2.90.1 |
+| librsvg | 2.60.0 | 2.58.0 | 2.61.3 | 2.57.1 | 2.62.4 | 2.63.2 |
+| cairo | 1.18.4 | 1.18.0 | 1.18.4 | 1.18.2 | 1.18.6 | 1.18.6 |
+
+**Non pris en charge : Debian 12, Ubuntu 22.04 (et Linux Mint 21), RHEL 9 et ses clones.** Ils ont
+GTK 4.8, 4.6 et 4.12, GLib 2.74, 2.72 et 2.68, et RHEL 9 une librsvg 2.50. `build-deb.sh` et
+`build-rpm.sh` le constatent avant de compiler et le disent en français ; la CI vérifie ce refus
+sur ces trois systèmes (jobs « refus attendu »). Ils pourraient être servis plus tard par un
+paquet qui embarque GTK (Flatpak ou AppImage), ce qui change la distribution du logiciel ;
+cela reste hors de la v1 (§15, question 7).
+
+Dans la CI, la fenêtre s'ouvre sous Xvfb sur la famille Debian et sur Fedora (avec captures
+d'écran), et sur un compositeur Wayland sans écran (`weston`, lancé par `wlheadless-run`) sur
+la famille RHEL 10, qui n'a plus de serveur X : il n'y a pas de capture dans ce cas.
+
+Ce que la CI ne prouve pas :
+
+- **Windows 10 et 11 eux-mêmes.** Elle n'a que des Windows Server : 2022 (le plus ancien proposé)
+  sert de repère pour Windows 10, 2025 pour Windows 11. La recette sur de vraies machines fait
+  partie de M5.
+- **RHEL lui-même**, qui demande un abonnement : on essaie CentOS Stream 10 (son amont) et ses
+  clones AlmaLinux et Rocky Linux.
+- **Les dérivés d'Ubuntu et de Debian** (Mint, Pop!_OS, elementary OS…) : ils partagent les
+  bibliothèques de leur base, donc les mêmes seuils.
+- **aarch64.** Les scripts savent construire pour `arm64` et `aarch64`, mais la CI n'essaie que
+  `amd64` et `x86_64`.
+
 ### Paquets
 
 Trois scripts, à la racine du dépôt, construisent les paquets à partir du code ; ils
@@ -182,8 +226,8 @@ versionnés : `.gitignore`).
 
 | Paquet | Script | Outil de construction |
 | --- | --- | --- |
-| `.deb` (Debian, Ubuntu) | `build-deb.sh` | `dpkg-deb`, dépendances par `dpkg-shlibdeps` |
-| `.rpm` (Fedora, RHEL) | `build-rpm.sh` | `rpmbuild`, dépendances déduites du binaire |
+| `.deb` (Debian, Ubuntu et dérivés) | `build-deb.sh` | `dpkg-deb`, dépendances par `dpkg-shlibdeps` |
+| `.rpm` (Fedora, RHEL et dérivés) | `build-rpm.sh` | `rpmbuild`, dépendances déduites du binaire |
 | Windows : `.zip` portable et installeur | `build-windows.ps1`, `windows/` | MSYS2 UCRT64 (Go, gcc, GTK 4, librsvg, cairo), NSIS |
 
 - **Options et version.** `--major`, `--minor`, `--patch`, `--no-version-change`, `--clean`,
@@ -220,8 +264,8 @@ versionnés : `.gitignore`).
   deux constructions donnent le même fichier, à versions de Go, de librsvg et de cairo égales
   (la CI le vérifie pour le `.deb` et le `.rpm`).
 - **Paquets liés à leur machine de construction.** Les dépendances d'un `.deb` ou d'un `.rpm`
-  sont déduites du binaire : on construit sur la distribution visée (Ubuntu 24.04 et suivantes
-  pour le `.deb` ; les noms en `t64` n'existent pas avant).
+  sont déduites du binaire : on construit sur la distribution visée (§« Plateformes prises en
+  charge »). Les noms en `t64` des paquets Debian n'existent pas avant Debian 13 et Ubuntu 24.04.
 - **Dossier de travail.** Hors du dépôt, comme chez Planche-Contact : `~/deb-build/build`,
   `~/rpm-build/build` et `%LOCALAPPDATA%\svgprintlayout-build`. `--clean` les supprime, et
   supprime les paquets déjà construits à la racine.
@@ -641,7 +685,7 @@ Un test vérifie que chacun des deux contrôles échoue quand une page est déca
 - **Trois niveaux.** Go pur (modèle, unités, mise en page, analyse, projet) avec `go test` partout sans cgo ; intégration du moteur (chargement, tuiles, export) avec librsvg installé ; interface sous Xvfb sur Linux, plus une liste de contrôle manuelle sur Windows.
 - **Tests de propriétés** sur `layout` : papiers, marges, échelles et coupures tirés au hasard, avec pour invariants la couverture exacte, `w` constant, `s` inchangé par les commandes et des états cohérents.
 - **Jeu d'essai.** Le Mini-CAD réel n'est pas dans le dépôt : il décrit une infrastructure réelle. Les tests le prennent quand `SVGPL_MINICAD` donne son chemin. Le générateur déterministe `internal/testsvg` produit un équivalent public de 1 280 × 5 479 unités (fond gris, blocs avec texte, bandeau pleine largeur, rectangle transformé) ; il doit aussi servir de test de charge avec 100 000 éléments (pas encore fait).
-- **Intégration continue** (tous en place) : un job `engine` sur Ubuntu avec `librsvg2-dev`, `poppler-utils` et `fonts-ibm-plex` ; un job `ui` (GTK4 sous Xvfb : tests de la fenêtre, puis captures dans les quatre langues, déposées en artefact) ; un job `linux-packages` (construction du `.deb` et du `.rpm`, lintian, AppStream, installation, `-selftest`, fenêtre du programme installé, constructions identiques) et un job `windows-package` sous MSYS2 UCRT64 (construction par `build-windows.ps1`, `-selftest` puis fenêtre dans les quatre langues de la version portable, programme installé, désinstallation). Les autres paquets se construisent et se testent sans cgo (`CGO_ENABLED=0`), où `ui` est un bouchon.
+- **Intégration continue** (tous en place) : un job `engine` sur Ubuntu avec `librsvg2-dev`, `poppler-utils` et `fonts-ibm-plex` ; un job `ui` (GTK4 sous Xvfb : tests de la fenêtre, puis captures dans les quatre langues, déposées en artefact) ; un job `linux-packages` (construction du `.deb` et du `.rpm`, lintian, AppStream, installation, `-selftest`, fenêtre du programme installé, constructions identiques) un job `distributions` (le paquet de la famille est construit dans un conteneur de chaque système pris en charge, installé par `apt` ou `dnf`, puis le programme installé lance `-selftest` et la fenêtre dans les quatre langues ; sur Debian 12, Ubuntu 22.04 et AlmaLinux 9, le test vérifie que la construction est refusée avec un message clair) et un job `windows-package`, sur `windows-2022` et `windows-latest`, sous MSYS2 UCRT64 (construction par `build-windows.ps1`, `-selftest` puis fenêtre dans les quatre langues de la version portable, programme installé, désinstallation). Les autres paquets se construisent et se testent sans cgo (`CGO_ENABLED=0`), où `ui` est un bouchon.
 - **Références.** Les rasters de référence sont stockés par plateforme, avec tolérance, et jamais comparés d'une plateforme à l'autre.
 
 ## 14. Plan de livraison
@@ -655,9 +699,9 @@ Six jalons, dont M0 est le point de décision : le calcul de pages (M1) ne dépe
 | M2. Document et aperçu | Copie de travail, analyse et rapport, moteur (chargement, tuiles), fenêtre à trois panneaux, zoom, déplacement, limites de pages | Mini-CAD affiché en entier, zoom fluide, rapport d'analyse lisible |
 | M3. Coupures | Interaction à la souris, liste des pages, aimantation, annulation, coupures automatiques, détection de traversée | Tests 5, 6 et 7 passés ; sur le Mini-CAD, la proposition automatique ne traverse aucun bloc quand un vide existe |
 | M4. Fond et export | Détection et remplacement du fond, export PDF, vérifications, aperçu de page | Tests 8 à 13 passés |
-| M5. Projet, paquets, recette | Enregistrement et réouverture dans l'interface, paquet .deb, installateur Windows, recette complète | Les 14 tests réussissent sur Ubuntu, sur Windows 10 et sur Windows 11 |
+| M5. Projet, paquets, recette | Enregistrement et réouverture dans l'interface, paquet .deb, installateur Windows, recette complète | Les 14 tests réussissent sur chaque système pris en charge : Debian 13 et Ubuntu 24.04 (famille Debian), RHEL 10 ou un clone (famille Red Hat), Windows 10 et Windows 11 |
 
-**État.** Le squelette du dépôt, le paquet `units`, le prototype du moteur (M0a, `docs/M0.md`), les scripts qui construisent les paquets `.deb`, `.rpm` et Windows, le paquet de traduction `i18n` et une première fenêtre GTK4 (trois panneaux, quatre langues, ouverture d'un SVG affiché en entier ; M0b) existent, avec leur CI. M0 n'est pas terminé : la comparaison du plan produit sous Windows et sous Linux reste à faire. Le `CHANGELOG.md` tient le détail.
+**État.** Le squelette du dépôt, le paquet `units`, le prototype du moteur (M0a, `docs/M0.md`), les scripts qui construisent les paquets `.deb`, `.rpm` et Windows, le paquet de traduction `i18n` et une première fenêtre GTK4 (trois panneaux, quatre langues, ouverture d'un SVG affiché en entier ; M0b) existent, avec leur CI, qui construit et essaie le paquet sur sept distributions Linux (familles Debian et Red Hat) et sur Windows. M0 n'est pas terminé : la comparaison du plan produit sous Windows et sous Linux reste à faire. Le `CHANGELOG.md` tient le détail.
 
 Après la v1, le §14 du cahier reste la liste des suites possibles. L'aperçu du PDF réel relu par un moteur PDF indépendant (le cahier demande « un aperçu du PDF final ») est le premier candidat : la v1 s'en tient à l'aperçu produit par la même fonction de dessin, ce qui est fidèle au PDF par construction.
 
@@ -694,7 +738,7 @@ Après M0a (`docs/M0.md`) :
 4. **Aperçu du PDF final (§9.2).** La v1 le fournit avec la même fonction de dessin que l'export. Faut-il en plus relire le fichier PDF avec un moteur PDF indépendant dès la v1 ?
 5. **Texte dans le PDF.** Le moteur le donne sans effort : texte sélectionnable, polices incorporées en sous-ensembles. Reste à décider si c'est une garantie du produit, ou seulement l'apparence.
 6. **Langue de l'interface.** *Tranché : français, anglais, espagnol et allemand dès la première version de l'interface (§4, « Langues »).*
-7. **Versions d'Ubuntu à prendre en charge.** La version de librsvg varie selon la version d'Ubuntu, ce qui touche la fidélité et le déterminisme.
+7. **Versions de Linux à prendre en charge.** *Tranché pour la v1 : les systèmes qui ont GTK 4.14, GLib 2.80 et librsvg 2.52 au moins (§4, « Plateformes prises en charge »), soit Debian 13, Ubuntu 24.04, la famille RHEL 10 et Fedora, avec Windows 10 et 11.* Reste à décider si Debian 12, Ubuntu 22.04 et RHEL 9, qui sont encore très répandus, justifient plus tard un paquet qui embarque GTK (Flatpak ou AppImage), ou une version plus ancienne de gotk4 et une interface réduite. La version de librsvg varie d'un système à l'autre (2.57 à 2.63), ce qui touche la fidélité et le déterminisme : les PDF ne sont identiques qu'à bibliothèques égales (§11).
 
 ## Sources
 

@@ -2,7 +2,7 @@
 
 # svg-print-layout
 
-Application de bureau (Linux/Ubuntu et Windows 10/11, écrite en Go) pour **mettre en page, découper et imprimer un document vectoriel SVG sur plusieurs feuilles de papier standard**, puis l'exporter en **PDF multipage vectoriel**.
+Application de bureau (Linux — Debian, Ubuntu, Red Hat et leurs dérivés —, Windows 10 et 11, écrite en Go) pour **mettre en page, découper et imprimer un document vectoriel SVG sur plusieurs feuilles de papier standard**, puis l'exporter en **PDF multipage vectoriel**.
 
 > **État : prototype (M0).** La mise en page n'est pas encore utilisable. Le dépôt contient la bibliothèque de conversions d'unités et de formats papier, un prototype du moteur (librsvg + cairo : rendu d'une fenêtre et export PDF multipage, validé sur le Mini-CAD, voir [`docs/M0.md`](docs/M0.md)), une première fenêtre GTK4 en **français, anglais, espagnol et allemand** (trois panneaux, ouverture d'un SVG affiché en entier), les scripts qui construisent les paquets `.deb`, `.rpm` et Windows (voir [Paquets](#paquets)) et la CI. Les paramètres de page, les coupures et l'export PDF dans la fenêtre sont la suite (M1 à M4).
 
@@ -93,13 +93,28 @@ xvfb-run -a go test ./internal/ui ./cmd/svgprintlayout
 
 La première compilation de gotk4 dure plusieurs minutes ; les suivantes utilisent le cache de Go. Pour Windows (MSYS2 UCRT64), voir [`windows/README.md`](windows/README.md).
 
+## Systèmes pris en charge
+
+| Famille | Systèmes | Paquet |
+| --- | --- | --- |
+| Debian et dérivés | Debian 13 et suivantes, Ubuntu 24.04 LTS et suivantes, et leurs dérivés (Linux Mint 22, Pop!_OS 24.04, elementary OS 8…) | `.deb` |
+| Red Hat et dérivés | RHEL 10 et ses clones (CentOS Stream 10, AlmaLinux 10, Rocky Linux 10…), Fedora | `.rpm` |
+| Windows | Windows 10 et 11, 64 bits | `.zip` portable ou installeur `.exe` |
+
+Sous Linux, ce qui compte est la version des bibliothèques : GTK 4.14, GLib 2.80 et librsvg 2.52
+au moins. **Debian 12, Ubuntu 22.04 (et Linux Mint 21) et RHEL 9 (et ses clones) sont trop
+anciens** : les scripts de construction le disent au lieu de compiler. La CI construit et
+installe le paquet dans un conteneur de chacun des systèmes pris en charge et lance le
+programme installé (détails dans [`ARCHITECTURE.md`](ARCHITECTURE.md), §4 « Plateformes prises
+en charge »).
+
 ## Paquets
 
 Trois scripts, à la racine, construisent les paquets (comme dans Planche-Contact) :
 
 ```sh
-./build-deb.sh              # Debian, Ubuntu : svgprintlayout_<version>-1_amd64.deb
-./build-rpm.sh              # Fedora, RHEL : svgprintlayout-<version>-<release>.x86_64.rpm
+./build-deb.sh              # Debian, Ubuntu et dérivés : svgprintlayout_<version>-1_amd64.deb
+./build-rpm.sh              # Fedora, RHEL et dérivés : svgprintlayout-<version>-<release>.x86_64.rpm
 ```
 
 ```powershell
@@ -140,12 +155,24 @@ Après une version sans suffixe, mettez à jour tous les fichiers qui la portent
 pages de manuel, états du README et d'`ARCHITECTURE.md` (voir `CONTRIBUTING.md` ; un test
 de `repocheck` échoue tant que l'un d'eux est en retard).
 
-Chaque script vérifie ses prérequis. Les paquets Linux s'installent avec `apt install ./…deb`
-ou `dnf install ./…rpm`. Sous Debian et Ubuntu, les prérequis de construction sont :
+Chaque script vérifie ses prérequis, dont la version des bibliothèques. Un paquet est lié aux
+bibliothèques de la machine qui l'a construit : on le construit sur le système où il sera
+installé. Les paquets Linux s'installent avec `apt install ./…deb` ou `dnf install ./…rpm`.
+Sous Debian et Ubuntu, les prérequis de construction sont :
 
 ```sh
 sudo apt install golang-go build-essential pkg-config librsvg2-dev libgtk-4-dev libgirepository1.0-dev dpkg-dev rpm
 ```
+
+Sous Fedora et la famille RHEL 10 (`golang` est dans AppStream ; `-devel` est dans CRB, à
+activer avec `sudo dnf config-manager --set-enabled crb`) :
+
+```sh
+sudo dnf install golang gcc make pkgconf-pkg-config librsvg2-devel cairo-devel gtk4-devel gobject-introspection-devel rpm-build
+```
+
+Go 1.24 ou plus récent est nécessaire (`go.mod`) : si la version de la distribution est plus
+ancienne, installez celle de <https://go.dev/dl/>.
 
 L'organisation des paquets (contenu, numéros de version `0.1.0~dev-1` / `0.1.dev`,
 construction reproductible, dépendances) est décrite dans `ARCHITECTURE.md`, §4 « Paquets » ;

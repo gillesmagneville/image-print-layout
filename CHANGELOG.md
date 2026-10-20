@@ -36,6 +36,43 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
   portrait, échelle 0,15625 mm par unité pour 200 mm de large, proportions conservées, ajout et
   déplacement d'une coupure sans changement d'échelle, enregistrement et réouverture d'un projet.
 
+- **Document, analyse et fenêtre (jalon M2)** : la fenêtre ouvre un SVG, l'analyse, calcule ses
+  pages avec le cœur de M1 et en montre le plan.
+  - `internal/svgdoc` (Go pur) : lecture du SVG sans le dessiner, avec la position de chaque
+    élément dans le texte source ; constats traduits en quatre langues (filtre, script,
+    animation, police SVG, `foreignObject`, `flowRoot`, police web, image liée introuvable ou
+    distante, `use` vers un autre fichier, images incorporées, taille inconnue, XML mal formé ;
+    25 constats au plus par catégorie, le reste compté) ; polices demandées ; blocs de premier
+    niveau, en descendant dans les calques d'Inkscape ; rectangle de fond, rectangle ou chemin
+    de quatre segments qui couvre le cadre ; copie de travail (fond blanchi ou supprimé, un
+    identifiant sur chaque bloc) faite en remplaçant quelques octets du texte, sans réécrire le
+    reste, et toujours identique pour les mêmes entrées. Le fichier source n'est jamais écrit.
+  - `internal/engine` : l'interface `Document` (en Go pur, remplaçable par un faux moteur dans
+    les tests), le chargement par chemin pour que les images liées soient trouvées à côté du
+    SVG, et la résolution des polices par fontconfig (`MatchFont`) : une police absente est
+    signalée avec celle qui la remplace, au lieu de l'être en silence.
+  - `internal/app` : la session (projet, plan, historique). Chaque réglage est une commande qui
+    donne un nouvel état ; le plan est calculé avant d'accepter un changement, si bien qu'un
+    changement refusé ne laisse aucune trace ; annuler et rétablir ; les frappes successives
+    dans un même champ ne font qu'une entrée d'historique ; un glisser n'en fait qu'une ;
+    l'indicateur de modification se déduit de l'encodage du projet.
+  - `internal/viewport` (Go pur) : zoom autour d'un point, déplacement, bornes, fenêtre du
+    dessin à demander au moteur, besoin de redessiner ; testé sans écran.
+  - Fenêtre : panneau gauche (Fichier source avec le rapport d'analyse, Papier, Marges liables,
+    Échelle en trois modes, Positionnement), liste des pages à droite (largeur et hauteur du
+    contenu, échelle, début et fin dans le document, état, corrections proposées sur le bouton
+    même), aperçu au centre (zoom, déplacement, limites et numéros de page, page teintée selon
+    son état, rendu de la seule partie visible à l'échelle de l'écran, HiDPI compris), boutons
+    Annuler et Rétablir. Les panneaux Fond et Export, les coupures à la souris et l'export
+    restent annoncés comme à venir.
+  - **Documents lourds** : au-delà de 3 000 blocs, les vides sont lus sur une seule image du
+    dessin et non bloc par bloc, car mesurer un élément oblige librsvg à parcourir tout le
+    dessin (100 000 éléments : plus de six minutes mesurés un à un, quatre secondes ainsi).
+    Un constat le dit à l'utilisateur.
+- **Dépendance de construction** : `libfontconfig-dev` (Debian et Ubuntu), `fontconfig-devel`
+  (Fedora, RHEL), `mingw-w64-ucrt-x86_64-fontconfig` (MSYS2), ajoutés aux scripts, à la CI et à
+  la documentation.
+
 ### Modifié
 
 - **Nom du `.deb`** : `svgprintlayout_<version>_amd64.deb`, sans révision Debian (`-1`),

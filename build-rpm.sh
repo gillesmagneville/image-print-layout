@@ -44,8 +44,8 @@ svgprintlayout-<version>-<release>.<arch>.rpm. Une version d'avant-publication
 (0.1.0-dev) devient la release « 0.1.dev » et se classe avant la 0.1.0.
 
 Prérequis :
-  Fedora        : sudo dnf install golang gcc pkgconf librsvg2-devel cairo-devel gtk4-devel gobject-introspection-devel rpm-build
-  Debian/Ubuntu : sudo apt install golang-go build-essential pkg-config librsvg2-dev libgtk-4-dev libgirepository1.0-dev rpm
+  Fedora        : sudo dnf install golang gcc pkgconf librsvg2-devel cairo-devel fontconfig-devel gtk4-devel gobject-introspection-devel rpm-build
+  Debian/Ubuntu : sudo apt install golang-go build-essential pkg-config librsvg2-dev libfontconfig-dev libgtk-4-dev libgirepository1.0-dev rpm
 
 Les dépendances du paquet (bibliothèques partagées) sont déduites du binaire
 par rpmbuild. Le paquet est lié aux versions des bibliothèques de la machine
@@ -101,9 +101,9 @@ command -v rpmbuild >/dev/null 2>&1 || erreur "rpmbuild n'est pas installé. Ins
 command -v go >/dev/null 2>&1 || erreur "Go n'est pas installé (voir go.mod pour la version) : https://go.dev/doc/install"
 command -v gcc >/dev/null 2>&1 || erreur "gcc n'est pas installé. Installe-le avec : sudo dnf install gcc (Debian/Ubuntu : sudo apt install build-essential)"
 command -v pkg-config >/dev/null 2>&1 || erreur "pkg-config n'est pas installé. Installe-le avec : sudo dnf install pkgconf (Debian/Ubuntu : sudo apt install pkg-config)"
-pkg-config --exists librsvg-2.0 cairo || erreur "les bibliothèques de développement de librsvg et de cairo sont absentes.
-  Fedora        : sudo dnf install librsvg2-devel cairo-devel
-  Debian/Ubuntu : sudo apt install librsvg2-dev"
+pkg-config --exists librsvg-2.0 cairo fontconfig || erreur "les bibliothèques de développement de librsvg, de cairo et de fontconfig sont absentes.
+  Fedora        : sudo dnf install librsvg2-devel cairo-devel fontconfig-devel
+  Debian/Ubuntu : sudo apt install librsvg2-dev libfontconfig-dev"
 pkg-config --exists gtk4 gobject-introspection-1.0 || erreur "les bibliothèques de développement de GTK 4 sont absentes (GTK 4.14 ou plus récent).
   Fedora        : sudo dnf install gtk4-devel gobject-introspection-devel
   Debian/Ubuntu : sudo apt install libgtk-4-dev libgirepository1.0-dev"

@@ -39,12 +39,12 @@ discuter avant qu'après. Les fonctions listées comme hors périmètre dans
    indiquée dans `go.mod`.
 
    Si vous touchez au moteur de rendu (`internal/engine`), lancez aussi ses tests avec cgo
-   (`sudo apt-get install librsvg2-dev poppler-utils fonts-ibm-plex`, puis
+   (`sudo apt-get install librsvg2-dev libfontconfig-dev poppler-utils fonts-ibm-plex`, puis
    `CGO_ENABLED=1 go test ./internal/engine ./internal/testsvg`) : c'est ce que fait le job
    `engine` de l'intégration continue.
 
    Si vous touchez à la fenêtre (`internal/ui`), ajoutez GTK 4 et un écran virtuel
-   (`sudo apt-get install librsvg2-dev libgtk-4-dev libgirepository1.0-dev xvfb xauth
+   (`sudo apt-get install librsvg2-dev libfontconfig-dev libgtk-4-dev libgirepository1.0-dev xvfb xauth
    imagemagick fonts-ibm-plex`) et lancez `xvfb-run -a go test ./internal/ui
    ./cmd/svgprintlayout` : c'est le job `ui`, qui dépose aussi des captures de la fenêtre
    dans les quatre langues (artefact `screenshots`). Un texte de l'interface s'ajoute aux

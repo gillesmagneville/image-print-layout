@@ -45,6 +45,24 @@ var Registry = map[string]Spec{
 	"auto.cut_near":      {Warning, []string{"n", "mm"}},
 	"auto.more_pages":    {Info, []string{"count", "min"}},
 
+	// The document (internal/svgdoc).
+	"svg.filter":          {Warning, nil},
+	"svg.script":          {Warning, nil},
+	"svg.animation":       {Warning, nil},
+	"svg.svgfont":         {Warning, nil},
+	"svg.foreign_object":  {Warning, nil},
+	"svg.flow_root":       {Warning, nil},
+	"svg.webfont":         {Warning, nil},
+	"svg.image_missing":   {Warning, []string{"path"}},
+	"svg.image_remote":    {Warning, []string{"url"}},
+	"svg.images_embedded": {Info, []string{"count"}},
+	"svg.use_external":    {Warning, []string{"href"}},
+	"svg.no_size":         {Failure, nil},
+	"svg.unreadable":      {Warning, []string{"reason"}},
+	"svg.font_missing":    {Warning, []string{"requested", "used"}},
+	"svg.more":            {Info, []string{"count"}},
+	"svg.coarse_blocks":   {Info, []string{"count"}},
+
 	// Corrections.
 	"correction.none": {Info, nil},
 

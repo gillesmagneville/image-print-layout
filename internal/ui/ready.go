@@ -22,7 +22,7 @@ func (w *window) announceReady() {
 		ticks++
 		// The window needs a moment to be mapped and laid out; a document on
 		// its way is waited for, but not forever.
-		if (ticks < 4 || w.busy > 0 || w.resizeTimer != 0) && ticks < 120 {
+		if (ticks < 4 || w.busy > 0 || w.pv.render.pending()) && ticks < 120 {
 			return true
 		}
 		if err := os.WriteFile(w.opts.ReadyFile, []byte("ready\n"), 0o644); err != nil {

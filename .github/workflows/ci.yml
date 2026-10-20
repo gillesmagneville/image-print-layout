@@ -61,7 +61,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends librsvg2-dev poppler-utils fonts-ibm-plex
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends librsvg2-dev libfontconfig-dev poppler-utils fonts-ibm-plex
       - run: go vet ./internal/engine ./internal/testsvg
       - run: go test -count=1 -v ./internal/engine ./internal/testsvg
 
@@ -86,7 +86,7 @@ jobs:
       - name: Install GTK4 and the tools of the virtual screen
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends librsvg2-dev libgtk-4-dev libgirepository1.0-dev \
+          sudo apt-get install -y --no-install-recommends librsvg2-dev libfontconfig-dev libgtk-4-dev libgirepository1.0-dev \
             poppler-utils fonts-ibm-plex adwaita-icon-theme xvfb xauth imagemagick
       - run: go vet ./...
       - name: Tests of the window and of the program, on a virtual screen
@@ -127,7 +127,7 @@ jobs:
       - name: Install the build and check tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends librsvg2-dev libgtk-4-dev libgirepository1.0-dev \
+          sudo apt-get install -y --no-install-recommends librsvg2-dev libfontconfig-dev libgtk-4-dev libgirepository1.0-dev \
             rpm lintian appstream desktop-file-utils xvfb xauth imagemagick adwaita-icon-theme
       # The scripts ask which version to build and for a confirmation, like a
       # user's run: "o" answers the confirmation, --no-version-change keeps

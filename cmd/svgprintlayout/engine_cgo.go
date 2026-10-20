@@ -52,7 +52,7 @@ func runSelfTest(out io.Writer) error {
 	}
 	ok := func(what string) { fmt.Fprintf(out, "  ok  %s\n", what) }
 
-	d, err := engine.Load([]byte(selfTestSVG))
+	d, err := engine.Load([]byte(selfTestSVG), "")
 	if err != nil {
 		return err
 	}

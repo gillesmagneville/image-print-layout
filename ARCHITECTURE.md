@@ -31,7 +31,7 @@ Huit décisions portent la conception ; les quatre premières garantissent les e
 2. **Le dessin n'est jamais découpé, seulement fenêtré.** Chaque page est le même dessin, translaté puis recadré par un clip rectangulaire aux lignes de coupure. Un trait ou un texte qui traverse une coupure est recadré exactement, sans calcul géométrique sur les chemins.
 3. **Une échelle globale unique**, en mm par unité SVG, stockée à un seul endroit. Aucune page ne peut avoir une largeur différente, et ajouter ou déplacer une coupure ne la touche pas.
 4. **Coupures en coordonnées du document** (unités SVG), pas en millimètres. Changer l'échelle ou le papier laisse chaque coupure au même endroit du dessin ; seuls les états des pages sont recalculés.
-5. **Rendu SVG délégué à cairo et librsvg**, par une couche cgo mince derrière une interface `Engine`. On n'écrit pas d'interpréteur SVG en Go : on obtient la fidélité (texte, dégradés, masques) et un PDF vectoriel avec clip natif.
+5. **Rendu SVG délégué à cairo et librsvg**, par une couche cgo mince derrière une interface `Document`. On n'écrit pas d'interpréteur SVG en Go : on obtient la fidélité (texte, dégradés, masques) et un PDF vectoriel avec clip natif.
 6. **Interface GTK4 via gotk4.** Elle partage les bibliothèques graphiques du moteur (cairo, pango) : un seul ensemble à embarquer sous Windows.
 7. **Logique en Go pur**, testable sans cgo : modèle, unités, mise en page, analyse du SVG, projet. Les tests de calcul tournent partout, sans bibliothèque graphique.
 8. **Quatre langues dès la première interface** : français, anglais, espagnol, allemand. Aucun texte destiné à l'utilisateur n'est écrit dans le code : il porte une clé, que le paquet `i18n` traduit (§4, « Langues »).
@@ -73,53 +73,56 @@ Coûts assumés :
 | [GTK4 via gotk4](https://github.com/diamondburned/gotk4-libgirepository) | Même pile graphique que le moteur (cairo, pango) : un seul ensemble à embarquer. Paquets sous MPL-2.0, liaisons cairo sous MIT | Le projet signale des fuites mémoire et des plantages possibles dans certaines parties de l'API. Build Windows à valider en M0 |
 | [Fyne](https://github.com/fyne-io/fyne) | Go idiomatique, licence BSD-3-Clause, aucune bibliothèque requise à l'exécution | Compilateur C requis aussi. Aucun lien avec cairo : l'aperçu passe par une copie d'image. Premier build Windows pouvant durer jusqu'à 10 minutes |
 
-GTK4 est retenu. Comme `Engine` renvoie des images (§4), Fyne reste un repli possible pour l'interface seule.
+GTK4 est retenu. Comme `Document` renvoie des images (§4), Fyne reste un repli possible pour l'interface seule.
 
 **Version de gotk4.** `github.com/diamondburned/gotk4/pkg` v0.3.1, qui se compile avec GLib 2.80 et GTK 4.14 (Ubuntu 24.04, RHEL 10) : la v0.4 demande GLib 2.84 ou plus, que ces systèmes n'ont pas. La version est celle de `go.mod`. Passer à une version plus récente est un changement à part, qui doit garder les paquets constructibles sur les plus anciens systèmes pris en charge (Ubuntu 24.04, RHEL 10 et ses clones). gotk4 compile lentement (plusieurs minutes la première fois, le cache de compilation ensuite) ; la CI garde ce cache.
 
 ### Repli si M0 échoue
 
-Si la fidélité ou le packaging Windows ne passent pas, le moteur D prend le relais derrière la même interface `Engine`. Le calcul de pages, l'analyse du SVG, le projet et l'interface ne changent pas ; seuls l'aperçu et l'export changent de moteur.
+Si la fidélité ou le packaging Windows ne passent pas, le moteur D prend le relais derrière la même interface `Document`. Le calcul de pages, l'analyse du SVG, le projet et l'interface ne changent pas ; seuls l'aperçu et l'export changent de moteur.
 
 Le reste s'appuie sur la bibliothèque standard (XML, JSON, SHA-256). La relecture du PDF produit, pour les vérifications du §11, n'exige pas de bibliothèque PDF : M0 montre que les flux de contenu de cairo sont du Flate, que `compress/zlib` décompresse, et que le clip et le décalage de chaque page s'y lisent directement (§11).
 
 ## 4. Architecture modulaire
 
-Le code se répartit en sept modules sur quatre niveaux, posés sur quatre paquets de fondation (`model`, `units`, `diag`, `i18n`). La règle : la logique de calcul ne dépend ni de l'interface ni de cgo.
+Le code se répartit en huit modules sur quatre niveaux, posés sur quatre paquets de fondation (`model`, `units`, `diag`, `i18n`). La règle : la logique de calcul ne dépend ni de l'interface ni de cgo.
 
 ```
 ui        Interface GTK4 : fenêtre, panneaux, aperçu, gestes de souris         [cgo]
- └──▶ app       Commandes, annulation, état du projet ; orchestre les modules
+ ├──▶ viewport  Arithmétique de la vue : zoom, déplacement, fenêtre à dessiner [Go pur]
+ └──▶ app       Session : projet, historique, plan ; ouverture d'un document   [Go pur]
        ├──▶ layout    Échelle, bandes, coupures                                [Go pur]
        ├──▶ project   Fichier JSON, versions, migration                        [Go pur]
-       ├──▶ svgdoc    Copie de travail, analyse, tuiles ──────┐
-       └──▶ export    Contrôles avant et après, orchestration ┤ par l'interface Engine
-                                                              ▼
-             engine   Moteur de rendu : cairo + librsvg, chargement, boîtes  [cgo]
-                      des blocs, tuiles d'aperçu et PDF multipage
+       ├──▶ svgdoc    Analyse, copie de travail, blocs, fond, polices          [Go pur]
+       └──▶ export    Contrôles avant et après, orchestration (M4) ──┐ par les types
+                                                                     ▼ de engine
+             engine   Moteur de rendu : cairo + librsvg + fontconfig, chargement, [cgo]
+                      boîtes des blocs, fenêtres d'aperçu et PDF multipage
 
 Fondation : model · units · diag · i18n
             types du projet, conversions d'unités, diagnostics partagés, traduction ; importés par tous
 ```
 
-Les flèches vont de l'appelant vers l'appelé. (En M0, le paquet `engine` expose des types concrets, `Load`, `Doc`, `Render`, `ExportPDF` et `PageSpec` ; l'interface ci-dessous en sera extraite en M2, quand `svgdoc` et `export` en auront besoin. `ExportPDF` y prend une liste de `PageSpec`, et non un `layout.Plan` : `engine` ne dépend pas de `layout`, et c'est `export` qui traduit le plan.) Seuls `ui` et `engine` dépendent de cgo : `svgdoc` et `export` n'appellent `engine` que par l'interface `Engine`, qu'un faux moteur remplace dans les tests. Le point d'entrée `cmd/svgprintlayout` se contente de câbler ces paquets.
+Les flèches vont de l'appelant vers l'appelé. Le paquet `engine` a deux parties : les types et l'interface `Document`, en Go pur (`engine.go`), et leur réalisation par librsvg, en cgo (`rsvg_cgo.go`, et un bouchon `engine_nocgo.go` qui refuse de charger). `app` et `svgdoc` ne connaissent le moteur que par les types de la première partie : le programme (`cmd/svgprintlayout`) et l'interface lui donnent le `Loader` réel, et un faux moteur le remplace dans les tests. `ExportPDF` prend une liste de `PageSpec`, et non un `layout.Plan` : `engine` ne dépend pas de `layout`, et c'est `export` qui traduit le plan (M4). Seuls `ui` et `engine` dépendent de cgo. Le point d'entrée `cmd/svgprintlayout` se contente de câbler ces paquets.
 
-Le dépôt GitHub s'appelle `svg-print-layout`, le module Go `github.com/gillesmagneville/svg-print-layout` et le binaire `svgprintlayout`. La disposition des fichiers est donnée après l'interface `Engine`.
+Le dépôt GitHub s'appelle `svg-print-layout`, le module Go `github.com/gillesmagneville/svg-print-layout` et le binaire `svgprintlayout`. La disposition des fichiers est donnée après l'interface `Document`.
 
 ```go
-type Engine interface {
-    Load(svg []byte, baseDir string) (Doc, error)
-    ResolveFonts(families []string) []FontResolution
-}
-
-type Doc interface {
-    Size() (w, h float64)                          // unités utilisateur
-    MeasureBlocks(ids []string) ([]Box, error)     // boîtes en unités
-    RenderTile(req TileRequest) (*image.RGBA, error)
-    ExportPDF(plan layout.Plan, out io.Writer) error
+// Un document chargé : utilisé par un seul fil à la fois, et à fermer.
+type Document interface {
+    Size() (w, h float64)                                          // unités du document, à 96 dpi
+    Measure(id string) (Box, error)                                // boîte d'un élément, en unités
+    MeasureBlocks(ids []string) map[string]Box                     // un élément non mesurable est absent
+    Render(win Box, pxPerUnit float64, bg color.Color) (*image.RGBA, error)
+    ExportPDF(out io.Writer, pages []PageSpec, opt PDFOptions) error
     Close()
 }
+
+type Loader func(svg []byte, path string) (Document, error)    // path : dossier des images liées
+type FontMatcher func(family string) string                    // famille installée pour une famille demandée
 ```
+
+Il n'y a pas de tuiles (§9) : l'aperçu demande au moteur la seule fenêtre visible, à l'échelle de l'écran.
 
 ### Disposition du dépôt
 
@@ -139,11 +142,12 @@ svg-print-layout/
 │   ├── i18n/                  # traduction : français, anglais, espagnol, allemand ; nombres
 │   ├── layout/                # plan de pages, états, coupures automatiques
 │   ├── project/               # fichier projet .svgpl
-│   ├── svgdoc/                # copie de travail, analyse du SVG, détection du fond
-│   ├── engine/                # moteur de rendu derrière l'interface Engine (cgo)
+│   ├── svgdoc/                # analyse du SVG, copie de travail, blocs, détection du fond, polices demandées
+│   ├── engine/                # moteur de rendu derrière l'interface Document (cgo)
 │   ├── testsvg/               # générateur de SVG d'essai déterministe (Go pur)
 │   ├── export/                # export PDF et vérifications
-│   ├── app/                   # état de l'application et commandes
+│   ├── app/                   # session : projet, historique, plan ; ouverture d'un document
+│   ├── viewport/              # arithmétique de la vue (zoom, déplacement, fenêtre à dessiner)
 │   ├── ui/                    # interface GTK4 (cgo)
 │   └── repocheck/             # tests sur le dépôt lui-même (en-têtes, versions, docs)
 ├── debian/                    # copyright, postinst, postrm, lintian-overrides du .deb
@@ -293,8 +297,9 @@ versionnés : `.gitignore`).
   installé (option `-ready-file`, qui crée un fichier quand la fenêtre est affichée et le
   document dessiné) sur un écran virtuel, en enregistre une capture, et le fait dans les
   quatre langues pour le paquet portable de Windows.
-- **Ce que les paquets ne font pas encore** : le programme qu'ils installent ouvre un SVG et
-  l'affiche en entier ; la mise en page, les coupures et l'export viennent avec M1 à M4.
+- **Ce que les paquets ne font pas encore** : le programme qu'ils installent ouvre un SVG,
+  l'analyse, l'affiche avec ses pages et ses réglages (papier, marges, échelle, positionnement)
+  et propose des coupures ; les coupures à la souris, le fond et l'export viennent avec M3 et M4.
   Rien n'est signé, aucun dépôt de paquets n'existe, et l'architecture arm64 est reconnue
   par les scripts Linux sans avoir été essayée.
 
@@ -407,7 +412,7 @@ Le plan initial était de dessiner le document une fois dans une surface d'enreg
 
 ### Aperçu
 
-En vue Document, le dessin est peint en tuiles et les limites de page sont des surimpressions. En vue Feuilles, chaque page est peinte avec sa propre matrice sur une feuille blanche. Coupures, poignées et numéros appartiennent à l'interface : ils ne sont jamais dans le PDF.
+En vue Document, le dessin est une image de la fenêtre visible (§9) et les limites de page sont des surimpressions. En vue Feuilles, chaque page est peinte avec sa propre matrice sur une feuille blanche. Coupures, poignées et numéros appartiennent à l'interface : ils ne sont jamais dans le PDF.
 
 ### Export
 
@@ -470,6 +475,8 @@ Les **blocs** sont les groupes de plus haut niveau qui portent du contenu visibl
 
 Une coupure traverse un bloc si sa position est strictement à l'intérieur de la boîte du bloc (tolérance 0,05 unité). Elle reçoit alors une icône d'avertissement, et le panneau de droite nomme les blocs traversés.
 
+**Documents à très nombreux blocs.** Mesurer un élément oblige librsvg à parcourir tout le dessin : mesurer chaque bloc coûte un temps proportionnel au carré de leur nombre (4 000 blocs : moins d'une seconde ; 100 000 : plus de six minutes, mesuré). Au-delà de 3 000 blocs (`app.MaxExactBlocks`), `app` ne les mesure plus un par un. Ce que `layout` lit des blocs est l'union de leurs intervalles verticaux, et une ligne d'image sans aucune encre est un vide : le document, sans son rectangle de fond, est donc dessiné une fois à 1 pixel par unité (au plus 16 millions de pixels), et chaque suite de lignes qui portent de l'encre devient un bloc. C'est la même information, à la résolution de l'image ; un vide plus mince qu'une ligne est perdu, ce qui est du côté sûr (la coupure n'y est pas proposée). Le constat `svg.coarse_blocks` le dit à l'utilisateur. Un document de 100 000 éléments s'ouvre en quatre secondes environ.
+
 ### Coupures automatiques
 
 1. **Nombre de pages minimal** : `n_min` = plafond de (hauteur du document en mm / hauteur utile).
@@ -531,7 +538,7 @@ Deux vues, choisies par onglet :
 - **Document** (par défaut) : le dessin entier, avec les lignes de coupure, les limites et les numéros de page.
 - **Feuilles** : les pages côte à côte telles qu'elles seront imprimées, avec marges et positionnement.
 
-Une `GtkDrawingArea` peint, dans l'ordre : zone de travail, feuilles, dessin par tuiles, limites et numéros de page, lignes de coupure, poignées.
+Un `GtkOverlay` empile, dans l'ordre : une zone de travail, le dessin (une `GtkPicture` posée par un `GtkFixed`), puis une zone qui peint les limites et numéros de page, les lignes de coupure et les poignées, et reçoit les gestes.
 
 | Geste | Effet |
 | --- | --- |
@@ -544,9 +551,9 @@ Une `GtkDrawingArea` peint, dans l'ordre : zone de travail, feuilles, dessin par
 | Flèches | Déplacent de 1 unité ; Maj : 10 ; Ctrl : 0,1 mm |
 | Clic droit sur une ligne | Supprimer, ou saisir une position précise |
 
-Pendant un glisser, seul le calque des coupures est redessiné : le dessin vient du cache de tuiles et le plan est recalculé à chaque mouvement, ce qui est peu coûteux puisque `layout` est pur.
+Pendant un glisser, seul le calque des coupures est redessiné : l'image du dessin reste en place et le plan est recalculé à chaque mouvement, ce qui est peu coûteux puisque `layout` est pur.
 
-**Tuiles.** 512 × 512 pixels, en cache LRU par niveau de zoom. Elles sont produites hors du fil de l'interface, avec un compteur de génération qui abandonne les tuiles devenues obsolètes. En attente, on affiche la tuile du niveau précédent, floue.
+**Fenêtre visible, sans tuiles.** Un dessin vectoriel se redessine à n'importe quelle échelle : plutôt que de découper le document en tuiles de taille fixe, l'interface demande au moteur la seule partie visible, plus un quart de sa taille de chaque côté pour qu'un déplacement ne montre pas de blanc (`viewport.Window`), à l'échelle de l'écran, c'est-à-dire le zoom multiplié par le facteur d'échelle de la fenêtre (écrans HiDPI). L'image est limitée à 12 millions de pixels ; au-delà, la marge diminue puis disparaît. Elle est produite hors du fil de l'interface, avec un compteur de génération : un résultat qui n'est plus celui qu'on attend est abandonné, sauf s'il couvre encore ce qui est visible, ce qui évite un clignotement quand les demandes se suivent. Entre deux rendus, GTK met l'image à l'échelle : le dessin reste visible, un peu flou, jusqu'à l'arrivée de la nouvelle image. Un changement de zoom de moins de 2 % ne redessine rien. Toute l'arithmétique (zoom autour d'un point, déplacement, bornes, fenêtre, besoin de redessiner) est dans le paquet `viewport`, testé sans écran.
 
 ### Panneau droit : liste des pages
 
@@ -642,17 +649,19 @@ L'analyse se fait en deux passes :
 | Élément `filter` ou attribut `filter` | Avertissement | Effet rastérisé : il peut apparaître en bitmap dans le PDF |
 | `script`, `animate`, `set` | Avertissement | Ignoré : librsvg ne gère ni script ni animation |
 | Polices SVG (`font`, `glyph`) | Avertissement | Non prises en charge : police du système utilisée à la place |
+| Élément `foreignObject`, texte encadré `flowRoot`, `use` vers un autre fichier | Avertissement | Non dessiné : il manquera à l'aperçu et au PDF |
+| Police web (`@font-face`) | Avertissement | Non chargée : une police installée la remplace |
 | Famille de police absente du système | Avertissement | Police « X » absente, remplacée par « Y » |
 | Image liée par chemin, fichier introuvable | Avertissement | Image liée introuvable, nom et chemin attendus |
 | Image liée par URL distante | Avertissement | Non téléchargée : l'application n'accède jamais au réseau |
 | Image matricielle incorporée | Information | Conservée en bitmap, à sa résolution d'origine |
 | Ni dimension ni `viewBox` exploitable | Erreur | Taille du document indéterminée |
 
-À confirmer en M0 sur des fichiers réels, avant de figer les règles : le comportement face au texte encadré d'Inkscape (`flowRoot`), aux polices web (`@font-face`) et à `foreignObject`.
+Chaque catégorie est signalée au plus 25 fois ; le reste est compté dans un seul constat (« N autres constats semblables »). Un `foreignObject`, un `flowRoot` et une police web sont des avertissements : librsvg ne les dessine pas ou ne charge pas la police, et rien n'est reconstitué. Un document dont le XML est mal formé (balise non fermée, fin de balise qui ne correspond pas) est refusé par le moteur ; l'analyse le dit avec la raison.
 
-Le rapport s'affiche dans la section « Fichier source » avec un compteur par niveau. Cliquer une entrée sélectionne et centre l'élément concerné dans l'aperçu, grâce à sa boîte mesurée. Le rapport peut être copié en texte brut.
+Le rapport s'affiche dans la section « Fichier source », avec un compteur par niveau ; chaque constat est un texte traduit (`diag.svg.<code>`). Chaque constat sur un élément porte sa référence (son identifiant, ou son chemin d'indices) : cliquer une entrée sélectionnera l'élément dans l'aperçu (à venir avec M3, qui mesure et sélectionne les éléments). Le rapport peut être copié en texte brut.
 
-Le texte est dessiné avec les polices du système. M0 montre qu'il reste du texte dans le PDF, sélectionnable, avec des sous-ensembles TrueType incorporés. Il montre aussi qu'une police absente est remplacée **sans rien dire** (IBM Plex remplacée par DejaVu, et le PDF incorpore la police de remplacement) : le signalement ci-dessus est donc la seule protection, et il exige une résolution des polices par fontconfig dans `engine` (M2).
+Le texte est dessiné avec les polices du système. M0 montre qu'il reste du texte dans le PDF, sélectionnable, avec des sous-ensembles TrueType incorporés. Il montre aussi qu'une police absente est remplacée **sans rien dire** (IBM Plex remplacée par DejaVu, et le PDF incorpore la police de remplacement) : le signalement ci-dessus est donc la seule protection, et il exige une résolution des polices par fontconfig dans `engine`. Elle est faite : `MatchFont` demande à fontconfig la famille que le système donnerait, et `svgdoc.CheckFonts` signale toute liste `font-family` dont la première famille n'est pas installée, avec la famille qui sera réellement dessinée (la suivante de la liste qui est installée, sinon la famille générique ou ce que donne fontconfig) ; une liste qui commence par une famille générique (`sans-serif`, `monospace`) n'est jamais signalée, le document n'ayant rien demandé de précis.
 
 ## 13. Stratégie de tests
 
@@ -686,9 +695,9 @@ Un test vérifie que chacun des deux contrôles échoue quand une page est déca
 
 ### Organisation
 
-- **Trois niveaux.** Go pur (modèle, unités, mise en page, analyse, projet) avec `go test` partout sans cgo ; intégration du moteur (chargement, tuiles, export) avec librsvg installé ; interface sous Xvfb sur Linux, plus une liste de contrôle manuelle sur Windows.
+- **Trois niveaux.** Go pur (modèle, unités, mise en page, analyse, projet) avec `go test` partout sans cgo ; intégration du moteur (chargement, fenêtres d'aperçu, export) avec librsvg installé ; interface sous Xvfb sur Linux, plus une liste de contrôle manuelle sur Windows.
 - **Tests de propriétés** sur `layout` : papiers, marges, échelles et coupures tirés au hasard, avec pour invariants la couverture exacte, `w` constant, `s` inchangé par les commandes et des états cohérents.
-- **Jeu d'essai.** Le Mini-CAD réel n'est pas dans le dépôt : il décrit une infrastructure réelle. Les tests le prennent quand `SVGPL_MINICAD` donne son chemin. Le générateur déterministe `internal/testsvg` produit un équivalent public de 1 280 × 5 479 unités (fond gris, blocs avec texte, bandeau pleine largeur, rectangle transformé) ; il doit aussi servir de test de charge avec 100 000 éléments (pas encore fait).
+- **Jeu d'essai.** Le Mini-CAD réel n'est pas dans le dépôt : il décrit une infrastructure réelle. Les tests le prennent quand `SVGPL_MINICAD` donne son chemin. Le générateur déterministe `internal/testsvg` produit un équivalent public de 1 280 × 5 479 unités (fond gris, blocs avec texte, bandeau pleine largeur, rectangle transformé) ; avec `Filler`, il sert aussi de test de charge à 100 000 éléments (`internal/app/load_cgo_test.go`, ouverture en 4 s sur la machine de développement).
 - **Intégration continue** (tous en place) : un job `engine` sur Ubuntu avec `librsvg2-dev`, `poppler-utils` et `fonts-ibm-plex` ; un job `ui` (GTK4 sous Xvfb : tests de la fenêtre, puis captures dans les quatre langues, déposées en artefact) ; un job `linux-packages` (construction du `.deb` et du `.rpm`, lintian, AppStream, installation, `-selftest`, fenêtre du programme installé, constructions identiques) un job `distributions` (le paquet de la famille est construit dans un conteneur de chaque système pris en charge, installé par `apt` ou `dnf`, puis le programme installé lance `-selftest` et la fenêtre dans les quatre langues ; sur Debian 12, Ubuntu 22.04 et AlmaLinux 9, le test vérifie que la construction est refusée avec un message clair) et un job `windows-package`, sur `windows-2022` et `windows-latest`, sous MSYS2 UCRT64 (construction par `build-windows.ps1`, `-selftest` puis fenêtre dans les quatre langues de la version portable, programme installé, désinstallation). Les autres paquets se construisent et se testent sans cgo (`CGO_ENABLED=0`), où `ui` est un bouchon.
 - **Références.** Les rasters de référence sont stockés par plateforme, avec tolérance, et jamais comparés d'une plateforme à l'autre.
 
@@ -700,12 +709,12 @@ Six jalons, dont M0 est le point de décision : le calcul de pages (M1) ne dépe
 | --- | --- | --- |
 | M0. Prototype de vérité | Chaîne minimale, d'abord sur le SVG synthétique puis sur le Mini-CAD réel : chargement par librsvg, rendu d'une fenêtre, PDF de 4 pages A4 avec clip. Build sous Linux et sous Windows. Mesures : taille du PDF, texte, résolution des effets rastérisés, déterminisme | 4 pages de 595,28 × 841,89 pt, `w` = 200 mm, test de couture réussi, deux exports de même SHA-256, taille du PDF non multipliée par le nombre de pages, build Windows qui produit le même plan. Sinon : bascule vers le moteur D |
 | M1. Cœur en Go pur | Modèle, unités, mise en page (échelle, bandes, positionnement, états, corrections), format de projet, tests de propriétés | Tests verts sans cgo ; tests 2, 3, 4, 6, 7 et 14 passés au niveau logique |
-| M2. Document et aperçu | Copie de travail, analyse et rapport, moteur (chargement, tuiles), fenêtre à trois panneaux, zoom, déplacement, limites de pages | Mini-CAD affiché en entier, zoom fluide, rapport d'analyse lisible |
+| M2. Document et aperçu | Copie de travail, analyse et rapport, moteur (chargement, fenêtres d'aperçu), fenêtre à trois panneaux, zoom, déplacement, limites de pages | Mini-CAD affiché en entier, zoom fluide, rapport d'analyse lisible |
 | M3. Coupures | Interaction à la souris, liste des pages, aimantation, annulation, coupures automatiques, détection de traversée | Tests 5, 6 et 7 passés ; sur le Mini-CAD, la proposition automatique ne traverse aucun bloc quand un vide existe |
 | M4. Fond et export | Détection et remplacement du fond, export PDF, vérifications, aperçu de page | Tests 8 à 13 passés |
 | M5. Projet, paquets, recette | Enregistrement et réouverture dans l'interface, paquet .deb, installateur Windows, recette complète | Les 14 tests réussissent sur chaque système pris en charge : Debian 13 et Ubuntu 24.04 (famille Debian), RHEL 10 ou un clone (famille Red Hat), Windows 10 et Windows 11 |
 
-**État.** Le squelette du dépôt, le paquet `units`, le prototype du moteur (M0a, `docs/M0.md`), les scripts qui construisent les paquets `.deb`, `.rpm` et Windows, le paquet de traduction `i18n` et une première fenêtre GTK4 (trois panneaux, quatre langues, ouverture d'un SVG affiché en entier ; M0b) existent, avec leur CI, qui construit et essaie le paquet sur sept distributions Linux (familles Debian et Red Hat) et sur Windows. M0 n'est pas terminé : la comparaison du plan produit sous Windows et sous Linux reste à faire. **M1 est fait** : `model`, `diag`, `layout` (échelle, feuille, plan, états, corrections, coupures, aimantation, coupures automatiques) et `project` (format `.svgpl`) sont écrits et testés sans cgo, avec des tests de propriétés ; les panneaux de la fenêtre ne les utilisent pas encore. Le `CHANGELOG.md` tient le détail.
+**État.** Le squelette du dépôt, le paquet `units`, le prototype du moteur (M0a, `docs/M0.md`), les scripts qui construisent les paquets `.deb`, `.rpm` et Windows, le paquet de traduction `i18n` et une première fenêtre GTK4 (trois panneaux, quatre langues, ouverture d'un SVG affiché en entier ; M0b) existent, avec leur CI, qui construit et essaie le paquet sur sept distributions Linux (familles Debian et Red Hat) et sur Windows. M0 n'est pas terminé : la comparaison du plan produit sous Windows et sous Linux reste à faire. **M1 est fait** : `model`, `diag`, `layout` (échelle, feuille, plan, états, corrections, coupures, aimantation, coupures automatiques) et `project` (format `.svgpl`) sont écrits et testés sans cgo, avec des tests de propriétés ; les panneaux de la fenêtre ne les utilisent pas encore. **M2 est fait** : `svgdoc` (analyse, constats, polices, blocs, fond, copie de travail), l'interface `Document` du moteur (chargement par chemin pour les images liées, polices par fontconfig), `app` (session, historique, plan), `viewport` et la fenêtre (panneaux Fichier source, Papier, Marges, Échelle, Positionnement ; liste des pages avec les corrections proposées ; aperçu avec zoom, déplacement, limites et numéros de page, annuler et rétablir) existent et sont essayés sous Xvfb. Les panneaux Fond et Export, les coupures à la souris, la détection du fond et l'export restent à faire (M3 et M4). Le `CHANGELOG.md` tient le détail.
 
 Après la v1, le §14 du cahier reste la liste des suites possibles. L'aperçu du PDF réel relu par un moteur PDF indépendant (le cahier demande « un aperçu du PDF final ») est le premier candidat : la v1 s'en tient à l'aperçu produit par la même fonction de dessin, ce qui est fidèle au PDF par construction.
 
@@ -721,7 +730,7 @@ Les cinq premiers risques se tranchent au jalon M0. M0a en a tranché un et avan
 | Résolution des éléments rastérisés (filtres) dans le PDF | Flou ou pixels visibles à l'impression | Mesure, avertissement dès l'analyse, étude du réglage de la résolution de repli | M0 |
 | Déterminisme dépendant des versions de cairo et de librsvg | Octets différents d'une machine à l'autre | Versions figées dans les paquets Windows ; comparaison par rasters entre plateformes | M0 puis M5 |
 | Maturité de gotk4 | Fuites mémoire, plantages | Interface mince, moteur indépendant de gotk4, scénarios sous Xvfb, repli Fyne | M2 |
-| Documents très lourds | Chargement et tuiles lents, mémoire | Test à 100 000 éléments, cache LRU, chargement hors du fil de l'interface | M2 |
+| Documents très lourds | Chargement et rendu lents, mémoire | Test à 100 000 éléments, rendu de la seule fenêtre visible, chargement hors du fil de l'interface | M2 |
 | Police absente sur la machine d'export | Texte substitué | Détection et avertissement avant l'export | M2 |
 
 Après M0a (`docs/M0.md`) :
@@ -732,7 +741,7 @@ Après M0a (`docs/M0.md`) :
 - **Éléments rastérisés** : non avancé, le Mini-CAD n'a aucun filtre.
 - **Packaging Windows** : avancé. Le paquet (DLL de GTK 4, de cairo et de librsvg, fontconfig, chargeurs d'images, schémas, icônes et traductions de GTK) se construit sous MSYS2 UCRT64, passe `-selftest` avec le seul PATH de Windows et ouvre sa fenêtre en CI ; la comparaison du plan produit sous Windows et sous Linux reste à faire.
 - **Police absente** : le risque est plus grand qu'on ne le pensait, car la substitution est silencieuse et le PDF incorpore la police de remplacement. La détection devient obligatoire, pas seulement souhaitable.
-- **Temps d'export** proportionnel au nombre de pages (environ 0,25 s par page sur le Mini-CAD), et rendu d'une fenêtre d'aperçu de 0,24 à 0,41 s : à traiter par un cache de tuiles en M2.
+- **Temps d'export** proportionnel au nombre de pages (environ 0,25 s par page sur le Mini-CAD), et rendu d'une fenêtre d'aperçu de 0,24 à 0,41 s : traité en M2 par le rendu de la seule fenêtre visible (une marge d'un quart, plafonnée à 12 millions de pixels) et par le maintien de l'image précédente, mise à l'échelle, pendant le calcul de la suivante.
 
 ### Questions ouvertes
 

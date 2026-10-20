@@ -5,8 +5,13 @@
 package engine
 
 import (
+	"bytes"
+	"image"
 	"image/color"
+	stdpng "image/png"
 	"math"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -18,7 +23,7 @@ func near(a, b, tol float64) bool { return math.Abs(a-b) <= tol }
 
 func load(t *testing.T, svg []byte) *Doc {
 	t.Helper()
-	d, err := Load(svg)
+	d, err := Load(svg, "")
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
@@ -50,7 +55,7 @@ func TestLoadErrorsAreExplicit(t *testing.T) {
 		"no size at all": []byte(`<svg xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10"/></svg>`),
 	}
 	for name, data := range cases {
-		d, err := Load(data)
+		d, err := Load(data, "")
 		if err == nil {
 			d.Close()
 			t.Errorf("%s: Load should fail", name)
@@ -152,4 +157,76 @@ func TestVersionsAreReported(t *testing.T) {
 		t.Errorf("Versions() = %q, %q", rsvg, cairo)
 	}
 	t.Logf("librsvg %s, cairo %s", rsvg, cairo)
+}
+
+func TestMeasureBlocks(t *testing.T) {
+	d := load(t, testsvg.Generate(testsvg.Options{}))
+	ids := []string{testsvg.BlockID(1, 1), testsvg.BlockID(2, 3), "does-not-exist", testsvg.BannerID}
+	got := d.MeasureBlocks(ids)
+	if len(got) != 3 {
+		t.Fatalf("%d boxes, want 3: %v", len(got), got)
+	}
+	if _, ok := got["does-not-exist"]; ok {
+		t.Error("an unknown id is measured")
+	}
+	top := testsvg.BlockTop(testsvg.Options{}, 2, 3)
+	if b := got[testsvg.BlockID(2, 3)]; !near(b.Y, top-0.6, 0.01) {
+		t.Errorf("block 2.3 = %+v", b)
+	}
+	var _ Document = d
+}
+
+// A linked image is looked for next to the document it is linked from.
+func TestLinkedImagesAreResolvedFromThePathOfTheDocument(t *testing.T) {
+	dir := t.TempDir()
+	pic := image.NewRGBA(image.Rect(0, 0, 4, 4))
+	for i := 0; i < len(pic.Pix); i += 4 {
+		pic.Pix[i], pic.Pix[i+3] = 255, 255 // opaque red
+	}
+	var png bytes.Buffer
+	if err := stdpng.Encode(&png, pic); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "pics"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "pics", "red.png"), png.Bytes(), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	svg := []byte(`<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="20" height="20" viewBox="0 0 20 20"><image x="0" y="0" width="20" height="20" xlink:href="pics/red.png"/></svg>`)
+
+	with, err := Load(svg, filepath.Join(dir, "doc.svg"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer with.Close()
+	img, err := with.Render(Box{W: 20, H: 20}, 1, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := pixel(t, img, 10, 10); got.R < 200 || got.A < 250 {
+		t.Errorf("the linked image is not drawn: pixel %v", got)
+	}
+
+	without := load(t, svg)
+	img, err = without.Render(Box{W: 20, H: 20}, 1, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := pixel(t, img, 10, 10); got.A != 0 {
+		t.Errorf("an image that cannot be found is drawn anyway: pixel %v", got)
+	}
+}
+
+func TestMatchFont(t *testing.T) {
+	generic := MatchFont("sans-serif")
+	if generic == "" {
+		t.Skip("fontconfig has no font to offer on this machine")
+	}
+	if got := MatchFont(generic); !strings.EqualFold(got, generic) {
+		t.Errorf("an installed family is not found as itself: %q gives %q", generic, got)
+	}
+	if got := MatchFont("Famille Qui N'Existe Pas 4711"); got == "" || strings.EqualFold(got, "Famille Qui N'Existe Pas 4711") {
+		t.Errorf("a missing family gives %q: it should give the one that replaces it", got)
+	}
 }

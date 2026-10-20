@@ -264,6 +264,12 @@ func (v *sheetsView) draw(c *sheetCard, i int) {
 			w.busy--
 			c.asked = false
 			if doc != w.engineDoc || i >= len(v.cards) || v.cards[i] != c {
+				// The sheet, or the document, is not the one this drawing was
+				// made for. update() passed over the sheet while the drawing was
+				// on its way: without this call, nothing would ask for the
+				// drawing of the new document, and the sheet would keep the
+				// old one, with the old background.
+				v.update()
 				return
 			}
 			if err != nil {

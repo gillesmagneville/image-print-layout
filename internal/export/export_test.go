@@ -334,7 +334,7 @@ func pdfOf(specs []engine.PageSpec, docW, docH float64) *PDF {
 
 func TestVerifyAcceptsAPDFThatMatchesThePlan(t *testing.T) {
 	specs := Specs(planOf(t, acceptance(1380.5, 2760, 4120.25)))
-	if items := Verify(pdfOf(specs, miniCAD.W, miniCAD.H), specs, miniCAD.W, miniCAD.H); len(items) != 0 {
+	if items := Verify(pdfOf(specs, miniCAD.W, miniCAD.H), specs, miniCAD.W, miniCAD.H, true); len(items) != 0 {
 		t.Errorf("a matching PDF raises %v", items)
 	}
 }
@@ -346,28 +346,28 @@ func TestVerifyCatchesEveryWayAPDFCanDifferFromThePlan(t *testing.T) {
 	t.Run("pages", func(t *testing.T) {
 		pdf := fresh()
 		pdf.Pages = pdf.Pages[:3]
-		if items := Verify(pdf, specs, miniCAD.W, miniCAD.H); !has(items, "export.pdf_pages") {
+		if items := Verify(pdf, specs, miniCAD.W, miniCAD.H, true); !has(items, "export.pdf_pages") {
 			t.Errorf("items = %v", codes(items))
 		}
 	})
 	t.Run("size", func(t *testing.T) {
 		pdf := fresh()
 		pdf.Pages[2].WidthPt = units.MMToPt(210.5) // half a millimetre wider
-		if items := Verify(pdf, specs, miniCAD.W, miniCAD.H); !has(items, "export.pdf_size") {
+		if items := Verify(pdf, specs, miniCAD.W, miniCAD.H, true); !has(items, "export.pdf_size") {
 			t.Errorf("items = %v", codes(items))
 		}
 	})
 	t.Run("size within the tolerance", func(t *testing.T) {
 		pdf := fresh()
 		pdf.Pages[2].WidthPt = units.MMToPt(210.015)
-		if items := Verify(pdf, specs, miniCAD.W, miniCAD.H); len(items) != 0 {
+		if items := Verify(pdf, specs, miniCAD.W, miniCAD.H, true); len(items) != 0 {
 			t.Errorf("0.015 mm is within the tolerance of 0.02 mm: %v", items)
 		}
 	})
 	t.Run("clip", func(t *testing.T) {
 		moved := append([]engine.PageSpec(nil), specs...)
 		moved[1].BandBottom += 0.1 // a tenth of a unit: 0.04 pt, ten times the tolerance
-		items := Verify(pdfOf(moved, miniCAD.W, miniCAD.H), specs, miniCAD.W, miniCAD.H)
+		items := Verify(pdfOf(moved, miniCAD.W, miniCAD.H), specs, miniCAD.W, miniCAD.H, true)
 		if !has(items, "export.pdf_clip") {
 			t.Errorf("items = %v", codes(items))
 		}
@@ -376,7 +376,7 @@ func TestVerifyCatchesEveryWayAPDFCanDifferFromThePlan(t *testing.T) {
 		moved := append([]engine.PageSpec(nil), specs...)
 		moved[2].BandTop += 0.1
 		moved[2].BandBottom += 0.1 // same window height, drawing shifted
-		items := Verify(pdfOf(moved, miniCAD.W, miniCAD.H), specs, miniCAD.W, miniCAD.H)
+		items := Verify(pdfOf(moved, miniCAD.W, miniCAD.H), specs, miniCAD.W, miniCAD.H, true)
 		if !has(items, "export.pdf_offset") {
 			t.Errorf("items = %v", codes(items))
 		}
@@ -384,7 +384,65 @@ func TestVerifyCatchesEveryWayAPDFCanDifferFromThePlan(t *testing.T) {
 	t.Run("no clip", func(t *testing.T) {
 		pdf := fresh()
 		pdf.Pages[0].Content = "q Q"
-		if items := Verify(pdf, specs, miniCAD.W, miniCAD.H); !has(items, "export.pdf_clip") {
+		if items := Verify(pdf, specs, miniCAD.W, miniCAD.H, true); !has(items, "export.pdf_clip") {
+			t.Errorf("items = %v", codes(items))
+		}
+	})
+}
+
+// reducedPDF draws what cairo writes when the page is not white and the document
+// has no rectangle that covers it: no clip for the band, but, for each element
+// that crosses a cut, its own clip cut down to the band.
+func reducedPDF(specs []engine.PageSpec) *PDF {
+	pdf := &PDF{}
+	for _, s := range specs {
+		bandH := (s.BandBottom - s.BandTop) * s.PtPerUnit
+		content := fmt.Sprintf("1 0 0 -1 0 %.6f cm\nq\n%.3f %.3f %.3f %.3f re W n\n0.9 g\n%.3f %.3f 80 20 re f\nQ\nq\n%.3f %.3f %.3f %.3f re W n\n0.8 g\n%.3f %.3f 120 40 re f\nQ\n",
+			s.HeightPt,
+			s.OriginXPt+20, s.OriginYPt, 90.0, 12.5, // an element across the top cut
+			s.OriginXPt+20, s.OriginYPt-8,
+			s.OriginXPt+40, s.OriginYPt+bandH-15, 200.0, 15.0, // one across the bottom cut
+			s.OriginXPt+40, s.OriginYPt+bandH-35)
+		pdf.Pages = append(pdf.Pages, PDFPage{WidthPt: s.WidthPt, HeightPt: s.HeightPt, Content: content})
+	}
+	return pdf
+}
+
+// With a white page the engine writes the clip of the band whole; without one,
+// and without a rectangle that covers the document, the file holds only the
+// clips of the elements that cross a cut (ARCHITECTURE §9).
+func TestVerifyWithoutAWholeClipChecksTheClipsOfTheElements(t *testing.T) {
+	specs := Specs(planOf(t, acceptance(1380.5, 2760, 4120.25)))
+
+	t.Run("a page that is not white accepts them", func(t *testing.T) {
+		if items := Verify(reducedPDF(specs), specs, miniCAD.W, miniCAD.H, false); len(items) != 0 {
+			t.Errorf("the clips of the elements are inside the band: %v", items)
+		}
+	})
+	t.Run("a white page needs the whole clip", func(t *testing.T) {
+		if items := Verify(reducedPDF(specs), specs, miniCAD.W, miniCAD.H, true); !has(items, "export.pdf_clip") {
+			t.Errorf("items = %v", codes(items))
+		}
+	})
+	t.Run("a page with no clip at all is fine when nothing crosses a cut", func(t *testing.T) {
+		pdf := pdfOf(specs, miniCAD.W, miniCAD.H)
+		pdf.Pages[0].Content = "1 0 0 -1 0 842 cm\nq\n0.9 g\n20 40 80 20 re f\nQ\n"
+		if items := Verify(pdf, specs, miniCAD.W, miniCAD.H, false); len(items) != 0 {
+			t.Errorf("items = %v", codes(items))
+		}
+	})
+	t.Run("a clip that leaves the band is caught", func(t *testing.T) {
+		pdf := reducedPDF(specs)
+		bandH := (specs[1].BandBottom - specs[1].BandTop) * specs[1].PtPerUnit
+		pdf.Pages[1].Content += fmt.Sprintf("q\n%.3f %.3f 90 20 re W n\n0 g\n1 1 1 1 re f\nQ\n", specs[1].OriginXPt+20, specs[1].OriginYPt+bandH-5) // 15 pt too low
+		if items := Verify(pdf, specs, miniCAD.W, miniCAD.H, false); !has(items, "export.pdf_clip") {
+			t.Errorf("items = %v", codes(items))
+		}
+	})
+	t.Run("a whole clip that is not the plan's is caught", func(t *testing.T) {
+		moved := append([]engine.PageSpec(nil), specs...)
+		moved[1].BandBottom += 0.1
+		if items := Verify(pdfOf(moved, miniCAD.W, miniCAD.H), specs, miniCAD.W, miniCAD.H, false); !has(items, "export.pdf_clip") {
 			t.Errorf("items = %v", codes(items))
 		}
 	})

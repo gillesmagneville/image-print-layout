@@ -288,7 +288,15 @@ func floats(m []string) []float64 {
 // of the sheet, to 0.02 mm; each clipped to the window the plan gives, to the
 // 1/256 point cairo writes; and, where the document has a rectangle that
 // covers it, drawn at the offset the plan gives. It returns the failures.
-func Verify(pdf *PDF, specs []engine.PageSpec, docW, docH float64) []diag.Item {
+//
+// whitePage tells how the pages were drawn. With a white page the engine
+// writes the clip of the band whole at the start of the drawing, whatever the
+// document holds, so it must be in the file. Without one, cairo writes a clip
+// only where an operation needs it: a document with no rectangle that covers it
+// has, instead of the clip of the band, the clips of the elements that cross a
+// cut, each cut down to the band. They are then checked one by one: none may
+// leave the window of the band.
+func Verify(pdf *PDF, specs []engine.PageSpec, docW, docH float64, whitePage bool) []diag.Item {
 	var out []diag.Item
 	if len(pdf.Pages) != len(specs) {
 		return []diag.Item{diag.New("export.pdf_pages", 0, "got", len(pdf.Pages), "want", len(specs))}
@@ -307,20 +315,41 @@ func Verify(pdf *PDF, specs []engine.PageSpec, docW, docH float64) []diag.Item {
 				"want_w", units.PtToMM(want.WidthPt), "want_h", units.PtToMM(want.HeightPt)))
 			continue
 		}
-		loc := clipRe.FindStringSubmatchIndex(got.Content)
-		if loc == nil {
-			out = append(out, diag.New("export.pdf_clip", n))
-			continue
-		}
-		c := floats(clipRe.FindStringSubmatch(got.Content[loc[0]:])[1:])
 		wantW, wantH := docW*want.PtPerUnit, (want.BandBottom-want.BandTop)*want.PtPerUnit
-		if !near(c[0], want.OriginXPt) || !near(c[1], want.OriginYPt) || !near(c[2], wantW) || !near(c[3], wantH) {
+
+		// The clip of the band, where it is written whole.
+		after := -1 // where the content that the clip applies to begins
+		var clips [][]float64
+		for _, loc := range clipRe.FindAllStringSubmatchIndex(got.Content, -1) {
+			c := floats(clipRe.FindStringSubmatch(got.Content[loc[0]:loc[1]])[1:])
+			clips = append(clips, c)
+			if after < 0 && near(c[0], want.OriginXPt) && near(c[1], want.OriginYPt) && near(c[2], wantW) && near(c[3], wantH) {
+				after = loc[1]
+			}
+		}
+		switch {
+		case after >= 0:
+		case whitePage:
 			out = append(out, diag.New("export.pdf_clip", n))
 			continue
+		default:
+			outside := false
+			for _, c := range clips {
+				if c[0] < want.OriginXPt-geomTolPt || c[1] < want.OriginYPt-geomTolPt ||
+					c[0]+c[2] > want.OriginXPt+wantW+geomTolPt || c[1]+c[3] > want.OriginYPt+wantH+geomTolPt {
+					outside = true
+				}
+			}
+			if outside {
+				out = append(out, diag.New("export.pdf_clip", n))
+				continue
+			}
+			after = 0
 		}
+
 		// The offset: a rectangle that covers the whole document, if one is
 		// painted, sits where the plan puts the document.
-		for _, m := range fillRe.FindAllStringSubmatch(got.Content[loc[1]:], -1) {
+		for _, m := range fillRe.FindAllStringSubmatch(got.Content[after:], -1) {
 			f := floats(m[1:])
 			if math.Abs(f[2]-docW*want.PtPerUnit) > 0.01 || math.Abs(f[3]-docH*want.PtPerUnit) > 0.01 {
 				continue

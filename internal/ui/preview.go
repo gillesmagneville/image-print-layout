@@ -429,6 +429,13 @@ var (
 	}
 )
 
+// The bar that shows the extent of a page, outside the drawing: its width, and
+// its distance from the edge of the drawing, in pixels of the window.
+const (
+	pageBarWidth = 4
+	pageBarGap   = 3
+)
+
 func (p *preview) drawMarks(_ *gtk.DrawingArea, cr *cairo.Context, width, height int) {
 	if !p.hasDoc || p.view.Zoom <= 0 {
 		return
@@ -458,9 +465,18 @@ func (p *preview) drawMarks(_ *gtk.DrawingArea, cr *cairo.Context, width, height
 			continue
 		}
 		yt, yb = math.Round(yt), math.Round(yb)
-		if i%2 == 1 {
-			cr.SetSourceRGBA(0.16, 0.36, 0.80, 0.06)
-			cr.Rectangle(x0, yt, x1-x0, yb-yt)
+		// Nothing is painted over the drawing: it is shown as it will be
+		// printed, and a tint over a page would pass for a background that the
+		// choice of white or of removal had not reached. The extent of each page
+		// is told by a bar along the drawing, outside it, light and blue by
+		// turns, beside the cuts and the numbers.
+		if x0 >= pageBarGap+pageBarWidth {
+			if i%2 == 1 {
+				cr.SetSourceRGBA(0.45, 0.62, 1, 0.95)
+			} else {
+				cr.SetSourceRGBA(1, 1, 1, 0.75)
+			}
+			cr.Rectangle(x0-pageBarGap-pageBarWidth, yt, pageBarWidth, yb-yt)
 			cr.Fill()
 		}
 		p.drawBadge(cr, page, x0, yt, yb, float64(height))

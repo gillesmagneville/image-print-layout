@@ -220,10 +220,16 @@ jobs:
             dnf -y install git tar gzip
           fi
       - uses: actions/checkout@v4
+      - name: PATH before setup-go
+        shell: sh
+        run: echo "::notice title=PATH avant setup-go::$PATH ; bash=$(command -v bash) ; sh=$(command -v sh)"
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache: false
+      - name: PATH after setup-go
+        shell: sh
+        run: echo "::notice title=PATH après setup-go::$PATH ; bash=$(command -v bash) ; sh=$(command -v sh) ; go=$(command -v go)"
       # Les outils que le script suppose présents : si une image minimale en
       # manque un, l'annotation le dit (les journaux ne se lisent pas sans
       # téléchargement).

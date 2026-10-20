@@ -26,10 +26,16 @@ log="${RUNNER_TEMP:-/tmp}/distribution.log"
 screenshots="$PWD/screenshots"
 
 # Écrit la fin du journal dans une annotation GitHub (%, retours chariot et
-# sauts de ligne y sont codés).
+# sauts de ligne y sont codés). GitHub n'affiche qu'environ 4 000 caractères
+# d'une annotation : on garde la fin du journal, en erreur, et le résumé seul
+# quand tout a réussi.
 annotate() {
     local text
-    text="$(tail -n 70 "$log")"
+    if [ "$1" = notice ]; then
+        text="$(cat "$summary")"
+    else
+        text="$(tail -c 3500 "$log")"
+    fi
     text="${text//'%'/'%25'}"
     text="${text//$'\r'/'%0D'}"
     text="${text//$'\n'/'%0A'}"
@@ -72,7 +78,7 @@ install_redhat() {
 
 build_install_redhat() {
     echo o | ./build-rpm.sh --no-version-change
-    note "Requires : $(rpm -qpR ./svgprintlayout-*.rpm | grep -v '^rpmlib\|^rtld' | sort -u | tr '\n' ' ')"
+    note "Requires : $(rpm -qpR ./svgprintlayout-*.rpm | grep -v 'GLIBC\|^rpmlib\|^rtld\|^/bin/sh' | sed 's/()(64bit)//' | sort -u | tr '\n' ' ')"
     dnf -y install ./svgprintlayout-*.rpm
 }
 

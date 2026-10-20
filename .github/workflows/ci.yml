@@ -224,8 +224,18 @@ jobs:
         with:
           go-version-file: go.mod
           cache: false
+      # Les outils que le script suppose présents : si une image minimale en
+      # manque un, l'annotation le dit (les journaux ne se lisent pas sans
+      # téléchargement).
+      - name: Tools the script needs
+        run: |
+          missing=""
+          for tool in bash env tee tail awk sed grep sort tr seq mktemp dirname; do
+            command -v "$tool" > /dev/null || missing="$missing $tool"
+          done
+          echo "::notice title=Outils::manquants :${missing:- aucun}; shell=$SHELL; $(. /etc/os-release && echo "$PRETTY_NAME")"
       - name: Build the package, install it, run it
-        run: .github/scripts/test-distribution.sh ${{ matrix.family }}
+        run: bash .github/scripts/test-distribution.sh ${{ matrix.family }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:

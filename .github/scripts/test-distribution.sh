@@ -66,7 +66,7 @@ install_redhat() {
     # capture est facultatif. Un par un, pour que le journal dise lequel manque.
     local package
     for package in xorg-x11-server-Xvfb xorg-x11-xauth ImageMagick; do
-        dnf -y install "$package" || echo "MANQUE : $package"
+        dnf -y install "$package" || note "paquet introuvable dans les dépôts : $package"
     done
 }
 
@@ -87,6 +87,38 @@ versions() {
     note "gtk4 $(pkg-config --modversion gtk4), glib $(pkg-config --modversion glib-2.0), pango $(pkg-config --modversion pango), librsvg $(pkg-config --modversion librsvg-2.0), cairo $(pkg-config --modversion cairo)"
 }
 
+# Sans Xvfb (RHEL 10 et ses clones n'ont plus de serveur X), GTK 4 sait aussi
+# afficher ses fenêtres avec son pilote Broadway : il n'a besoin ni d'écran ni
+# de navigateur pour les ouvrir. On y essaie la fenêtre, sans capture.
+window_broadway() {
+    local daemon lang pid
+    export GDK_BACKEND=broadway BROADWAY_DISPLAY=:5
+    gtk4-broadwayd :5 > /dev/null 2>&1 &
+    daemon=$!
+    sleep 1
+    for lang in en fr es de; do
+        rm -f "$PWD/broadway-$lang.ready"
+        HOME="$(mktemp -d)" svgprintlayout -lang "$lang" -ready-file "$PWD/broadway-$lang.ready" \
+            2> "$PWD/broadway-$lang.log" &
+        pid=$!
+        for _ in $(seq 1 100); do
+            [ -e "$PWD/broadway-$lang.ready" ] && break
+            kill -0 "$pid" 2> /dev/null || break
+            sleep 0.2
+        done
+        if [ ! -e "$PWD/broadway-$lang.ready" ]; then
+            echo "la fenêtre ne s'est pas affichée en $lang ; journal du programme :"
+            cat "$PWD/broadway-$lang.log"
+            kill "$pid" "$daemon" 2> /dev/null || true
+            return 1
+        fi
+        kill "$pid" 2> /dev/null || true
+        wait "$pid" 2> /dev/null || true
+    done
+    kill "$daemon" 2> /dev/null || true
+    unset GDK_BACKEND BROADWAY_DISPLAY
+}
+
 # Le programme installé, comme le lancerait une personne.
 run_installed() {
     echo "--- programme installé"
@@ -99,8 +131,11 @@ run_installed() {
             .github/scripts/screenshot.sh /usr/bin/svgprintlayout "$lang" "$screenshots/$lang.png"
         done
         note "fenêtre : ouverte dans les quatre langues ($(command -v import > /dev/null && echo "avec captures" || echo "sans capture : ImageMagick absent"))"
+    elif command -v gtk4-broadwayd > /dev/null; then
+        window_broadway
+        note "fenêtre : ouverte dans les quatre langues (pilote Broadway de GTK : pas de xvfb-run sur cette distribution, pas de capture)"
     else
-        note "fenêtre : NON ESSAYÉE (pas de xvfb-run sur cette distribution)"
+        note "fenêtre : NON ESSAYÉE (ni xvfb-run ni gtk4-broadwayd sur cette distribution)"
     fi
 }
 

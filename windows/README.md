@@ -184,13 +184,13 @@ Ne les enregistrez pas sans BOM.
 
 ## Ce qui est vérifié, et par qui
 
-La CI (job `windows-package`, sur `windows-latest`) fait exactement ce que fait un
-utilisateur : elle exécute `.\build-windows.ps1 -Patch -Oui` dans Windows PowerShell 5.1 (et vérifie que
+La CI (job `windows-package`, sur `windows-2022` et `windows-latest`) fait exactement ce que
+fait un utilisateur : elle exécute `.\build-windows.ps1 -Patch -Oui` dans Windows PowerShell 5.1 (et vérifie que
 `VERSION` est mis à jour après la construction), puis
 décompresse le `.zip`, lance `svgprintlayout-console.exe -selftest` avec le seul PATH de
 Windows, puis **ouvre la fenêtre** dans les quatre langues (le programme crée un fichier
 avec `-ready-file` quand la fenêtre est affichée et le document dessiné) et en enregistre
-une capture d'écran, déposée en artefact `windows-screenshots` ; elle installe ensuite en
+une capture d'écran, déposée en artefact `windows-screenshots-<système>` ; elle installe ensuite en
 silence avec l'installeur, lance `-selftest` et la fenêtre depuis le dossier installé,
 et désinstalle en vérifiant que rien ne reste ; enfin `-Clean` doit retirer les
 paquets. Le rendu logiciel de GTK est demandé pour ces essais (`GSK_RENDERER=cairo`) :
@@ -198,6 +198,12 @@ une machine virtuelle n'a pas de carte graphique.
 
 L'installeur a aussi été compilé et exécuté sous Wine, sur Linux, avec une arborescence
 d'essai : installation, mise à jour par-dessus une installation, désinstallation.
+
+**Windows 10 et 11.** Les paquets visent les deux, en 64 bits. La CI n'a pas de Windows 10 ni
+de Windows 11, seulement des Windows Server : Windows Server 2022 (le plus ancien proposé) sert
+de repère pour Windows 10, Windows Server 2025 pour Windows 11. Les deux ont été construits et
+essayés, mais l'essai sur de vraies machines Windows 10 et Windows 11 fait partie de la
+recette de M5.
 
 **Pas d'essai sur une machine Windows réelle** : ni la construction par l'utilisateur
 avec ses propres installations de MSYS2, ni le comportement de SmartScreen, ni

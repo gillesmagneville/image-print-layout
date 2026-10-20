@@ -9,6 +9,16 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+## [0.3.0] - 2026-10-20
+
+Première version qui fait tout ce que demande le cahier des charges : on ouvre un SVG, on règle
+le papier, les marges, l'échelle et le positionnement, on place les coupures à la souris (ou on
+les fait proposer), on choisit le fond, on voit chaque feuille, on exporte un PDF multipage que
+le programme relit avant de le livrer, et on enregistre le projet pour le rouvrir plus tard. Les
+14 tests d'acceptation sont automatisés (`internal/acceptance`) et s'exécutent dans la CI sur
+chaque distribution Linux essayée et sous Windows. Reste, avant la 1.0.0, la recette sur des
+machines Windows 10 et 11 réelles et celle, à la main, des gestes de la souris (test 5).
+
 ### Ajouté
 
 - **Cœur de la mise en page, en Go pur (jalon M1)**, essayé par des tests sans cgo, dont des
@@ -35,7 +45,6 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 - **Tests d'acceptation 2, 3, 4, 6, 7 et 14 au niveau logique** : zone utile de 200 × 277 mm en A4
   portrait, échelle 0,15625 mm par unité pour 200 mm de large, proportions conservées, ajout et
   déplacement d'une coupure sans changement d'échelle, enregistrement et réouverture d'un projet.
-
 - **Document, analyse et fenêtre (jalon M2)** : la fenêtre ouvre un SVG, l'analyse, calcule ses
   pages avec le cœur de M1 et en montre le plan.
   - `internal/svgdoc` (Go pur) : lecture du SVG sans le dessiner, avec la position de chaque
@@ -145,7 +154,6 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
   reconstruit avec ce script se classe avant celui qui est déjà installé : `sudo dpkg -i`
   l'installe quand même, `apt install` demande `--allow-downgrades`. Le `.rpm` garde sa
   release : `svgprintlayout-<version>-1.x86_64.rpm`.
-
 - **Unité du document** : c'est le pixel CSS de la taille déclarée du SVG, celle que lit et
   dessine le moteur (ARCHITECTURE §5). Mode B : la portion ajustée à la hauteur d'une feuille est
   un réglage, pour que déplacer une coupure ne change jamais l'échelle.

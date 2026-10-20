@@ -82,6 +82,14 @@
   </categories>
 
   <releases>
+    <release version="0.3.0" date="2026-10-20">
+      <description>
+        <p>Complete page layout: paper, margins, scale and positioning, cuts placed with the mouse or proposed automatically, document and page backgrounds, a preview of every sheet, a verified multi-page PDF export, and projects that can be saved and reopened.</p>
+        <p xml:lang="fr">Mise en page complète : papier, marges, échelle et positionnement, coupures placées à la souris ou proposées automatiquement, fonds du document et de la page, aperçu de chaque feuille, export PDF multipage vérifié, et projets qu'on enregistre et qu'on rouvre.</p>
+        <p xml:lang="es">Maquetación completa: papel, márgenes, escala y posición, cortes colocados con el ratón o propuestos automáticamente, fondos del documento y de la página, vista previa de cada hoja, exportación a PDF multipágina verificada y proyectos que se guardan y se reabren.</p>
+        <p xml:lang="de">Vollständiges Seitenlayout: Papier, Ränder, Maßstab und Positionierung, mit der Maus gesetzte oder automatisch vorgeschlagene Schnitte, Hintergründe von Dokument und Seite, Vorschau jedes Blatts, geprüfter mehrseitiger PDF-Export sowie Projekte, die sich speichern und wieder öffnen lassen.</p>
+      </description>
+    </release>
     <release version="0.2.0" date="2026-10-20">
       <description>
         <p>First graphical interface: a GTK 4 window in English, French, Spanish and German that opens an SVG and shows it whole. Page layout, cuts and PDF export are not in the window yet.</p>

@@ -9,6 +9,15 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Modifié
+
+- **Nom du `.deb`** : `svgprintlayout_0.2.0_amd64.deb`, sans révision Debian (`-1`), comme les
+  paquets de Planche-Contact et de LinuxDoctor ; la version du paquet (`Version:` du
+  `control`) est `0.2.0` et non `0.2.0-1`. Le `.rpm` garde sa release :
+  `svgprintlayout-0.2.0-1.x86_64.rpm`. Pour qui a installé un `.deb` en `0.2.0-1`, `dpkg` voit
+  `0.2.0` comme une version plus ancienne : `sudo dpkg -i` l'installe quand même (`apt install`
+  demande `--allow-downgrades`).
+
 ## [0.2.0] - 2026-10-20
 
 Première version avec une interface graphique : une fenêtre GTK4 à trois panneaux, en

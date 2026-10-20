@@ -113,7 +113,7 @@ en charge »).
 Trois scripts, à la racine, construisent les paquets (comme dans Planche-Contact) :
 
 ```sh
-./build-deb.sh              # Debian, Ubuntu et dérivés : svgprintlayout_<version>-1_amd64.deb
+./build-deb.sh              # Debian, Ubuntu et dérivés : svgprintlayout_<version>_amd64.deb
 ./build-rpm.sh              # Fedora, RHEL et dérivés : svgprintlayout-<version>-<release>.x86_64.rpm
 ```
 
@@ -174,7 +174,7 @@ sudo dnf install golang gcc make pkgconf-pkg-config librsvg2-devel cairo-devel g
 Go 1.24 ou plus récent est nécessaire (`go.mod`) : si la version de la distribution est plus
 ancienne, installez celle de <https://go.dev/dl/>.
 
-L'organisation des paquets (contenu, numéros de version `0.1.0~dev-1` / `0.1.dev`,
+L'organisation des paquets (contenu, numéros de version `0.1.0~dev` / `0.1.dev`,
 construction reproductible, dépendances) est décrite dans `ARCHITECTURE.md`, §4 « Paquets » ;
 la construction Windows (MSYS2, NSIS, SmartScreen, dépannage) dans
 [`windows/README.md`](windows/README.md).

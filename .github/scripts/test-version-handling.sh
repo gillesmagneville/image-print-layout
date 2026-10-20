@@ -62,7 +62,7 @@ expected="$(next_version "$before" patch)"
 echo o | ./build-deb.sh --patch > /dev/null
 [ "$(cat VERSION)" = "$expected" ] || fail "VERSION vaut « $(cat VERSION) » après --patch, attendu « $expected »"
 [ "$(wc -l < VERSION)" -eq 1 ] || fail "VERSION doit tenir sur une ligne"
-ls ./svgprintlayout_"$expected"-1_*.deb > /dev/null || fail "paquet .deb de la version $expected introuvable"
+ls ./svgprintlayout_"$expected"_*.deb > /dev/null || fail "paquet .deb de la version $expected introuvable"
 echo "ok  --patch (deb) : $before -> $expected"
 
 # --- 4. Menu interactif : choix 2 (minor) puis confirmation ---------------

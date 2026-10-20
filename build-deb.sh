@@ -40,7 +40,7 @@ Le fichier VERSION n'est mis à jour qu'une fois le paquet construit. Une
 version d'avant-publication (0.1.0-dev) est publiée par --minor ou --patch
 (→ 0.1.0) ; --major donne 1.0.0.
 
-Le paquet est créé à la racine du dépôt : svgprintlayout_<version>-1_<arch>.deb
+Le paquet est créé à la racine du dépôt : svgprintlayout_<version>_<arch>.deb
 
 Prérequis (Debian, Ubuntu) :
   sudo apt install golang-go build-essential pkg-config librsvg2-dev libgtk-4-dev libgirepository1.0-dev dpkg-dev
@@ -178,14 +178,17 @@ else
 fi
 
 # Numéro de version Debian. Une version d'avant-publication (0.1.0-dev) doit se
-# classer avant la version finale (0.1.0) : c'est le rôle du « ~ ».
+# classer avant la version finale (0.1.0) : c'est le rôle du « ~ ». Pas de
+# révision Debian (« -1 ») : comme chez Planche-Contact et LinuxDoctor, le nom
+# du fichier est svgprintlayout_<version>_<arch>.deb ; le « -1 » reste celui du
+# .rpm (release).
 VERSION_BASE="${NEW_VERSION%%-*}"
 PRERELEASE=""
 if [[ "$NEW_VERSION" == *-* ]]; then
     PRERELEASE="${NEW_VERSION#*-}"
     PRERELEASE="${PRERELEASE//-/.}"
 fi
-DEB_VERSION="${VERSION_BASE}${PRERELEASE:+~$PRERELEASE}-1"
+DEB_VERSION="${VERSION_BASE}${PRERELEASE:+~$PRERELEASE}"
 
 # === Demande de confirmation ===
 echo ""

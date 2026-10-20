@@ -310,13 +310,13 @@ Tout repose sur trois repères et une échelle unique : les unités du document,
 
 ### Dimensions du document
 
-Les unités utilisateur sont celles de la `viewBox`. Pour la taille native, utilisée par l'échelle à 100 % :
+L'unité du document est le **pixel CSS de sa taille déclarée** (96 par pouce) : c'est ce que lit librsvg (`rsvg_handle_get_intrinsic_size_in_pixels`) et ce que le moteur dessine. Pour un SVG dont la `viewBox` et les `width` et `height` s'accordent (le cas du Mini-CAD, en pixels), c'est l'unité de la `viewBox`. Quand les deux diffèrent, le dessin est mis à la taille déclarée, et les positions des coupures sont comptées dans cette unité.
 
 - `width` et `height` en unité absolue (mm, cm, pouce, pt, pc, px) : conversion standard.
 - Sans unité, en pourcentage ou absents : une unité vaut un pixel CSS à 96 dpi, soit 25,4 / 96 = 0,26458 mm.
-- Ni `viewBox` ni dimensions : étendue du contenu mesurée par librsvg ; si elle est vide, erreur explicite.
+- Ni `viewBox` ni dimensions : le moteur refuse le document avec une erreur explicite (l'étendue du contenu n'est pas utilisée pour deviner une taille).
 
-Si le Mini-CAD est en pixels, ses 1 280 × 5 479 unités font 338,7 × 1 449,7 mm à 100 %.
+Le facteur de l'échelle native est donc toujours 25,4 / 96 mm par unité (`layout.NativeMMPerUnit`). Si le Mini-CAD est en pixels, ses 1 280 × 5 479 unités font 338,7 × 1 449,7 mm à 100 %.
 
 ### Échelle
 
@@ -326,13 +326,13 @@ L'échelle `s` est un nombre unique, en mm par unité, stocké à un seul endroi
 s = \frac{L}{W_d} \qquad h_i = (y_i - y_{i-1})\, s \qquad w = W_d\, s = L
 ```
 
-`W_d` est la largeur du document en unités, `L` la largeur choisie en mm, `y_i` la position de la coupure i en unités, `h_i` la hauteur de la page i en mm.
+`W_d` est la largeur du document en unités, `L` la largeur choisie en mm, `y_i` la position de la coupure i en unités, `h_i` la hauteur de la page i en mm. `s` ne dépend que du papier, des marges, du mode et de la taille du document, jamais des coupures : `layout.ScaleOf` est le seul endroit où il est calculé.
 
 | Mode | Calcul de `s` |
 | --- | --- |
 | A. Largeur | `L` = largeur utile du papier (largeur du papier moins marges gauche et droite) |
-| B. Hauteur | `s` = hauteur utile divisée par la hauteur en unités de la portion choisie, par défaut la première page. La largeur obtenue est ensuite comparée à la largeur utile |
-| C. Manuel | `L` saisie en mm, ou facteur `f` en % : `s` = `f` × échelle native |
+| B. Hauteur | `s` = hauteur utile divisée par la hauteur en unités de la **portion** choisie (`portionUnits`, la totalité du document si elle est nulle). La portion est un réglage, pas une page : déplacer une coupure ne change donc pas l'échelle. L'interface propose de la prendre égale à la hauteur d'une page existante. La largeur obtenue est ensuite comparée à la largeur utile |
+| C. Manuel | `L` saisie en mm (mode `width`), ou facteur `f` en % (mode `factor`) : `s` = `f` × échelle native |
 
 La largeur est affichée en mm et en cm. Le test d'acceptation donne `s` = 200 / 1 280 = 0,15625 mm par unité, soit 856,1 mm de hauteur totale.
 
@@ -452,13 +452,15 @@ Quand une page dépasse en hauteur, le plan fournit quatre propositions chiffré
 1. **Ajouter une coupure** à la position la plus favorable de la bande (voir plus bas).
 2. **Déplacer la coupure voisine** à la hauteur maximale que la page accepte.
 3. **Réduire l'échelle** à la valeur qui fait tenir la bande la plus haute, avec la largeur qui en résulte (par exemple « 78 %, largeur 156 mm »).
-4. **Changer de format** : premier format dont la zone utile contient la bande la plus haute à l'échelle actuelle.
+4. **Changer de format** : premier format, du plus petit au plus grand et dans les deux orientations, pour lequel toutes les pages tiennent (le plan est recalculé pour chaque essai, car en mode A l'échelle suit le papier). Rien n'est proposé si aucun ne convient.
+
+Chaque proposition porte un indicateur « résout tout » : une fois appliquée, plus aucune page ne dépasse (une coupure ajoutée sur un document de 856 mm n'y suffit pas, la proposition suivante prend le relais). La réduction d'échelle arrondit la largeur au dixième de millimètre inférieur et s'applique en mode C, largeur.
 
 Pour un dépassement en largeur, seules les propositions 3 et 4 existent. Aucune n'est appliquée sans un clic, ce qui garantit l'absence de réduction silencieuse.
 
 ### Coupures
 
-Une coupure porte un identifiant, un axe (réservé, `y` seul en v1) et une position en unités. Invariants : `0 < y < H_d`, ordre strict, écart minimal de 0,5 mm physique avec les bords et les autres coupures. Ajouter, déplacer et supprimer sont des commandes pures qui renvoient un nouvel état ; une propriété testée établit que `s` est identique avant et après chacune d'elles.
+Une coupure porte un identifiant, un axe (réservé, `y` seul en v1) et une position en unités. Invariants : `0 < y < H_d`, ordre strict, écart minimal de 0,5 mm physique avec les bords et les autres coupures. Ajouter, déplacer et supprimer sont des commandes pures qui renvoient un nouvel état ; une propriété testée établit que `s` est identique avant et après chacune d'elles. Le plan n'exige que la structure (ordre strict, à l'intérieur du document) : un changement d'échelle peut rapprocher deux coupures sous 0,5 mm sans rendre le projet illisible, seules les commandes appliquent l'écart. L'identifiant d'une coupure ne change pas quand elle bouge et n'est jamais réutilisé ; il n'est pas enregistré, les coupures sont renumérotées à chaque ouverture.
 
 Pendant le glisser, la coupure s'aimante aux vides détectés dans un rayon de 8 pixels d'écran ; maintenir Alt désactive l'aimantation.
 
@@ -472,9 +474,9 @@ Une coupure traverse un bloc si sa position est strictement à l'intérieur de l
 
 1. **Nombre de pages minimal** : `n_min` = plafond de (hauteur du document en mm / hauteur utile).
 2. **Vides** : l'union des intervalles verticaux des blocs, complémentée, donne les zones où rien n'est traversé. Le coût d'une position est le nombre de blocs qu'elle traverse, nul dans un vide.
-3. **Recherche** pour `n` de `n_min` à `n_min + 2` : programmation dynamique sur les positions candidates (centre de chaque vide et positions idéales `j × H_d / n`), avec comme contraintes que chaque bande tienne dans la hauteur utile et ne soit pas inférieure à 40 % de la bande idéale. Critères, dans l'ordre : moins de blocs traversés, puis bandes les plus équilibrées.
-4. **Proximité** : le centre d'un vide maximise la distance aux blocs voisins ; un vide de moins de 2 mm physiques compte comme « à proximité » et produit un avertissement.
-5. **Résultat** : une proposition, appliquée par une seule commande annulable. Si aucune solution n'existe jusqu'à `n_min + 2`, la meilleure est renvoyée avec ses avertissements. L'utilisateur déplace ensuite chaque coupure.
+3. **Recherche** pour `n` de `n_min` à `n_min + 2` : programmation dynamique sur les positions candidates (centre de chaque vide, positions idéales `j × H_d / n` et, près de chacune d'elles, le point d'un vide le plus proche, à une unité du bord), avec comme contraintes que chaque bande tienne dans la hauteur utile et ne soit pas inférieure à 40 % de la bande idéale. Critères, dans l'ordre : moins de blocs traversés, puis moins de coupures à moins de 2 mm d'un bloc, puis moins de pages, puis bandes les plus équilibrées (somme des carrés des écarts relatifs à la bande idéale).
+4. **Proximité** : le centre d'un vide maximise la distance aux blocs voisins ; une coupure à moins de 2 mm physiques d'un bloc, sans le traverser, compte comme « à proximité » et produit un avertissement.
+5. **Résultat** : une proposition, appliquée par une seule commande annulable (`SetCuts`, qui abandonne les surcharges de pages devenues sans objet). Les positions idéales étant candidates et tenant toujours dans la hauteur utile dès que `n ≥ n_min`, une solution existe toujours ; quand une coupure ne peut éviter un bloc, la proposition le dit (« la coupure 2 traverse des blocs »). L'utilisateur déplace ensuite chaque coupure.
 
 ## 8. Gestion du fond
 
@@ -578,7 +580,7 @@ Le projet est un fichier JSON lisible et versionné, d'extension `.svgpl`. Il en
   },
   "paper": { "format": "A4", "orientation": "portrait", "customMm": null },
   "marginsMm": { "top": 10, "bottom": 10, "left": 5, "right": 5 },
-  "scale": { "mode": "width", "widthMm": 200 },
+  "scale": { "mode": "width", "widthMm": 200, "percent": 0, "portionUnits": 0 },
   "placement": { "horizontal": "center", "vertical": "top", "offsetXMm": 0, "offsetYMm": 0 },
   "background": { "document": "whiten", "element": "rect4521", "page": "white" },
   "cuts": [
@@ -594,6 +596,7 @@ Le projet est un fichier JSON lisible et versionné, d'extension `.svgpl`. Il en
 Règles de lecture et d'écriture :
 
 - **Écriture déterministe.** UTF-8, clés dans un ordre fixe, indentation de 2 espaces, nombres en représentation décimale la plus courte, écriture atomique (fichier temporaire puis renommage). Un même projet donne les mêmes octets.
+- **Réglages complets, lecture stricte.** Tous les réglages sont écrits, même ceux d'un mode non choisi (le pourcentage quand le mode est « largeur » : passer d'un mode à l'autre dans l'interface ne fait pas perdre la dernière valeur saisie). À la lecture, un champ inconnu ou une valeur invalide (format de papier inexistant, marge négative, coupures hors ordre ou hors du document, surcharge d'une page qui n'existe pas) refuse le fichier en nommant le champ ; l'orientation, l'alignement et le fond de page absents prennent leur valeur par défaut. Les identifiants de coupures ne sont pas écrits.
 - **Versions.** `version` est un entier. Chaque évolution ajoute une fonction de migration `vN → vN+1`, testée sur des fichiers d'exemple. Un fichier d'une version plus récente est refusé avec un message clair, jamais ouvert partiellement.
 - **Chemins.** Relatif au fichier projet, avec `/` comme séparateur sur toutes les plateformes, et repli sur le chemin absolu. Si le SVG est introuvable, un dialogue propose de le localiser et les réglages sont conservés.
 - **Intégrité de la source.** Le SHA-256 et les dimensions sont enregistrés. Si le hash a changé à la réouverture, un avertissement non bloquant explique que les coupures sont en unités du document et peuvent ne plus tomber là où elles avaient été placées. Si les dimensions ont changé, les coupures devenues hors du document sont signalées puis retirées après confirmation.
@@ -702,7 +705,7 @@ Six jalons, dont M0 est le point de décision : le calcul de pages (M1) ne dépe
 | M4. Fond et export | Détection et remplacement du fond, export PDF, vérifications, aperçu de page | Tests 8 à 13 passés |
 | M5. Projet, paquets, recette | Enregistrement et réouverture dans l'interface, paquet .deb, installateur Windows, recette complète | Les 14 tests réussissent sur chaque système pris en charge : Debian 13 et Ubuntu 24.04 (famille Debian), RHEL 10 ou un clone (famille Red Hat), Windows 10 et Windows 11 |
 
-**État.** Le squelette du dépôt, le paquet `units`, le prototype du moteur (M0a, `docs/M0.md`), les scripts qui construisent les paquets `.deb`, `.rpm` et Windows, le paquet de traduction `i18n` et une première fenêtre GTK4 (trois panneaux, quatre langues, ouverture d'un SVG affiché en entier ; M0b) existent, avec leur CI, qui construit et essaie le paquet sur sept distributions Linux (familles Debian et Red Hat) et sur Windows. M0 n'est pas terminé : la comparaison du plan produit sous Windows et sous Linux reste à faire. Le `CHANGELOG.md` tient le détail.
+**État.** Le squelette du dépôt, le paquet `units`, le prototype du moteur (M0a, `docs/M0.md`), les scripts qui construisent les paquets `.deb`, `.rpm` et Windows, le paquet de traduction `i18n` et une première fenêtre GTK4 (trois panneaux, quatre langues, ouverture d'un SVG affiché en entier ; M0b) existent, avec leur CI, qui construit et essaie le paquet sur sept distributions Linux (familles Debian et Red Hat) et sur Windows. M0 n'est pas terminé : la comparaison du plan produit sous Windows et sous Linux reste à faire. **M1 est fait** : `model`, `diag`, `layout` (échelle, feuille, plan, états, corrections, coupures, aimantation, coupures automatiques) et `project` (format `.svgpl`) sont écrits et testés sans cgo, avec des tests de propriétés ; les panneaux de la fenêtre ne les utilisent pas encore. Le `CHANGELOG.md` tient le détail.
 
 Après la v1, le §14 du cahier reste la liste des suites possibles. L'aperçu du PDF réel relu par un moteur PDF indépendant (le cahier demande « un aperçu du PDF final ») est le premier candidat : la v1 s'en tient à l'aperçu produit par la même fonction de dessin, ce qui est fidèle au PDF par construction.
 

@@ -9,6 +9,33 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Ajouté
+
+- **Cœur de la mise en page, en Go pur (jalon M1)**, essayé par des tests sans cgo, dont des
+  tests de propriétés tirés au hasard (graine fixe) :
+  - `internal/model` : les réglages d'un projet (papier, marges, échelle, positionnement, fond,
+    coupures, surcharges par page), valeurs immuables copiées par chaque commande ;
+  - `internal/layout` : la feuille et sa zone utile (formats A0 à A5, Letter, Legal, Tabloid,
+    personnalisé en mm ; portrait ou paysage ; quatre marges indépendantes), l'échelle unique en
+    trois modes (largeur, hauteur, manuel par largeur ou par pourcentage), le plan des pages
+    (bandes qui couvrent le document sans trou, même largeur partout, positionnement horizontal et
+    vertical indépendant de l'échelle, surcharges par page, états Conforme, Dépassement de marge,
+    Dépassement de feuille, page vide), les coupures (ajout, déplacement, suppression, bornes d'un
+    glisser, écart minimal de 0,5 mm, identifiants stables), les vides entre blocs, la détection
+    des coupures qui traversent un bloc, l'aimantation aux vides, les quatre corrections proposées
+    quand une page dépasse (jamais appliquées seules) et les coupures automatiques
+    (programmation dynamique : moins de blocs traversés, puis moins de pages, puis pages
+    équilibrées) ;
+  - `internal/project` : le fichier de projet `.svgpl` (JSON lisible, écriture déterministe et
+    atomique, version avec migrations, lecture stricte, chemin relatif au projet avec repli sur
+    le chemin absolu, empreinte SHA-256 et avertissements quand le SVG a changé) ;
+  - `internal/diag` : les diagnostics, par code et valeurs, avec leurs textes en quatre langues ;
+    un test vérifie que chaque code a un texte dans chaque langue et que le code n'en produit pas
+    d'autre.
+- **Tests d'acceptation 2, 3, 4, 6, 7 et 14 au niveau logique** : zone utile de 200 × 277 mm en A4
+  portrait, échelle 0,15625 mm par unité pour 200 mm de large, proportions conservées, ajout et
+  déplacement d'une coupure sans changement d'échelle, enregistrement et réouverture d'un projet.
+
 ### Modifié
 
 - **Nom du `.deb`** : `svgprintlayout_<version>_amd64.deb`, sans révision Debian (`-1`),
@@ -18,6 +45,10 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
   reconstruit avec ce script se classe avant celui qui est déjà installé : `sudo dpkg -i`
   l'installe quand même, `apt install` demande `--allow-downgrades`. Le `.rpm` garde sa
   release : `svgprintlayout-<version>-1.x86_64.rpm`.
+
+- **Unité du document** : c'est le pixel CSS de la taille déclarée du SVG, celle que lit et
+  dessine le moteur (ARCHITECTURE §5). Mode B : la portion ajustée à la hauteur d'une feuille est
+  un réglage, pour que déplacer une coupure ne change jamais l'échelle.
 
 ## [0.2.0] - 2026-10-20
 

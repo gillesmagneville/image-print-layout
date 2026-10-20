@@ -12,7 +12,9 @@ import (
 	"github.com/gillesmagneville/svg-print-layout/internal/i18n"
 )
 
-var diagCall = regexp.MustCompile(`diag\.(?:New|Fail)\(\s*"([a-z_.]+)"`)
+// A code is produced by diag.New and diag.Fail, or by the add method of the
+// report of internal/svgdoc, which builds the same items.
+var diagCall = regexp.MustCompile(`(?:diag\.(?:New|Fail)|\br\.add)\(\s*"([a-z_.]+)"`)
 var placeholderName = regexp.MustCompile(`\{([^{}]*)\}`)
 
 // Every diagnostic the program can produce has a text in each language, which

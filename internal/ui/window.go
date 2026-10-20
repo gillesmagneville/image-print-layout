@@ -16,9 +16,11 @@ import (
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 
 	"github.com/gillesmagneville/svg-print-layout/internal/app"
+	"github.com/gillesmagneville/svg-print-layout/internal/diag"
 	"github.com/gillesmagneville/svg-print-layout/internal/engine"
 	"github.com/gillesmagneville/svg-print-layout/internal/i18n"
-	"github.com/gillesmagneville/svg-print-layout/internal/units"
+	"github.com/gillesmagneville/svg-print-layout/internal/layout"
+	"github.com/gillesmagneville/svg-print-layout/internal/model"
 )
 
 // Available tells whether this build has a graphical interface.
@@ -68,39 +70,39 @@ type window struct {
 	settingsPath string
 	texts        translations
 
-	engine *worker
+	// engine runs the jobs that touch the rendering engine, one at a time.
+	engine   *worker
+	services app.Services
+	// session is the work in progress: the document, the project, the plan and
+	// the history. It is used on the thread of the window only.
+	session *app.Session
+	// engineDoc is the loaded document; only the worker uses it.
+	engineDoc engine.Document
 
-	// What the document is. These fields are written on the thread of the
-	// window only; the loaded document itself belongs to the worker.
-	path       string
-	docW, docH float64
-	hasDoc     bool
-
-	// A drawing is asked for after every change of size; an older answer is
-	// dropped (renderGen), and the program does not quit for a screenshot
-	// while one is on its way (busy).
-	renderGen   int
-	busy        int
-	resizeTimer glib.SourceHandle
+	// A drawing is asked for after every movement of the view; an older answer
+	// is dropped (renderGen) when a newer one is on its way, and the program
+	// does not quit for a screenshot while one is (busy).
+	renderGen int
+	busy      int
 
 	// Widgets.
 	pv         *preview
+	panel      *settingsPanel
+	pages      *pagesPanel
 	stack      *gtk.Stack
 	status     *gtk.Label
 	menuButton *gtk.MenuButton
 	langAction *gio.SimpleAction
+	undoAction *gio.SimpleAction
+	redoAction *gio.SimpleAction
+	undoButton *gtk.Button
+	redoButton *gtk.Button
 	statusKey  string
 	statusArgs []any
-	exitCode   int
-	sourceNone *gtk.Label
-	sourceBox  *gtk.Box
-	sourceFile *gtk.Label
-	sourceSize *gtk.Label
-	sourceMM   *gtk.Label
-	pagesNone  *gtk.Label
-
-	// The loaded engine document: only the worker reads or writes it.
-	engineDoc *engine.Doc
+	// What the status bar said before a refusal, to say again once it is over.
+	beforeRefusal     string
+	beforeRefusalArgs []any
+	exitCode          int
 }
 
 func newWindow(application *gtk.Application, opts Options, settings app.Settings, settingsPath string, lang i18n.Lang) *window {
@@ -111,6 +113,8 @@ func newWindow(application *gtk.Application, opts Options, settings app.Settings
 		settingsPath: settingsPath,
 		texts:        translations{tr: i18n.New(lang)},
 		engine:       newWorker(),
+		services:     defaultServices(),
+		session:      app.NewSession(),
 	}
 	w.win = gtk.NewApplicationWindow(application)
 	w.win.SetDefaultSize(1280, 800)
@@ -146,6 +150,7 @@ func newWindow(application *gtk.Application, opts Options, settings app.Settings
 	w.win.SetChild(body)
 
 	w.texts.bind(func(tr *i18n.Translator) { w.updateTitle() })
+	w.refreshAll()
 	return w
 }
 
@@ -157,52 +162,6 @@ func (w *window) show() {
 	if w.opts.ReadyFile != "" {
 		w.announceReady()
 	}
-}
-
-// buildActions creates the actions of the menu and the keyboard shortcuts.
-func (w *window) buildActions() {
-	add := func(name string, run func()) {
-		a := gio.NewSimpleAction(name, nil)
-		a.ConnectActivate(func(*glib.Variant) { run() })
-		w.win.AddAction(a)
-	}
-	add("open", w.openDialog)
-	add("about", w.showAbout)
-	add("quit", w.app.Quit)
-
-	w.langAction = gio.NewSimpleActionStateful("language", glib.NewVariantType("s"), glib.NewVariantString(w.settings.Language))
-	w.langAction.ConnectActivate(func(param *glib.Variant) {
-		if param != nil {
-			w.setLanguageSetting(param.String())
-		}
-	})
-	w.win.AddAction(w.langAction)
-
-	w.app.SetAccelsForAction("win.open", []string{"<Control>o"})
-	w.app.SetAccelsForAction("win.quit", []string{"<Control>q"})
-}
-
-// buildHeaderBar fills the title bar: open on the left, the menu on the right.
-func (w *window) buildHeaderBar() {
-	bar := gtk.NewHeaderBar()
-
-	open := gtk.NewButton()
-	open.SetActionName("win.open")
-	w.texts.bind(func(tr *i18n.Translator) {
-		open.SetLabel(tr.T("action.open_svg"))
-		open.SetTooltipText(tr.T("action.open_svg.tooltip"))
-	})
-	bar.PackStart(open)
-
-	w.menuButton = gtk.NewMenuButton()
-	w.menuButton.SetIconName("open-menu-symbolic")
-	w.texts.bind(func(tr *i18n.Translator) {
-		w.menuButton.SetTooltipText(tr.T("menu.title"))
-		w.menuButton.SetMenuModel(w.buildMenu(tr))
-	})
-	bar.PackEnd(w.menuButton)
-
-	w.win.SetTitlebar(bar)
 }
 
 // buildMenu is the main menu in the language of the translator.
@@ -223,49 +182,6 @@ func (w *window) buildMenu(tr *i18n.Translator) *gio.Menu {
 	return menu
 }
 
-// buildSettingsPanel is the left panel: the settings, one folding section
-// after another (ARCHITECTURE §9). Only the source file is filled for now.
-func (w *window) buildSettingsPanel() gtk.Widgetter {
-	column := gtk.NewBox(gtk.OrientationVertical, 6)
-	column.SetMarginTop(12)
-	column.SetMarginBottom(12)
-	column.SetMarginStart(12)
-	column.SetMarginEnd(12)
-
-	// Source file.
-	w.sourceBox = gtk.NewBox(gtk.OrientationVertical, 4)
-	w.sourceNone = newLabel()
-	w.sourceFile = newLabel()
-	w.sourceSize = newLabel()
-	w.sourceMM = newLabel()
-	for _, l := range []*gtk.Label{w.sourceFile, w.sourceSize, w.sourceMM} {
-		w.sourceBox.Append(l)
-	}
-	w.sourceBox.SetVisible(false)
-	source := gtk.NewBox(gtk.OrientationVertical, 4)
-	source.Append(w.sourceNone)
-	source.Append(w.sourceBox)
-	w.texts.bind(func(tr *i18n.Translator) {
-		w.sourceNone.SetLabel(tr.T("source.none"))
-		w.refreshSource()
-	})
-	column.Append(w.section("panel.source.title", source, true))
-
-	// The other sections wait for the commands that drive them.
-	for _, key := range []string{"panel.paper.title", "panel.margins.title", "panel.scale.title", "panel.placement.title", "panel.background.title", "panel.export.title"} {
-		soon := newLabel()
-		soon.AddCSSClass("dim-label")
-		w.texts.bind(func(tr *i18n.Translator) { soon.SetLabel(tr.T("panel.soon")) })
-		column.Append(w.section(key, soon, false))
-	}
-
-	scroll := gtk.NewScrolledWindow()
-	scroll.SetPolicy(gtk.PolicyNever, gtk.PolicyAutomatic)
-	scroll.SetChild(column)
-	scroll.SetSizeRequest(240, -1)
-	return scroll
-}
-
 // section is a folding block of the settings panel with a translated title.
 func (w *window) section(titleKey string, content gtk.Widgetter, expanded bool) *gtk.Expander {
 	e := gtk.NewExpander("")
@@ -273,63 +189,6 @@ func (w *window) section(titleKey string, content gtk.Widgetter, expanded bool) 
 	e.SetChild(content)
 	w.texts.bind(func(tr *i18n.Translator) { e.SetLabel(tr.T(titleKey)) })
 	return e
-}
-
-// buildCentre is the preview, or an invitation to open a document.
-func (w *window) buildCentre() gtk.Widgetter {
-	w.pv = newPreview()
-	w.pv.area.ConnectResize(func(int, int) { w.scheduleRender() })
-
-	empty := gtk.NewBox(gtk.OrientationVertical, 12)
-	empty.SetVAlign(gtk.AlignCenter)
-	empty.SetHAlign(gtk.AlignCenter)
-	title := gtk.NewLabel("")
-	title.AddCSSClass("title-2")
-	hint := gtk.NewLabel("")
-	hint.AddCSSClass("dim-label")
-	open := gtk.NewButton()
-	open.SetActionName("win.open")
-	open.SetHAlign(gtk.AlignCenter)
-	open.AddCSSClass("suggested-action")
-	empty.Append(title)
-	empty.Append(hint)
-	empty.Append(open)
-	w.texts.bind(func(tr *i18n.Translator) {
-		title.SetLabel(tr.T("preview.empty.title"))
-		hint.SetLabel(tr.T("preview.empty.hint"))
-		open.SetLabel(tr.T("action.open_svg"))
-	})
-
-	w.stack = gtk.NewStack()
-	w.stack.AddNamed(empty, "empty")
-	w.stack.AddNamed(w.pv.area, "preview")
-	w.stack.SetVisibleChildName("empty")
-	w.stack.SetHExpand(true)
-	w.stack.SetVExpand(true)
-	return w.stack
-}
-
-// buildPagesPanel is the right panel: the list of pages (empty until there is
-// a document to cut).
-func (w *window) buildPagesPanel() gtk.Widgetter {
-	column := gtk.NewBox(gtk.OrientationVertical, 6)
-	column.SetMarginTop(12)
-	column.SetMarginBottom(12)
-	column.SetMarginStart(12)
-	column.SetMarginEnd(12)
-	title := gtk.NewLabel("")
-	title.AddCSSClass("heading")
-	title.SetXAlign(0)
-	w.pagesNone = newLabel()
-	w.pagesNone.AddCSSClass("dim-label")
-	column.Append(title)
-	column.Append(w.pagesNone)
-	w.texts.bind(func(tr *i18n.Translator) {
-		title.SetLabel(tr.T("pages.title"))
-		w.pagesNone.SetLabel(tr.T("pages.none"))
-	})
-	column.SetSizeRequest(240, -1)
-	return column
 }
 
 func (w *window) buildStatusBar() gtk.Widgetter {
@@ -360,45 +219,27 @@ func newLabel() *gtk.Label {
 // setStatus says something in the status bar, and remembers it so that it can
 // be said again in another language.
 func (w *window) setStatus(key string, args ...any) {
+	if w.statusKey != "status.refused" {
+		w.beforeRefusal, w.beforeRefusalArgs = w.statusKey, w.statusArgs
+	}
 	w.statusKey, w.statusArgs = key, args
-	w.status.SetLabel(w.texts.tr.T(key, args...))
+	w.status.SetLabel(w.statusText())
 }
 
-func (w *window) updateTitle() {
-	title := "SVG Print Layout"
-	if w.path != "" {
-		title = filepath.Base(w.path) + " — " + title
-	}
-	w.win.SetTitle(title)
-	if w.status != nil && w.statusKey != "" {
-		w.status.SetLabel(w.texts.tr.T(w.statusKey, w.statusArgs...))
-	}
-}
+// lazyText is a value of a status that is written when it is shown, in the
+// language of the moment: the reason of a refusal follows a change of language.
+type lazyText func(tr *i18n.Translator) string
 
-// refreshSource shows what is known of the document in the source section.
-func (w *window) refreshSource() {
-	tr := w.texts.tr
-	w.sourceNone.SetVisible(!w.hasDoc)
-	w.sourceBox.SetVisible(w.hasDoc)
-	if !w.hasDoc {
-		return
+// statusText is the status in the current language.
+func (w *window) statusText() string {
+	args := make([]any, len(w.statusArgs))
+	for i, a := range w.statusArgs {
+		if f, ok := a.(lazyText); ok {
+			a = f(w.texts.tr)
+		}
+		args[i] = a
 	}
-	w.sourceFile.SetLabel(tr.T("source.file", "name", filepath.Base(w.path)))
-	w.sourceSize.SetLabel(tr.T("source.size", "w", shown(tr, w.docW), "h", shown(tr, w.docH)))
-	w.sourceMM.SetLabel(tr.T("source.size.mm", "w", shown(tr, units.PxToMM(w.docW)), "h", shown(tr, units.PxToMM(w.docH))))
-}
-
-// setLanguageSetting applies and saves the language chosen in the menu.
-func (w *window) setLanguageSetting(setting string) {
-	lang := i18n.Resolve(setting, os.Getenv)
-	w.settings.Language = setting
-	w.langAction.SetState(glib.NewVariantString(setting))
-	w.texts.switchTo(lang)
-	if w.settingsPath != "" {
-		// A preference that cannot be saved is not worth interrupting the
-		// user: the language still changes for this session.
-		_ = w.settings.Save(w.settingsPath)
-	}
+	return w.texts.tr.T(w.statusKey, args...)
 }
 
 // showAbout opens the About box.
@@ -438,51 +279,6 @@ func (w *window) openDialog() {
 		}
 		w.openPath(file.Path())
 	})
-}
-
-// openPath loads a document off the thread of the window and shows it.
-func (w *window) openPath(path string) {
-	w.setStatus("status.loading", "name", filepath.Base(path))
-	w.busy++
-	w.engine.do(func() {
-		doc, err := loadDocument(path)
-		glib.IdleAdd(func() {
-			w.busy--
-			if err != nil {
-				w.setStatus("status.ready")
-				w.showOpenError(path, err)
-				return
-			}
-			w.adopt(path, doc)
-		})
-	})
-}
-
-// loadDocument reads and parses a file. It runs on the worker.
-func loadDocument(path string) (*engine.Doc, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	return engine.Load(data)
-}
-
-// adopt makes a loaded document the current one. It runs on the thread of the
-// window; the previous document is closed by the worker, which owns it.
-func (w *window) adopt(path string, doc *engine.Doc) {
-	previous := w.engineDoc
-	w.engineDoc = doc
-	if previous != nil {
-		w.engine.do(previous.Close)
-	}
-	w.path = path
-	w.docW, w.docH = doc.Size()
-	w.hasDoc = true
-	w.updateTitle()
-	w.refreshSource()
-	w.stack.SetVisibleChildName("preview")
-	w.setStatus("status.loaded", "name", filepath.Base(path), "w", shown(w.texts.tr, w.docW), "h", shown(w.texts.tr, w.docH))
-	w.renderNow()
 }
 
 // showOpenError tells the user that a document could not be opened.
@@ -531,54 +327,335 @@ func (w *window) showMessage(heading, detail string) {
 	dialog.Present()
 }
 
-// scheduleRender draws the document again once the window has stopped
-// changing size: a drag of the window edge makes dozens of resizes.
-func (w *window) scheduleRender() {
-	if !w.hasDoc {
-		return
+// String describes the window for a test failure.
+func (w *window) String() string {
+	path := ""
+	if doc := w.session.Document(); doc != nil {
+		path = doc.Path
 	}
-	if w.resizeTimer != 0 {
-		glib.SourceRemove(w.resizeTimer)
-	}
-	w.resizeTimer = glib.TimeoutAdd(120, func() bool {
-		w.resizeTimer = 0
-		w.renderNow()
-		return false
-	})
+	return fmt.Sprintf("window{path=%q language=%s}", path, w.texts.tr.Lang())
 }
 
-// renderNow draws the whole document so that it fits the preview.
-func (w *window) renderNow() {
-	if !w.hasDoc {
+// ---- construction ------------------------------------------------------------
+
+// buildActions creates the actions of the menu and the keyboard shortcuts.
+func (w *window) buildActions() {
+	add := func(name string, run func()) *gio.SimpleAction {
+		a := gio.NewSimpleAction(name, nil)
+		a.ConnectActivate(func(*glib.Variant) { run() })
+		w.win.AddAction(a)
+		return a
+	}
+	add("open", w.openDialog)
+	add("about", w.showAbout)
+	add("quit", w.app.Quit)
+	w.undoAction = add("undo", w.undo)
+	w.redoAction = add("redo", w.redo)
+	add("zoom-in", func() { w.pv.zoomIn() })
+	add("zoom-out", func() { w.pv.zoomOut() })
+	add("fit-all", func() { w.pv.showAll() })
+	add("fit-width", func() { w.pv.showWidth() })
+
+	w.langAction = gio.NewSimpleActionStateful("language", glib.NewVariantType("s"), glib.NewVariantString(w.settings.Language))
+	w.langAction.ConnectActivate(func(param *glib.Variant) {
+		if param != nil {
+			w.setLanguageSetting(param.String())
+		}
+	})
+	w.win.AddAction(w.langAction)
+
+	w.app.SetAccelsForAction("win.open", []string{"<Control>o"})
+	w.app.SetAccelsForAction("win.quit", []string{"<Control>q"})
+	w.app.SetAccelsForAction("win.undo", []string{"<Control>z"})
+	w.app.SetAccelsForAction("win.redo", []string{"<Control><Shift>z", "<Control>y"})
+	w.app.SetAccelsForAction("win.zoom-in", []string{"<Control>plus", "<Control>equal", "<Control>KP_Add"})
+	w.app.SetAccelsForAction("win.zoom-out", []string{"<Control>minus", "<Control>KP_Subtract"})
+	w.app.SetAccelsForAction("win.fit-all", []string{"<Control>0", "<Control>KP_0"})
+	w.app.SetAccelsForAction("win.fit-width", []string{"<Control>1", "<Control>KP_1"})
+}
+
+// buildHeaderBar fills the title bar: open, undo and redo on the left, the
+// menu on the right.
+func (w *window) buildHeaderBar() {
+	bar := gtk.NewHeaderBar()
+
+	open := gtk.NewButton()
+	open.SetActionName("win.open")
+	w.texts.bind(func(tr *i18n.Translator) {
+		open.SetLabel(tr.T("action.open_svg"))
+		open.SetTooltipText(tr.T("action.open_svg.tooltip"))
+	})
+	bar.PackStart(open)
+
+	history := gtk.NewBox(gtk.OrientationHorizontal, 0)
+	history.AddCSSClass("linked")
+	w.undoButton = gtk.NewButtonFromIconName("edit-undo-symbolic")
+	w.undoButton.SetActionName("win.undo")
+	w.redoButton = gtk.NewButtonFromIconName("edit-redo-symbolic")
+	w.redoButton.SetActionName("win.redo")
+	history.Append(w.undoButton)
+	history.Append(w.redoButton)
+	bar.PackStart(history)
+
+	w.menuButton = gtk.NewMenuButton()
+	w.menuButton.SetIconName("open-menu-symbolic")
+	w.texts.bind(func(tr *i18n.Translator) {
+		w.menuButton.SetTooltipText(tr.T("menu.title"))
+		w.menuButton.SetMenuModel(w.buildMenu(tr))
+	})
+	bar.PackEnd(w.menuButton)
+
+	w.win.SetTitlebar(bar)
+}
+
+// buildCentre is the preview, or an invitation to open a document.
+func (w *window) buildCentre() gtk.Widgetter {
+	w.pv = newPreview(&w.texts)
+	w.pv.pageLabel = func(n int) string { return w.texts.tr.T("pages.row.title", "n", n) }
+	w.pv.onNeedRender = func() { w.renderView(false) }
+
+	empty := gtk.NewBox(gtk.OrientationVertical, 12)
+	empty.SetVAlign(gtk.AlignCenter)
+	empty.SetHAlign(gtk.AlignCenter)
+	title := gtk.NewLabel("")
+	title.AddCSSClass("title-2")
+	hint := gtk.NewLabel("")
+	hint.AddCSSClass("dim-label")
+	open := gtk.NewButton()
+	open.SetActionName("win.open")
+	open.SetHAlign(gtk.AlignCenter)
+	open.AddCSSClass("suggested-action")
+	empty.Append(title)
+	empty.Append(hint)
+	empty.Append(open)
+	w.texts.bind(func(tr *i18n.Translator) {
+		title.SetLabel(tr.T("preview.empty.title"))
+		hint.SetLabel(tr.T("preview.empty.hint"))
+		open.SetLabel(tr.T("action.open_svg"))
+	})
+
+	w.stack = gtk.NewStack()
+	w.stack.AddNamed(empty, "empty")
+	w.stack.AddNamed(w.pv.widget(), "preview")
+	w.stack.SetVisibleChildName("empty")
+	w.stack.SetHExpand(true)
+	w.stack.SetVExpand(true)
+	return w.stack
+}
+
+// ---- state -------------------------------------------------------------------------
+
+func (w *window) updateTitle() {
+	title := "SVG Print Layout"
+	if doc := w.session.Document(); doc != nil {
+		title = baseName(doc.Path) + " — " + title
+	}
+	w.win.SetTitle(title)
+	if w.status != nil && w.statusKey != "" {
+		w.status.SetLabel(w.statusText())
+	}
+}
+
+// refreshAll shows the session everywhere: the panels, the list of pages, the
+// marks on the preview, the buttons of the history.
+func (w *window) refreshAll() {
+	if w.panel == nil || w.pages == nil || w.pv == nil {
 		return
 	}
-	width, height := w.pv.area.Width(), w.pv.area.Height()
-	const margin = 24.0
-	scale := math.Min((float64(width)-2*margin)/w.docW, (float64(height)-2*margin)/w.docH)
-	if width <= 0 || height <= 0 || scale <= 0 {
+	w.panel.sync()
+	w.pages.update()
+	w.pv.setPlan(w.session.Plan())
+	w.updateHistory()
+}
+
+// updateHistory enables the undo and redo buttons and says what they do.
+func (w *window) updateHistory() {
+	tr := w.texts.tr
+	if w.undoAction == nil {
 		return
 	}
-	w.renderGen++
-	gen := w.renderGen
-	docW, docH := w.docW, w.docH
+	w.undoAction.SetEnabled(w.session.CanUndo())
+	w.redoAction.SetEnabled(w.session.CanRedo())
+	tip := func(action, what string) string {
+		if what == "" {
+			return tr.T(action)
+		}
+		return tr.T(action+".tooltip", "what", tr.T(what))
+	}
+	w.undoButton.SetTooltipText(tip("action.undo", w.session.UndoLabel()))
+	w.redoButton.SetTooltipText(tip("action.redo", w.session.RedoLabel()))
+}
+
+// apply carries out a command of the user. A command the session refuses leaves
+// everything as it was; the widgets are set again from the session, which puts
+// back the value they had, and the status bar says why.
+func (w *window) apply(label, key string, c app.Command) {
+	if err := w.session.Apply(label, key, c); err != nil {
+		w.refuse(err)
+	} else {
+		w.clearRefusal()
+	}
+	w.refreshAll()
+}
+
+// clearRefusal removes the message of a refused setting once something else
+// has been done.
+func (w *window) clearRefusal() {
+	if w.statusKey != "status.refused" {
+		return
+	}
+	key, args := w.beforeRefusal, w.beforeRefusalArgs
+	if key == "" {
+		key = "status.ready"
+	}
+	w.statusKey, w.statusArgs = "", nil
+	w.setStatus(key, args...)
+}
+
+// applyCorrection carries out a proposal of the page list.
+func (w *window) applyCorrection(c layout.Correction) {
+	if err := w.session.ApplyCorrection(c); err != nil {
+		w.refuse(err)
+	} else {
+		w.clearRefusal()
+	}
+	w.refreshAll()
+}
+
+func (w *window) undo() {
+	if w.session.Undo() {
+		w.clearRefusal()
+		w.refreshAll()
+	}
+}
+
+func (w *window) redo() {
+	if w.session.Redo() {
+		w.clearRefusal()
+		w.refreshAll()
+	}
+}
+
+// refuse tells in the status bar that a setting was not accepted.
+func (w *window) refuse(err error) {
+	w.setStatus("status.refused", "reason", lazyText(func(tr *i18n.Translator) string { return errorText(tr, err) }))
+}
+
+// errorText writes an error for the user: the text of its code when it has
+// one.
+func errorText(tr *i18n.Translator, err error) string {
+	if e, ok := diag.As(err); ok {
+		return diagText(tr, e.Code, e.Args)
+	}
+	return err.Error()
+}
+
+// diagText is the text of a diagnostic code. Lengths are shown to a tenth: the
+// layout keeps them exact, the sentence does not need six decimals.
+func diagText(tr *i18n.Translator, code string, args []any) string {
+	shown := make([]any, len(args))
+	for i, a := range args {
+		if v, ok := a.(float64); ok {
+			a = round(v, 1)
+		}
+		shown[i] = a
+	}
+	return tr.T("diag."+code, shown...)
+}
+
+func baseName(path string) string { return filepath.Base(path) }
+
+// setLanguageSetting applies and saves the language chosen in the menu.
+func (w *window) setLanguageSetting(setting string) {
+	lang := i18n.Resolve(setting, os.Getenv)
+	w.settings.Language = setting
+	w.langAction.SetState(glib.NewVariantString(setting))
+	w.texts.switchTo(lang)
+	w.refreshAll()
+	if w.settingsPath != "" {
+		// A preference that cannot be saved is not worth interrupting the
+		// user: the language still changes for this session.
+		_ = w.settings.Save(w.settingsPath)
+	}
+}
+
+// ---- opening a document ----------------------------------------------------------------
+
+// openPath loads a document off the thread of the window and shows it.
+func (w *window) openPath(path string) {
+	w.setStatus("status.loading", "name", baseName(path))
 	w.busy++
+	keep := model.Background{Document: model.KeepBackground, Page: model.WhitePage}
 	w.engine.do(func() {
-		img, err := w.engineDoc.Render(engine.Box{W: docW, H: docH}, scale, nil)
+		opened, err := app.Open(w.services, path, keep)
 		glib.IdleAdd(func() {
 			w.busy--
-			if gen != w.renderGen {
-				return // a newer drawing is on its way
-			}
 			if err != nil {
-				w.showOpenError(w.path, err)
+				w.setStatus("status.ready")
+				w.showOpenError(path, err)
 				return
 			}
-			w.pv.setImage(img)
+			w.adopt(opened)
 		})
 	})
 }
 
-// String describes the window for a test failure.
-func (w *window) String() string {
-	return fmt.Sprintf("window{path=%q language=%s}", w.path, w.texts.tr.Lang())
+// adopt makes a loaded document the current one. It runs on the thread of the
+// window; the previous engine document is closed by the worker, which owns it.
+func (w *window) adopt(o *app.Opened) {
+	if err := w.session.Open(o.Document); err != nil {
+		w.engine.do(o.Engine.Close)
+		w.setStatus("status.ready")
+		w.showOpenError(o.Document.Path, err)
+		return
+	}
+	previous := w.engineDoc
+	w.engineDoc = o.Engine
+	if previous != nil {
+		w.engine.do(previous.Close)
+	}
+	d := o.Document
+	w.stack.SetVisibleChildName("preview")
+	w.pv.setDocument(d.Size.W, d.Size.H)
+	w.updateTitle()
+	w.refreshAll()
+	w.setStatus("status.loaded", "name", baseName(d.Path), "w", shown(w.texts.tr, d.Size.W), "h", shown(w.texts.tr, d.Size.H))
+}
+
+// ---- drawing ----------------------------------------------------------------------------------
+
+// renderView asks the worker to draw the part of the document in view, when the
+// drawing on show no longer serves. force draws it in any case.
+func (w *window) renderView(force bool) {
+	doc := w.engineDoc
+	if doc == nil {
+		return
+	}
+	win, scale, ok := w.pv.wantedWindow(force)
+	if !ok {
+		return
+	}
+	w.renderGen++
+	gen := w.renderGen
+	w.busy++
+	w.engine.do(func() {
+		img, err := doc.Render(engine.Box{X: win.X, Y: win.Y, W: win.W, H: win.H}, scale, nil)
+		glib.IdleAdd(func() {
+			w.busy--
+			if doc != w.engineDoc {
+				return // another document has been opened since
+			}
+			// An answer to an older request is still good if it serves the
+			// view as it is now: otherwise a pan that never stops would never
+			// show a drawing.
+			if gen != w.renderGen && w.pv.view.Needs(win, scale, w.pv.view.Zoom*w.pv.scaleFactor()) {
+				return
+			}
+			if err != nil {
+				w.setStatus("status.rendering_failed", "reason", err.Error())
+				return
+			}
+			w.pv.setImage(img, win, scale)
+		})
+	})
 }

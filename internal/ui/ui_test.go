@@ -6,6 +6,7 @@ package ui
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -20,6 +21,8 @@ import (
 
 	"github.com/gillesmagneville/svg-print-layout/internal/app"
 	"github.com/gillesmagneville/svg-print-layout/internal/i18n"
+	"github.com/gillesmagneville/svg-print-layout/internal/layout"
+	"github.com/gillesmagneville/svg-print-layout/internal/model"
 	"github.com/gillesmagneville/svg-print-layout/internal/testsvg"
 )
 
@@ -167,14 +170,15 @@ func runScenario() {
 		// 2. A document opens off the thread of the window and is shown.
 		add(func() bool { w.setLanguageSetting("fr"); w.openPath(svg); return true })
 		add(func() bool {
-			if !w.hasDoc || w.busy > 0 || w.pv.surface == nil {
+			if w.session.Document() == nil || w.busy > 0 || !w.pv.hasImage {
 				return false
 			}
+			doc := w.session.Document()
 			if name := w.stack.VisibleChildName(); name != "preview" {
 				fail("after opening: the visible page is %q, want the preview", name)
 			}
-			if w.docW != 1280 || w.docH != 5479 {
-				fail("the document is %v x %v, want 1280 x 5479", w.docW, w.docH)
+			if doc.Size.W != 1280 || doc.Size.H != 5479 {
+				fail("the document is %v x %v, want 1280 x 5479", doc.Size.W, doc.Size.H)
 			}
 			if got := w.win.Title(); got != "plan.svg — SVG Print Layout" {
 				fail("the title is %q", got)
@@ -186,11 +190,139 @@ func runScenario() {
 					fail("document (fr): %q is not shown; the window shows %q", want, shown)
 				}
 			}
-			if size := w.pv.size; size.X <= 0 || size.Y <= 0 || size.X > w.pv.area.Width() || size.Y > w.pv.area.Height() {
-				fail("the drawing is %v in a %d x %d area", size, w.pv.area.Width(), w.pv.area.Height())
+			// The whole document is in view, inside the widget.
+			if vis := w.pv.view.Visible(); vis.W < 1279 || vis.H < 5478 {
+				fail("the view shows %+v, want the whole document", vis)
+			}
+			if w.pv.view.Zoom <= 0 || w.pv.view.Zoom*5479 > float64(w.pv.marks.Height()) {
+				fail("zoom %v does not fit a document of 5479 units in %d pixels", w.pv.view.Zoom, w.pv.marks.Height())
 			}
 			return true
 		})
+
+		// 2b. The plan of the default project is in the page list: 200 mm
+		// wide on A4 portrait, one page that is far too tall, and proposals.
+		add(func() bool {
+			plan := w.session.Plan()
+			if plan == nil || plan.ContentWidthMM != 200 || len(plan.Pages) != 1 {
+				fail("the first plan is %+v", plan)
+				return true
+			}
+			shown := texts(w.win)
+			for _, want := range []string{"1 page", "Largeur du contenu : 200 mm (20 cm)", "Largeur du dessin : 200 mm (20 cm)",
+				"Page 1", "Dépasse la feuille", "Propositions", "Zone utile : 200 × 277 mm", "Feuille : 210 × 297 mm"} {
+				if !contains(shown, want) {
+					fail("plan (fr): %q is not shown; the window shows %q", want, shown)
+				}
+			}
+			if !w.pages.proposals.IsVisible() {
+				fail("no proposal is offered for a page that is too tall")
+			}
+			return true
+		})
+
+		// 2c. A value typed in a field is applied, in the notation of the
+		// language, and Undo takes it back.
+		add(func() bool {
+			f := w.panel.manualWidth
+			w.panel.modeC.SetActive(true)
+			if p := w.session.Project(); p.Scale.Mode != model.Width || p.Scale.WidthMM != 200 {
+				fail("going to the manual mode gave %+v, want a width of 200 mm (the width the drawing had)", p.Scale)
+			}
+			f.entry.SetText("190,5")
+			f.typing.cancel()
+			f.commit()
+			if p := w.session.Project(); p.Scale.WidthMM != 190.5 {
+				fail("a typed width of 190,5 gave %v", p.Scale.WidthMM)
+			}
+			if got := texts(w.win); !contains(got, "Largeur du dessin : 190,5 mm (19,05 cm)") {
+				fail("the result is not shown after typing; the window shows %q", got)
+			}
+			// A value the session refuses is put back.
+			f.entry.SetText("0,5")
+			f.typing.cancel()
+			f.commit()
+			if w.session.Project().Scale.WidthMM != 190.5 {
+				fail("a width under the minimum of the field was accepted")
+			}
+			w.undo()
+			w.undo()
+			if p := w.session.Project(); p.Scale.Mode != model.FitWidth {
+				fail("after two undos the scale is %+v, want the fit to the width", p.Scale)
+			}
+			if !contains(texts(w.win), "Largeur du dessin : 200 mm (20 cm)") {
+				fail("the result is not 200 mm after undo")
+			}
+			return true
+		})
+
+		// 2d. A margin changes the usable area; an impossible one is refused
+		// and the field shows the old value again.
+		add(func() bool {
+			w.panel.margin["left"].entry.SetText("20")
+			w.panel.margin["left"].typing.cancel()
+			w.panel.margin["left"].commit()
+			if m := w.session.Project().Margins; m.Left != 20 || m.Right != 5 || m.Top != 10 {
+				fail("the margins are %+v, want left 20 only", m)
+			}
+			if !contains(texts(w.win), "Zone utile : 185 × 277 mm") {
+				fail("the usable area did not follow the margin; the window shows %q", texts(w.win))
+			}
+			w.panel.margin["left"].entry.SetText("400")
+			w.panel.margin["left"].typing.cancel()
+			w.panel.margin["left"].commit()
+			if w.session.Project().Margins.Left != 20 {
+				fail("margins that leave no room were accepted")
+			}
+			if got := w.panel.margin["left"].entry.Text(); got != "20" {
+				fail("the field shows %q after a refusal, want 20", got)
+			}
+			if !strings.Contains(plain(w.status.Label()), "Réglage refusé") {
+				fail("the status bar says %q after a refusal", w.status.Label())
+			}
+			w.undo()
+			return true
+		})
+
+		// 2e. A proposal is applied only when the user chooses it.
+		add(func() bool {
+			plan := w.session.Plan()
+			if len(plan.Pages) != 1 {
+				fail("a proposal was applied by itself: %d pages", len(plan.Pages))
+			}
+			for _, c := range plan.Corrections {
+				if c.Kind == layout.CorrectionAddCut {
+					w.applyCorrection(c)
+					break
+				}
+			}
+			if n := len(w.session.Plan().Pages); n < 2 {
+				fail("after the proposal to add a cut there are %d pages", n)
+			}
+			if w.session.Plan().ContentWidthMM != 200 {
+				fail("a cut changed the width of the drawing")
+			}
+			if !contains(texts(w.win), "Page 2") || len(w.pages.rows) != len(w.session.Plan().Pages) {
+				fail("the page list does not show the pages; %d rows", len(w.pages.rows))
+			}
+			return true
+		})
+
+		// 2f. Zoom and move.
+		add(func() bool {
+			z := w.pv.view.Zoom
+			w.pv.zoomIn()
+			if w.pv.view.Zoom <= z {
+				fail("zoom in did not zoom")
+			}
+			w.pv.showWidth()
+			if want := (float64(w.pv.marks.Width()) - 48) / 1280; math.Abs(w.pv.view.Zoom-want) > 1e-6 {
+				fail("fit to width gives a zoom of %v, want %v", w.pv.view.Zoom, want)
+			}
+			w.pv.showAll()
+			return true
+		})
+		add(func() bool { return w.busy == 0 && !w.pv.render.pending() })
 
 		// 3. The document's texts follow a change of language, with the decimal
 		// notation of the language.
@@ -216,8 +348,8 @@ func runScenario() {
 			if w.busy > 0 {
 				return false
 			}
-			if !w.hasDoc || filepath.Base(w.path) != "plan.svg" {
-				fail("after a refused file the open document is %q (hasDoc %v), want plan.svg", w.path, w.hasDoc)
+			if doc := w.session.Document(); doc == nil || filepath.Base(doc.Path) != "plan.svg" {
+				fail("after a refused file the open document is %+v, want plan.svg", doc)
 			}
 			windows := application.Windows()
 			if len(windows) != 2 {

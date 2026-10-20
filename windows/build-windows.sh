@@ -44,6 +44,7 @@ MSYS_PACKAGES=(
     mingw-w64-ucrt-x86_64-pkgconf
     mingw-w64-ucrt-x86_64-librsvg
     mingw-w64-ucrt-x86_64-cairo
+    mingw-w64-ucrt-x86_64-fontconfig
     mingw-w64-ucrt-x86_64-gtk4
     mingw-w64-ucrt-x86_64-gobject-introspection
     mingw-w64-ucrt-x86_64-adwaita-icon-theme
@@ -147,7 +148,7 @@ check_go_prerequisites() {
     require_tool go "Installez le paquet MSYS2 mingw-w64-ucrt-x86_64-go."
     require_tool gcc "Installez le paquet MSYS2 mingw-w64-ucrt-x86_64-gcc."
     require_tool pkg-config "Installez le paquet MSYS2 mingw-w64-ucrt-x86_64-pkgconf."
-    pkg-config --exists librsvg-2.0 cairo || die "les bibliothèques de développement de librsvg et de cairo sont absentes (paquets MSYS2 mingw-w64-ucrt-x86_64-librsvg et -cairo)."
+    pkg-config --exists librsvg-2.0 cairo fontconfig || die "les bibliothèques de développement de librsvg, de cairo et de fontconfig sont absentes (paquets MSYS2 mingw-w64-ucrt-x86_64-librsvg, -cairo et -fontconfig)."
     pkg-config --exists gtk4 gobject-introspection-1.0 || die "les bibliothèques de développement de GTK 4 sont absentes (paquets MSYS2 mingw-w64-ucrt-x86_64-gtk4 et -gobject-introspection)."
 }
 

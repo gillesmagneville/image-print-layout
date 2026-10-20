@@ -4,7 +4,7 @@
 
 Application de bureau (Linux — Debian, Ubuntu, Red Hat et leurs dérivés —, Windows 10 et 11, écrite en Go) pour **mettre en page, découper et imprimer un document vectoriel SVG sur plusieurs feuilles de papier standard**, puis l'exporter en **PDF multipage vectoriel**.
 
-> **État : prototype (M0).** La mise en page n'est pas encore utilisable. Le dépôt contient la bibliothèque de conversions d'unités et de formats papier, un prototype du moteur (librsvg + cairo : rendu d'une fenêtre et export PDF multipage, validé sur le Mini-CAD, voir [`docs/M0.md`](docs/M0.md)), une première fenêtre GTK4 en **français, anglais, espagnol et allemand** (trois panneaux, ouverture d'un SVG affiché en entier), les scripts qui construisent les paquets `.deb`, `.rpm` et Windows (voir [Paquets](#paquets)) et la CI. Les paramètres de page, les coupures et l'export PDF dans la fenêtre sont la suite (M1 à M4).
+> **État : en construction (M2 fait, M3 à M5 à venir).** La fenêtre GTK4, en **français, anglais, espagnol et allemand**, ouvre un SVG, l'analyse (fonctions non prises en charge, polices absentes, images introuvables), calcule ses pages avec les réglages de papier, de marges, d'échelle et de positionnement, et montre l'aperçu avec les limites et les numéros de page, la liste des pages et les corrections proposées quand une page dépasse. Les coupures à la souris, la gestion du fond, l'export PDF et l'enregistrement du projet dans la fenêtre sont la suite (M3 à M5). Le dépôt contient aussi le prototype du moteur (librsvg + cairo : rendu d'une fenêtre et export PDF multipage, validé sur le Mini-CAD, voir [`docs/M0.md`](docs/M0.md)), les scripts qui construisent les paquets `.deb`, `.rpm` et Windows (voir [Paquets](#paquets)) et la CI.
 
 ## Principe
 
@@ -32,10 +32,11 @@ internal/
   model/     types de données partagés                                    (Go pur)
   layout/    calcul des pages, bandes, états, coupures automatiques       (Go pur)
   project/   fichier projet .svgpl (JSON versionné, écriture déterministe) (Go pur)
-  svgdoc/    lecture du SVG : dimensions, unités, fonctions non prises en charge, fond
-  engine/    moteur de rendu : librsvg + cairo par cgo (prototype M0a)
+  svgdoc/    lecture du SVG : constats, polices, blocs, fond, copie de travail   (Go pur)
+  engine/    moteur de rendu : interface Document, librsvg + cairo + fontconfig par cgo
   export/    export PDF multipage et vérifications avant/après
-  app/       état de l'application, préférences, cas d'usage, indépendants de l'interface
+  app/       session (projet, plan, historique), ouverture d'un document     (Go pur)
+  viewport/  arithmétique de la vue : zoom, déplacement, fenêtre à dessiner   (Go pur)
   diag/      avertissements et erreurs destinés à l'utilisateur (un code et des valeurs)
   i18n/      traduction : français, anglais, espagnol, allemand ; nombres  (Go pur, testé)
   ui/        interface graphique : GTK4 via gotk4 (bouchon sans cgo)
@@ -45,7 +46,7 @@ docs/        rapports de jalon (M0.md)
 testdata/    SVG de référence
 ```
 
-Le sens des dépendances va de `ui` vers `app`, puis vers `layout`, `project`, `svgdoc` et `export` ; `svgdoc` et `export` n'appellent `engine` que par son interface. Seuls `ui` et `engine` utilisent cgo : tous les autres paquets se testent partout, sans bibliothèque graphique installée.
+Le sens des dépendances va de `ui` vers `app` et `viewport`, puis de `app` vers `layout`, `project`, `svgdoc` et `export` ; `app` n'appelle `engine` que par son interface `Document`. Seuls `ui` et `engine` utilisent cgo : tous les autres paquets se testent partout, sans bibliothèque graphique installée.
 
 ## Documentation
 
@@ -71,7 +72,7 @@ La CI (GitHub Actions) exécute ces commandes sous Ubuntu et Windows, avec `CGO_
 Le moteur de rendu (`internal/engine`) demande cgo, librsvg et cairo, et ses tests lisent des PDF avec poppler. Sous Ubuntu 24.04 :
 
 ```sh
-sudo apt-get install librsvg2-dev poppler-utils fonts-ibm-plex
+sudo apt-get install librsvg2-dev libfontconfig-dev poppler-utils fonts-ibm-plex
 CGO_ENABLED=1 go test ./internal/engine ./internal/testsvg
 ```
 
@@ -80,7 +81,7 @@ Sans `CGO_ENABLED=1`, le paquet `engine` est vide et le reste se compile et se t
 La fenêtre (`internal/ui`) demande en plus GTK 4.14 ou plus récent (gotk4 v0.3.1) : sans cgo, `ui` est un bouchon et le programme dit qu'il a été construit sans interface graphique. Sous Ubuntu 24.04 :
 
 ```sh
-sudo apt-get install librsvg2-dev libgtk-4-dev libgirepository1.0-dev poppler-utils fonts-ibm-plex
+sudo apt-get install librsvg2-dev libfontconfig-dev libgtk-4-dev libgirepository1.0-dev poppler-utils fonts-ibm-plex
 go run ./cmd/svgprintlayout                       # la fenêtre
 go run ./cmd/svgprintlayout -lang de plan.svg     # dans une langue, avec un document
 ```
@@ -161,14 +162,14 @@ installé. Les paquets Linux s'installent avec `apt install ./…deb` ou `dnf in
 Sous Debian et Ubuntu, les prérequis de construction sont :
 
 ```sh
-sudo apt install golang-go build-essential pkg-config librsvg2-dev libgtk-4-dev libgirepository1.0-dev dpkg-dev rpm
+sudo apt install golang-go build-essential pkg-config librsvg2-dev libfontconfig-dev libgtk-4-dev libgirepository1.0-dev dpkg-dev rpm
 ```
 
 Sous Fedora et la famille RHEL 10 (`golang` est dans AppStream ; `-devel` est dans CRB, à
 activer avec `sudo dnf config-manager --set-enabled crb`) :
 
 ```sh
-sudo dnf install golang gcc make pkgconf-pkg-config librsvg2-devel cairo-devel gtk4-devel gobject-introspection-devel rpm-build
+sudo dnf install golang gcc make pkgconf-pkg-config librsvg2-devel cairo-devel fontconfig-devel gtk4-devel gobject-introspection-devel rpm-build
 ```
 
 Go 1.24 ou plus récent est nécessaire (`go.mod`) : si la version de la distribution est plus

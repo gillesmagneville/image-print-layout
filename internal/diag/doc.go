@@ -52,6 +52,10 @@ type Item struct {
 	Code string
 	// Page is the number of the page it is about (from 1), or 0.
 	Page int
+	// Ref designates the element of the document the diagnostic is about: its
+	// id, or its path of indices. The window uses it to select and centre
+	// the element. Empty when the diagnostic is about no element.
+	Ref string
 	// Args are pairs of a placeholder name and its value, in the form the
 	// translator takes them: string, int or float64.
 	Args []any

@@ -5,11 +5,14 @@
 package engine
 
 /*
-#cgo pkg-config: librsvg-2.0 cairo
+#cgo pkg-config: librsvg-2.0 cairo fontconfig
 #include <stdint.h>
 #include <stdlib.h>
 #include <cairo.h>
 #include <cairo-pdf.h>
+#include <string.h>
+#include <gio/gio.h>
+#include <fontconfig/fontconfig.h>
 #include <librsvg/rsvg.h>
 
 // Implemented in Go (goCairoWrite below). The declaration must match the one
@@ -21,6 +24,53 @@ extern cairo_status_t goCairoWrite(void *closure, unsigned char *data, unsigned 
 // read here, in C, and not through cgo's own access to C variables: on
 // Windows, where the library is a DLL, that access reads the import thunk
 // instead of the value and returns garbage.
+static void svgpl_free(gpointer p) { free(p); }
+
+// svgpl_load reads a document from memory. The data is copied into a stream
+// that owns it; base, when not NULL, is the file the document came from, which
+// relative links are resolved against. The size limits of the XML parser are
+// lifted: a large diagram is not an attack, it is the use case.
+static RsvgHandle *svgpl_load(const guint8 *data, gsize len, const char *path, GError **err) {
+	guint8 *copy = malloc(len);
+	if (copy == NULL) {
+		return NULL;
+	}
+	memcpy(copy, data, len);
+	GInputStream *stream = g_memory_input_stream_new_from_data(copy, (gssize)len, svgpl_free);
+	GFile *base = path != NULL ? g_file_new_for_path(path) : NULL;
+	RsvgHandle *h = rsvg_handle_new_from_stream_sync(stream, base, RSVG_HANDLE_FLAG_UNLIMITED, NULL, err);
+	if (base != NULL) {
+		g_object_unref(base);
+	}
+	g_object_unref(stream);
+	return h;
+}
+
+// svgpl_match_family asks fontconfig which family it would use for a requested
+// one, with the substitutions of its configuration. The result is freed by the
+// caller, or is NULL.
+static char *svgpl_match_family(const char *family) {
+	FcPattern *pat = FcPatternCreate();
+	if (pat == NULL) {
+		return NULL;
+	}
+	FcPatternAddString(pat, FC_FAMILY, (const FcChar8 *)family);
+	FcConfigSubstitute(NULL, pat, FcMatchPattern);
+	FcDefaultSubstitute(pat);
+	FcResult res;
+	FcPattern *match = FcFontMatch(NULL, pat, &res);
+	char *out = NULL;
+	if (match != NULL) {
+		FcChar8 *name = NULL;
+		if (FcPatternGetString(match, FC_FAMILY, 0, &name) == FcResultMatch) {
+			out = strdup((const char *)name);
+		}
+		FcPatternDestroy(match);
+	}
+	FcPatternDestroy(pat);
+	return out;
+}
+
 static unsigned int svgpl_rsvg_version(int part) {
 	switch (part) {
 	case 0:
@@ -46,30 +96,26 @@ import (
 	"unsafe"
 )
 
-// Dpi is the resolution librsvg uses to turn physical SVG lengths (mm, in,
-// pt...) into user units. SVG and CSS say 96; librsvg's own default is not
-// guaranteed to be the same, so it is always set explicitly.
-const Dpi = 96.0
-
-// Box is a rectangle in document units (SVG user units, origin top left).
-type Box struct {
-	X, Y, W, H float64
-}
-
 // Doc is a loaded SVG document. It must be closed.
 type Doc struct {
 	handle *C.RsvgHandle
 	w, h   float64
 }
 
-// Load parses an SVG document. It returns an explicit error when librsvg
-// rejects the data or when the document has no usable size.
-func Load(svg []byte) (*Doc, error) {
+// Load parses an SVG document. path is the file it was read from, or empty:
+// the images it links to are looked for next to it. It returns an explicit
+// error when librsvg rejects the data or when the document has no usable size.
+func Load(svg []byte, path string) (*Doc, error) {
 	if len(svg) == 0 {
 		return nil, errors.New("engine: empty SVG data")
 	}
+	var cpath *C.char
+	if path != "" {
+		cpath = C.CString(path)
+		defer C.free(unsafe.Pointer(cpath))
+	}
 	var gerr *C.GError
-	h := C.rsvg_handle_new_from_data((*C.guint8)(unsafe.Pointer(&svg[0])), C.gsize(len(svg)), &gerr)
+	h := C.svgpl_load((*C.guint8)(unsafe.Pointer(&svg[0])), C.gsize(len(svg)), cpath, &gerr)
 	if h == nil {
 		return nil, fmt.Errorf("engine: cannot read the SVG: %s", takeGError(gerr))
 	}
@@ -82,6 +128,15 @@ func Load(svg []byte) (*Doc, error) {
 	}
 	d := &Doc{handle: h, w: float64(w), h: float64(ht)}
 	runtime.SetFinalizer(d, func(d *Doc) { d.Close() })
+	return d, nil
+}
+
+// LoadDocument is Load as the Loader type of the package.
+func LoadDocument(svg []byte, path string) (Document, error) {
+	d, err := Load(svg, path)
+	if err != nil {
+		return nil, err
+	}
 	return d, nil
 }
 
@@ -127,6 +182,38 @@ func (d *Doc) Measure(id string) (Box, error) {
 		return Box{}, fmt.Errorf("engine: cannot measure #%s: %s", id, takeGError(gerr))
 	}
 	return Box{float64(ink.x), float64(ink.y), float64(ink.width), float64(ink.height)}, nil
+}
+
+// MeasureBlocks measures many elements; the ones that cannot be measured are
+// left out (an empty group, an identifier the engine cannot address).
+func (d *Doc) MeasureBlocks(ids []string) map[string]Box {
+	out := make(map[string]Box, len(ids))
+	for _, id := range ids {
+		b, err := d.Measure(id)
+		if err != nil || math.IsNaN(b.Y) || math.IsNaN(b.H) || math.IsInf(b.Y, 0) || math.IsInf(b.H, 0) {
+			continue
+		}
+		out[id] = b
+	}
+	return out
+}
+
+var _ Document = (*Doc)(nil)
+
+// MatchFont asks fontconfig, which the text of the drawings goes through,
+// which installed family it gives for the requested one. It is the name asked
+// for when that family is installed, and another one when it is substituted
+// (the substitution is the one the export would make, silently). It returns
+// the empty string when fontconfig cannot say.
+func MatchFont(family string) string {
+	cf := C.CString(family)
+	defer C.free(unsafe.Pointer(cf))
+	m := C.svgpl_match_family(cf)
+	if m == nil {
+		return ""
+	}
+	defer C.free(unsafe.Pointer(m))
+	return C.GoString(m)
 }
 
 func cairoError(op string, s C.cairo_status_t) error {
@@ -179,28 +266,6 @@ func (d *Doc) Render(win Box, pxPerUnit float64, background color.Color) (*image
 	}
 	return img, nil
 }
-
-// PageSpec places one band of the document on one sheet. Sizes are in PDF
-// points; the band is in document units.
-type PageSpec struct {
-	WidthPt, HeightPt    float64 // the sheet
-	BandTop, BandBottom  float64 // the part of the document drawn on it
-	OriginXPt, OriginYPt float64 // where the band's top-left corner lands
-	PtPerUnit            float64 // the single global scale
-}
-
-// PDFOptions are the export settings.
-type PDFOptions struct {
-	// WhitePage paints an opaque white rectangle the size of each sheet
-	// before the drawing.
-	WhitePage bool
-	// FixedDate is written as the creation and modification date, so that two
-	// exports of the same input are identical. ISO 8601.
-	FixedDate string
-}
-
-// DefaultFixedDate is the date written in the PDF metadata.
-const DefaultFixedDate = "2000-01-01T00:00:00Z"
 
 type pdfSink struct {
 	w   io.Writer

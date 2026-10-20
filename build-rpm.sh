@@ -245,9 +245,16 @@ mkdir -p "$BUILD_DIR"
 # adresse aléatoire (durcissement). Le numéro de version du paquet est inscrit
 # dans le programme (svgprintlayout -version), même si le fichier VERSION du
 # projet n'est mis à jour qu'après un build réussi (voir plus bas).
+# gotk4 (la liaison de GTK pour Go) déclare « free » autrement que <stdlib.h> :
+# gcc le signale trois fois à chaque compilation (-Wbuiltin-declaration-mismatch).
+# Le code est celui de la bibliothèque et ce n'est pas un défaut ; on masque
+# seulement cet avertissement, sans toucher aux options par défaut de cgo
+# (-O2 -g). Les autres avertissements restent visibles.
 echo ">>> Compilation (cgo, GTK4, librsvg, cairo)..."
+echo "    La première compilation de GTK (gotk4) dure plusieurs minutes et n'affiche rien ;"
+echo "    les suivantes sont presque instantanées (cache de Go)."
 BINARY="$WORK_DIR/$PACKAGE_NAME"
-( cd "$PROJECT_DIR" && CGO_ENABLED=1 go build -trimpath -buildvcs=false -buildmode=pie \
+( cd "$PROJECT_DIR" && CGO_ENABLED=1 CGO_CFLAGS="${CGO_CFLAGS:--O2 -g} -Wno-builtin-declaration-mismatch" go build -trimpath -buildvcs=false -buildmode=pie \
     -ldflags "-s -w -buildid= -X main.version=$NEW_VERSION" -o "$BINARY" ./cmd/svgprintlayout )
 
 echo ">>> Création de l'arborescence..."

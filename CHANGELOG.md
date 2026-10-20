@@ -9,6 +9,15 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+## [0.2.0] - 2026-10-20
+
+Première version avec une interface graphique : une fenêtre GTK4 à trois panneaux, en
+français, en anglais, en espagnol et en allemand, qui ouvre un SVG et l'affiche en entier.
+Les paramètres de page, les coupures et l'export ne sont pas encore dans la fenêtre. Le
+programme est pris en charge, et essayé par la CI, sur Debian 13, Ubuntu 24.04 et suivantes,
+RHEL 10 et ses clones, Fedora, Windows 10 et 11 (voir « Systèmes pris en charge » dans le
+README).
+
 ### Ajouté
 
 - **Quatre langues** : le paquet `internal/i18n` traduit l'interface en français, en anglais,
@@ -60,6 +69,15 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
   (la fenêtre, sans console) et `svgprintlayout-console.exe` (`-version`, `-selftest`). Le
   script de construction vérifie le sous-système de chacun. L'installeur NSIS parle les quatre
   langues.
+
+### Corrigé
+
+- **Avertissements à la construction** : les trois avertissements de gcc sur `free`, que
+  gotk4 déclare autrement que `<stdlib.h>`, ne s'affichent plus pendant la construction des
+  paquets (les autres avertissements restent visibles) ; `dpkg-shlibdeps` n'affiche plus
+  « les binaires à analyser devraient déjà être présents… » sur un système qui n'est pas en
+  anglais (le filtre cherchait le message anglais). Les scripts préviennent aussi que la
+  première compilation de GTK dure plusieurs minutes sans rien afficher.
 
 ## [0.1.0] - 2026-10-19
 

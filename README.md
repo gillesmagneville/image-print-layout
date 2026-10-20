@@ -91,7 +91,7 @@ Les tests de la fenêtre ouvrent de vraies fenêtres : sans écran (terminal, CI
 xvfb-run -a go test ./internal/ui ./cmd/svgprintlayout
 ```
 
-La première compilation de gotk4 dure plusieurs minutes ; les suivantes utilisent le cache de Go. Pour Windows (MSYS2 UCRT64), voir [`windows/README.md`](windows/README.md).
+La première compilation de gotk4 dure plusieurs minutes ; les suivantes utilisent le cache de Go. À chaque compilation de gotk4, gcc affiche des avertissements sur `free` (`-Wbuiltin-declaration-mismatch`) : ils viennent de la bibliothèque, et les scripts de paquets les masquent. Pour les masquer aussi en développement : `export CGO_CFLAGS="-O2 -g -Wno-builtin-declaration-mismatch"`. Pour Windows (MSYS2 UCRT64), voir [`windows/README.md`](windows/README.md).
 
 ## Systèmes pris en charge
 

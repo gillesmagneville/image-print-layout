@@ -235,9 +235,16 @@ mkdir -p "$BUILD_DIR"
 # adresse aléatoire (durcissement). Le numéro de version du paquet est inscrit
 # dans le programme (svgprintlayout -version), même si le fichier VERSION du
 # projet n'est mis à jour qu'après un build réussi (voir plus bas).
+# gotk4 (la liaison de GTK pour Go) déclare « free » autrement que <stdlib.h> :
+# gcc le signale trois fois à chaque compilation (-Wbuiltin-declaration-mismatch).
+# Le code est celui de la bibliothèque et ce n'est pas un défaut ; on masque
+# seulement cet avertissement, sans toucher aux options par défaut de cgo
+# (-O2 -g). Les autres avertissements restent visibles.
 echo ">>> Compilation (cgo, GTK4, librsvg, cairo)..."
+echo "    La première compilation de GTK (gotk4) dure plusieurs minutes et n'affiche rien ;"
+echo "    les suivantes sont presque instantanées (cache de Go)."
 BINARY="$WORK_DIR/$PACKAGE_NAME"
-( cd "$PROJECT_DIR" && CGO_ENABLED=1 go build -trimpath -buildvcs=false -buildmode=pie \
+( cd "$PROJECT_DIR" && CGO_ENABLED=1 CGO_CFLAGS="${CGO_CFLAGS:--O2 -g} -Wno-builtin-declaration-mismatch" go build -trimpath -buildvcs=false -buildmode=pie \
     -ldflags "-s -w -buildid= -X main.version=$NEW_VERSION" -o "$BINARY" ./cmd/svgprintlayout )
 
 echo ">>> Création de l'arborescence..."
@@ -291,9 +298,11 @@ trap 'rm -rf "${SHLIBS_TMP:?}"' EXIT
 # dpkg-shlibdeps attend un dossier debian/ avec un fichier control. Il avertit
 # que le binaire n'est pas encore à sa place dans un paquet : c'est normal,
 # on l'examine avant de construire le paquet, et on ne garde pas cet avertissement.
+# LC_ALL=C : le message est filtré sur son texte anglais, il doit donc être
+# écrit en anglais quelle que soit la langue du système.
 mkdir "$SHLIBS_TMP/debian"
 printf 'Source: %s\n\nPackage: %s\nArchitecture: any\n' "$PACKAGE_NAME" "$PACKAGE_NAME" > "$SHLIBS_TMP/debian/control"
-DEPENDS="$(cd "$SHLIBS_TMP" && dpkg-shlibdeps -O "-e$BINARY" 2> "$SHLIBS_TMP/avertissements" | sed -n 's/^shlibs:Depends=//p')"
+DEPENDS="$(cd "$SHLIBS_TMP" && LC_ALL=C dpkg-shlibdeps -O "-e$BINARY" 2> "$SHLIBS_TMP/avertissements" | sed -n 's/^shlibs:Depends=//p')"
 grep -v 'should already be installed' "$SHLIBS_TMP/avertissements" >&2 || true
 [ -n "$DEPENDS" ] || erreur "dpkg-shlibdeps n'a trouvé aucune dépendance : le binaire n'est pas lié aux bibliothèques attendues."
 echo "    Depends: $DEPENDS"

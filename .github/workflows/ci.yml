@@ -203,6 +203,7 @@ jobs:
         include:
           - { name: "Debian 13",                  image: "debian:13",                       family: debian, expect: "" }
           - { name: "Ubuntu 26.04",               image: "ubuntu:26.04",                    family: debian, expect: "" }
+          - { name: "Ubuntu 24.04",               image: "ubuntu:24.04",                    family: debian, expect: "" }
           - { name: "Fedora",                     image: "fedora:latest",                   family: redhat, expect: "" }
           - { name: "CentOS Stream 10",           image: "quay.io/centos/centos:stream10",  family: redhat, expect: "" }
           - { name: "AlmaLinux 10",               image: "almalinux:10",                    family: redhat, expect: "" }
@@ -255,10 +256,18 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  # Windows 10 et 11 : la CI n'a ni l'un ni l'autre, seulement des Windows
+  # Server. windows-2022 (le plus ancien proposé) sert de repère pour Windows 10,
+  # windows-latest (Windows Server 2025) pour Windows 11 ; la recette sur les
+  # vraies machines reste à faire (§14 de ARCHITECTURE.md).
   windows-package:
-    name: Windows package (portable and installer)
-    runs-on: windows-latest
+    name: Windows package (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, windows-latest]
     steps:
       - uses: actions/checkout@v4
       - name: Install NSIS
@@ -281,7 +290,7 @@ jobs:
         run: .\.github\scripts\windows-package.ps1 -Step installer
       - uses: actions/upload-artifact@v4
         with:
-          name: windows-package
+          name: windows-package-${{ matrix.os }}
           path: |
             *_windows-portable.zip
             *_windows-setup.exe
@@ -289,7 +298,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: windows-screenshots
+          name: windows-screenshots-${{ matrix.os }}
           path: screenshots/*.png
           if-no-files-found: ignore
           retention-days: 14

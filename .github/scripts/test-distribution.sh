@@ -86,6 +86,9 @@ install_redhat() {
     for package in xorg-x11-server-Xvfb xorg-x11-xauth ImageMagick; do
         dnf -y install "$package" || note "paquet introuvable dans les dépôts : $package"
     done
+    # RHEL 10 et ses clones n'ont plus Xvfb : un compositeur Wayland sans écran
+    # (weston, lancé par wlheadless-run) en tient lieu, sans capture.
+    command -v xvfb-run > /dev/null || dnf -y install xwayland-run weston || note "xwayland-run ou weston introuvable dans les dépôts"
 }
 
 build_install_redhat() {
@@ -103,38 +106,6 @@ versions() {
     note "$(. /etc/os-release && echo "$PRETTY_NAME")"
     note "go $(go version | awk '{print $3}'), gcc $(gcc -dumpversion)"
     note "gtk4 $(pkg-config --modversion gtk4), glib $(pkg-config --modversion glib-2.0), pango $(pkg-config --modversion pango), librsvg $(pkg-config --modversion librsvg-2.0), cairo $(pkg-config --modversion cairo)"
-}
-
-# Sans Xvfb (RHEL 10 et ses clones n'ont plus de serveur X), GTK 4 sait aussi
-# afficher ses fenêtres avec son pilote Broadway : il n'a besoin ni d'écran ni
-# de navigateur pour les ouvrir. On y essaie la fenêtre, sans capture.
-window_broadway() {
-    local daemon lang pid
-    export GDK_BACKEND=broadway BROADWAY_DISPLAY=:5
-    gtk4-broadwayd :5 > /dev/null 2>&1 &
-    daemon=$!
-    sleep 1
-    for lang in en fr es de; do
-        rm -f "$PWD/broadway-$lang.ready"
-        HOME="$(mktemp -d)" svgprintlayout -lang "$lang" -ready-file "$PWD/broadway-$lang.ready" \
-            2> "$PWD/broadway-$lang.log" &
-        pid=$!
-        for _ in $(seq 1 100); do
-            [ -e "$PWD/broadway-$lang.ready" ] && break
-            kill -0 "$pid" 2> /dev/null || break
-            sleep 0.2
-        done
-        if [ ! -e "$PWD/broadway-$lang.ready" ]; then
-            echo "la fenêtre ne s'est pas affichée en $lang ; journal du programme :"
-            cat "$PWD/broadway-$lang.log"
-            kill "$pid" "$daemon" 2> /dev/null || true
-            return 1
-        fi
-        kill "$pid" 2> /dev/null || true
-        wait "$pid" 2> /dev/null || true
-    done
-    kill "$daemon" 2> /dev/null || true
-    unset GDK_BACKEND BROADWAY_DISPLAY
 }
 
 # Distribution trop ancienne : le script de construction doit refuser.
@@ -161,20 +132,18 @@ run_installed() {
     svgprintlayout -version
     svgprintlayout -selftest
     note "-selftest : réussi"
-    if command -v xvfb-run > /dev/null; then
+    if command -v xvfb-run > /dev/null || command -v wlheadless-run > /dev/null; then
         mkdir -p "$screenshots"
         for lang in en fr es de; do
             .github/scripts/screenshot.sh /usr/bin/svgprintlayout "$lang" "$screenshots/$lang.png"
         done
-        note "fenêtre : ouverte dans les quatre langues ($(command -v import > /dev/null && echo "avec captures" || echo "sans capture : ImageMagick absent"))"
-    elif command -v gtk4-broadwayd > /dev/null; then
-        window_broadway
-        note "fenêtre : ouverte dans les quatre langues (pilote Broadway de GTK : pas de xvfb-run sur cette distribution, pas de capture)"
+        if command -v xvfb-run > /dev/null; then
+            note "fenêtre : ouverte dans les quatre langues, sur Xvfb ($(command -v import > /dev/null && echo "avec captures" || echo "sans capture : ImageMagick absent"))"
+        else
+            note "fenêtre : ouverte dans les quatre langues, sur un compositeur Wayland sans écran (weston) : pas de capture"
+        fi
     else
-        note "fenêtre : NON ESSAYÉE (ni xvfb-run ni gtk4-broadwayd sur cette distribution)"
-        note "dépôts : $(dnf -q repolist 2> /dev/null | awk 'NR > 1 { print $1 }' | tr '\n' ' ')"
-        note "serveurs d'affichage proposés : $(dnf -q list --available 2> /dev/null | awk '{ print $1 }' |
-            grep -i -E '^(xorg-x11-server-X(vfb|wayland)|xwayland-run|weston|cage|mutter|tigervnc-server-minimal|xorg-x11-server-Xvnc|gtk4-broadway)' | tr '\n' ' ')"
+        note "fenêtre : NON ESSAYÉE (ni xvfb-run ni wlheadless-run sur cette distribution)"
     fi
 }
 

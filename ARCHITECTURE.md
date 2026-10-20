@@ -250,8 +250,9 @@ versionnés : `.gitignore`).
   `control` du `.deb` et le `.spec` du `.rpm` sont écrits par les scripts, car leurs
   dépendances, leur taille et leur numéro de version se calculent à la construction.
 - **Numéros.** Une version d'avant-publication se classe avant la finale : `0.1.0-dev` donne
-  `0.1.0~dev-1` chez Debian et la release `0.1.dev` chez RPM ; `0.1.0` donne `0.1.0-1` et la
-  release `1`. Windows garde `0.1.0-dev` (quatre nombres dans les propriétés du `.exe`).
+  `0.1.0~dev` chez Debian et la release `0.1.dev` chez RPM ; `0.1.0` donne `0.1.0` chez Debian
+  (fichier `svgprintlayout_0.1.0_amd64.deb`, sans révision Debian, comme chez Planche-Contact et
+  LinuxDoctor) et la release `1` chez RPM (`svgprintlayout-0.1.0-1.x86_64.rpm`). Windows garde `0.1.0-dev` (quatre nombres dans les propriétés du `.exe`).
 - **Contenu des paquets Linux.** `/usr/bin/svgprintlayout`, l'entrée de menu et les
   métadonnées AppStream (identifiant `io.github.gillesmagneville.svgprintlayout`, nom de
   domaine inversé : le fichier `.desktop` et `<launchable>` doivent s'y accorder, et

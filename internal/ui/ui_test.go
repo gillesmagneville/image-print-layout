@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/diamondburned/gotk4/pkg/cairo"
 	"github.com/diamondburned/gotk4/pkg/gdk/v4"
 	"github.com/diamondburned/gotk4/pkg/gio/v2"
 	"github.com/diamondburned/gotk4/pkg/glib/v2"
@@ -738,6 +739,111 @@ func runScenario() {
 			}
 			return true
 		})
+
+		// 6b. The document is shown as it will be printed. Nothing is painted
+		// over the drawing by the marks of the pages (a tint over every other
+		// page once passed for a background that the choice of white had not
+		// reached): the drawing is untouched in the middle of each page, and the
+		// extent of each page is shown outside it.
+		add(func() bool {
+			if w.busy > 0 || !ready() {
+				return false
+			}
+			width, height := w.pv.marks.Width(), w.pv.marks.Height()
+			stride := width * 4
+			data := make([]byte, stride*height)
+			surface := cairo.CreateImageSurfaceForData(data, cairo.FormatARGB32, width, height, stride)
+			cr := cairo.Create(surface)
+			w.pv.drawMarks(nil, cr, width, height)
+			surface.Flush()
+			alpha := func(x, y int) byte { return data[y*stride+x*4+3] }
+			x0, _ := w.pv.view.ToScreen(0, 0)
+			x1, _ := w.pv.view.ToScreen(w.pv.view.DocW, 0)
+			plan := w.session.Plan()
+			if len(plan.Pages) != 4 {
+				fail("marks: %d pages, want 4", len(plan.Pages))
+			}
+			for _, pg := range plan.Pages {
+				_, yt := w.pv.view.ToScreen(0, pg.Top)
+				_, yb := w.pv.view.ToScreen(0, pg.Bottom)
+				mid := int((yt + yb) / 2)
+				for _, x := range []int{int(x0) + 4, int((x0 + x1) / 2), int(x1) - 4} {
+					if x < 0 || x >= width || mid < 0 || mid >= height {
+						fail("marks: page %d: the point (%d, %d) is outside the view (%d x %d)", pg.Number, x, mid, width, height)
+						continue
+					}
+					if a := alpha(x, mid); a != 0 {
+						fail("marks: page %d: the marks paint over the drawing at (%d, %d), alpha %d", pg.Number, x, mid, a)
+					}
+				}
+				bar := int(x0) - pageBarGap - pageBarWidth/2
+				if bar < 0 || alpha(bar, mid) == 0 {
+					fail("marks: page %d: no bar shows its extent beside the drawing (x = %d)", pg.Number, bar)
+				}
+			}
+			return true
+		})
+
+		// 6c. The background of the document changes while the sheets are on
+		// screen, and while they are being drawn: every sheet ends up drawn from
+		// the new working copy, the last as well as the first. A sheet that was
+		// on its way when the working copy was replaced used to keep the old
+		// drawing, since nothing asked for another.
+		allSheetsFollow := func(context string) {
+			if len(w.sheets.cards) != 4 {
+				fail("%s: %d sheets, want 4", context, len(w.sheets.cards))
+			}
+			for i, c := range w.sheets.cards {
+				if !c.drawn.ok || c.drawn.rev != w.docRev || c.asked {
+					fail("%s: sheet %d shows the document of revision %d (drawn=%v, asked=%v), the document is at %d", context, i+1, c.drawn.rev, c.drawn.ok, c.asked, w.docRev)
+				}
+			}
+		}
+		add(func() bool {
+			if w.busy > 0 || !ready() {
+				return false
+			}
+			w.showSheets(1)
+			return true
+		})
+		add(func() bool {
+			if w.busy > 0 || !ready() {
+				return false
+			}
+			allSheetsFollow("sheets before the change")
+			w.panel.bgWhiten.SetActive(true) // the sheets are on screen
+			return true
+		})
+		add(func() bool {
+			if w.busy > 0 || !ready() {
+				return false
+			}
+			allSheetsFollow("sheets after the background was replaced")
+			// Now the other way round: the sheets are out of date and asked for
+			// while the working copy is being prepared, so that they are drawn
+			// from the old one.
+			w.showView("preview")
+			w.panel.pageTransparent.SetActive(true)
+			w.panel.bgRemove.SetActive(true) // the working copy is being prepared...
+			w.showSheets(1)                  // ...when the sheets ask for their drawing
+			return true
+		})
+		add(func() bool {
+			if w.busy > 0 || !ready() {
+				return false
+			}
+			allSheetsFollow("sheets asked while the background was changing")
+			for i, c := range w.sheets.cards {
+				if c.drawn.white {
+					fail("sheets asked while the background was changing: sheet %d is drawn with a white page", i+1)
+				}
+			}
+			w.panel.pageWhite.SetActive(true)
+			w.panel.bgKeep.SetActive(true)
+			w.showView("preview")
+			return true
+		})
+		add(func() bool { return w.busy == 0 && ready() })
 
 		// 7. The export: stopped by the checks, then written, then read back.
 		exportPath := filepath.Join(dir, "plan.pdf")

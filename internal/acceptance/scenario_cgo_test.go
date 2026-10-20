@@ -162,6 +162,7 @@ func TestAcceptance8To13OnTheScenario(t *testing.T) {
 
 			whiten, res := sc.exportWith(model.WhitenBackground, "whiten.pdf")
 			keep, _ := sc.exportWith(model.KeepBackground, "keep.pdf")
+			remove, _ := sc.exportWith(model.RemoveBackground, "remove.pdf")
 
 			// 10, a multipage PDF: one page per band.
 			t.Run("10 page count", func(t *testing.T) {
@@ -204,7 +205,10 @@ func TestAcceptance8To13OnTheScenario(t *testing.T) {
 						t.Errorf("page %d: y = %v mm in the plan, want 10", pg.Number, pg.Y)
 					}
 				}
-				first := rasterise(t, whiten, dpi)[0]
+				// The kept background is drawn from the top of the band, so its
+				// first row is where the band starts, whatever the document
+				// draws first (the real Mini-CAD starts 43 units down).
+				first := rasterise(t, keep, dpi)[0]
 				row := -1
 			scan:
 				for y := 0; y < first.h; y++ {
@@ -225,35 +229,81 @@ func TestAcceptance8To13OnTheScenario(t *testing.T) {
 				}
 			})
 
-			// 9, the grey background of the document is white.
+			// 9, the grey background of the document is white, on every page,
+			// whether it is replaced or removed. The pixels that only the
+			// background paints are the ones of the fill colour with all eight
+			// neighbours of that colour too: the edges of the drawing blend
+			// other colours into the same grey.
 			t.Run("9 background replaced by white", func(t *testing.T) {
-				kept := rasterise(t, keep, 100)[0]
-				white := rasterise(t, whiten, 100)[0]
 				var fill [3]int
 				if _, err := fmt.Sscanf(info.Fill, "#%02x%02x%02x", &fill[0], &fill[1], &fill[2]); err != nil {
 					t.Skipf("the fill %q is not a #rrggbb colour", info.Fill)
 				}
-				grey, turned := 0, 0
-				for y := 0; y < kept.h; y++ {
-					for x := 0; x < kept.w; x++ {
-						c := kept.at(x, y)
-						if abs(c[0]-fill[0]) <= 1 && abs(c[1]-fill[1]) <= 1 && abs(c[2]-fill[2]) <= 1 {
-							grey++
-							if white.white(x, y) {
-								turned++
+				isFill := func(r raster, x, y int) bool {
+					c := r.at(x, y)
+					return abs(c[0]-fill[0]) <= 1 && abs(c[1]-fill[1]) <= 1 && abs(c[2]-fill[2]) <= 1
+				}
+				kept := rasterise(t, keep, 100)
+				for _, choice := range []struct {
+					name string
+					pdf  string
+				}{{"replaced", whiten}, {"removed", remove}} {
+					got := rasterise(t, choice.pdf, 100)
+					if len(got) != len(kept) {
+						t.Fatalf("%s: %d pages, %d when kept", choice.name, len(got), len(kept))
+					}
+					for i := range kept {
+						k, g := kept[i], got[i]
+						grey, turned := 0, 0
+						for y := 1; y < k.h-1; y++ {
+							for x := 1; x < k.w-1; x++ {
+								inside := true
+								for dy := -1; dy <= 1 && inside; dy++ {
+									for dx := -1; dx <= 1; dx++ {
+										if !isFill(k, x+dx, y+dy) {
+											inside = false
+											break
+										}
+									}
+								}
+								if !inside {
+									continue
+								}
+								grey++
+								if g.white(x, y) {
+									turned++
+								}
 							}
+						}
+						if grey == 0 {
+							t.Errorf("%s, page %d: the kept background is nowhere to be seen", choice.name, i+1)
+							continue
+						}
+						if frac := float64(turned) / float64(grey); frac < 0.999 {
+							t.Errorf("%s, page %d: only %.2f%% of the grey pixels are white", choice.name, i+1, 100*frac)
+						}
+						// The margin is the page: opaque white either way.
+						if !k.white(2, 2) || !g.white(2, 2) {
+							t.Errorf("%s, page %d: the corner of the sheet is not white", choice.name, i+1)
 						}
 					}
 				}
-				if grey == 0 {
-					t.Fatal("the kept background is nowhere to be seen")
-				}
-				if frac := float64(turned) / float64(grey); frac < 0.999 {
-					t.Errorf("only %.2f%% of the grey pixels are white once the background is replaced", 100*frac)
-				}
-				// The margin is the page: opaque white either way.
-				if !kept.white(2, 2) || !white.white(2, 2) {
-					t.Error("the corner of the sheet is not white")
+			})
+
+			// The export is checked against the plan (export.Verify) whatever the
+			// document background and the page background: a document without
+			// its background rectangle leaves no clip of the band in the PDF
+			// unless the engine writes one, and a transparent page cannot.
+			t.Run("export with every background", func(t *testing.T) {
+				defer func() { sc.must(sc.sess.SetPageBackground(model.WhitePage)) }()
+				for _, page := range []model.PageBackground{model.WhitePage, model.TransparentPage} {
+					sc.must(sc.sess.SetPageBackground(page))
+					for _, doc := range []model.DocBackground{model.KeepBackground, model.WhitenBackground, model.RemoveBackground} {
+						_, res := sc.exportWith(doc, fmt.Sprintf("every-%s-%s.pdf", page, doc))
+						if res.Pages != len(plan.Pages) {
+							t.Errorf("page %s, document %s: %d pages, want %d", page, doc, res.Pages, len(plan.Pages))
+						}
+					}
 				}
 			})
 
@@ -298,7 +348,7 @@ func TestAcceptance8To13OnTheScenario(t *testing.T) {
 					t.Fatal(err)
 				}
 				specs := export.Specs(plan)
-				if items := export.Verify(pdf, specs, plan.Doc.W, plan.Doc.H); len(items) > 0 {
+				if items := export.Verify(pdf, specs, plan.Doc.W, plan.Doc.H, true); len(items) > 0 {
 					t.Errorf("the PDF does not say what the plan says: %v", items)
 				}
 				for i, pg := range plan.Pages {

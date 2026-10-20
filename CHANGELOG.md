@@ -9,6 +9,29 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Corrigé
+
+- **Fond du document : « Remplacer par du blanc » et « Supprimer le fond » ne se voyaient pas sur
+  la dernière page.** L'aperçu « Document » teintait en bleu pâle une page sur deux (les pages
+  2, 4…) par-dessus le dessin, d'un gris presque identique à celui du fond d'origine : la
+  dernière page, quand elle était paire, restait grisâtre alors que le fond était blanc. Rien
+  n'est plus peint par-dessus le dessin ; l'étendue de chaque page est donnée par une barre le
+  long du dessin, à l'extérieur.
+- **Export avec « Supprimer le fond » refusé.** Sans rectangle de fond, cairo n'écrivait aucun
+  clip pour la bande de la page, et le contrôle du PDF relu refusait l'export (« Le recadrage de
+  cette page dans le PDF ne correspond pas à la coupure de l'aperçu », sur chaque page). Avec une
+  page blanche, le moteur peint du blanc sur la bande, dans le clip (sans effet sur l'image),
+  si bien que le clip est écrit en entier ; avec une page transparente, `export.Verify` vérifie
+  que le clip de chaque élément qui franchit une coupure reste dans la bande.
+- **Aperçu des feuilles : une feuille gardait l'ancien dessin** quand le fond du document
+  changeait pendant qu'elle était en cours de dessin ; rien n'en demandait un nouveau. La feuille
+  est redessinée dès que le dessin en cours est revenu.
+- **Tests** : le test d'acceptation 9 regarde toutes les pages, pour « remplacer » comme pour
+  « supprimer » ; l'export est essayé avec chaque fond de document et chaque fond de page ; le test
+  8 mesure le haut de la bande par le fond conservé (le vrai Mini-CAD ne dessine rien dans ses
+  43 premières unités) ; la fenêtre est essayée sur les marques des pages (rien sur le dessin) et
+  sur les feuilles quand le fond change.
+
 ## [0.3.0] - 2026-10-20
 
 Première version qui fait tout ce que demande le cahier des charges : on ouvre un SVG, on règle

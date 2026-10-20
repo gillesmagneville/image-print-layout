@@ -289,6 +289,16 @@ func (d *Doc) drawPage(cr *C.cairo_t, p PageSpec, whitePage bool) error {
 	C.cairo_rectangle(cr, C.double(p.OriginXPt), C.double(p.OriginYPt),
 		C.double(d.w*p.PtPerUnit), C.double((p.BandBottom-p.BandTop)*p.PtPerUnit))
 	C.cairo_clip(cr)
+	if whitePage {
+		// White on the white of the sheet changes nothing to the picture. It is
+		// there for the PDF: cairo writes a clip only for an operation that
+		// needs it, so a document with no rectangle that covers it (its
+		// background was removed) would leave no trace of the band in the file,
+		// and export.Verify could not read the cut there. This operation is as
+		// large as the band, so the clip is written whole, first.
+		C.cairo_set_source_rgb(cr, 1, 1, 1)
+		C.cairo_paint(cr)
+	}
 	C.cairo_translate(cr, C.double(p.OriginXPt), C.double(p.OriginYPt-p.BandTop*p.PtPerUnit))
 	C.cairo_scale(cr, C.double(p.PtPerUnit), C.double(p.PtPerUnit))
 	var gerr *C.GError

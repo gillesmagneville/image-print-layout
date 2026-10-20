@@ -97,7 +97,7 @@ func Run(req Request) (*Result, error) {
 	if err != nil {
 		return nil, &VerifyError{Items: []diag.Item{diag.New("export.pdf_unreadable", 0, "reason", err.Error())}}
 	}
-	if items := Verify(pdf, specs, req.Plan.Doc.W, req.Plan.Doc.H); len(items) > 0 {
+	if items := Verify(pdf, specs, req.Plan.Doc.W, req.Plan.Doc.H, opts.WhitePage); len(items) > 0 {
 		return nil, &VerifyError{Items: items}
 	}
 

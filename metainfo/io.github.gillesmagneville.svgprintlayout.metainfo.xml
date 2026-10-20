@@ -82,6 +82,14 @@
   </categories>
 
   <releases>
+    <release version="0.2.0" date="2026-10-20">
+      <description>
+        <p>First graphical interface: a GTK 4 window in English, French, Spanish and German that opens an SVG and shows it whole. Page layout, cuts and PDF export are not in the window yet.</p>
+        <p xml:lang="fr">Première interface graphique : une fenêtre GTK 4 en anglais, français, espagnol et allemand, qui ouvre un SVG et l'affiche en entier. La mise en page, les coupures et l'export PDF ne sont pas encore dans la fenêtre.</p>
+        <p xml:lang="es">Primera interfaz gráfica: una ventana GTK 4 en inglés, francés, español y alemán que abre un SVG y lo muestra completo. La maquetación, los cortes y la exportación a PDF aún no están en la ventana.</p>
+        <p xml:lang="de">Erste grafische Oberfläche: ein GTK-4-Fenster auf Englisch, Französisch, Spanisch und Deutsch, das ein SVG öffnet und vollständig anzeigt. Seitenlayout, Schnitte und PDF-Export sind noch nicht im Fenster.</p>
+      </description>
+    </release>
     <release version="0.1.0" date="2026-10-19">
       <description>
         <p>First version: SVG rendering and PDF export engine, Debian, Fedora and Windows packages. No graphical interface yet.</p>

@@ -165,8 +165,15 @@ build_binary() {
         expected="Windows CUI"
     fi
     step "Compilation de $(basename "$destination") $VERSION (cgo, GTK4, librsvg, cairo ; sous-système $subsystem)..."
+    if [ "$subsystem" = "windows" ]; then
+        echo "    La première compilation de GTK (gotk4) dure plusieurs minutes et n'affiche rien ;"
+        echo "    les suivantes sont presque instantanées (cache de Go)."
+    fi
     mkdir -p "$(dirname "$destination")"
-    ( cd "$PROJECT_DIR" && CGO_ENABLED=1 go build -trimpath -buildvcs=false \
+    # gotk4 déclare « free » autrement que <stdlib.h> : gcc le signale à chaque
+    # compilation. Ce n'est pas un défaut de ce dépôt ; on masque cet
+    # avertissement seulement, et on garde les options par défaut de cgo.
+    ( cd "$PROJECT_DIR" && CGO_ENABLED=1 CGO_CFLAGS="${CGO_CFLAGS:--O2 -g} -Wno-builtin-declaration-mismatch" go build -trimpath -buildvcs=false \
         -buildmode=exe -ldflags "$flags" -o "$destination" ./cmd/svgprintlayout )
     # Un exécutable fenêtré lancé depuis un terminal n'écrit nulle part, un
     # exécutable console ouvre une fenêtre noire derrière la fenêtre : on

@@ -99,6 +99,10 @@ pkg-config --exists librsvg-2.0 cairo || erreur "les bibliothèques de développ
   Installe-les avec : sudo apt install librsvg2-dev"
 pkg-config --exists gtk4 gobject-introspection-1.0 || erreur "les bibliothèques de développement de GTK 4 sont absentes (GTK 4.14 ou plus récent).
   Installe-les avec : sudo apt install libgtk-4-dev libgirepository1.0-dev"
+pkg-config --atleast-version=4.14 gtk4 && pkg-config --atleast-version=2.80 glib-2.0 && pkg-config --atleast-version=2.52 librsvg-2.0 ||
+    erreur "les bibliothèques de cette distribution sont trop anciennes : GTK $(pkg-config --modversion gtk4), GLib $(pkg-config --modversion glib-2.0), librsvg $(pkg-config --modversion librsvg-2.0).
+  Il faut GTK 4.14, GLib 2.80 et librsvg 2.52 au moins (gotk4 v0.3.1) : Debian 13, Ubuntu 24.04, Fedora,
+  RHEL 10 et leurs dérivés. Debian 12, Ubuntu 22.04 et RHEL 9 ne conviennent pas."
 
 case "$(uname -m)" in
     x86_64)  DEB_ARCH="amd64" ;;

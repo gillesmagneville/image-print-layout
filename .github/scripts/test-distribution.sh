@@ -16,11 +16,17 @@
 # lit sans télécharger les journaux : en erreur si une étape échoue, en simple
 # note sinon (versions des bibliothèques, dépendances du paquet).
 #
-# Usage : test-distribution.sh debian|redhat
+# Avec « refus » en second argument, la distribution est connue pour être trop
+# ancienne (GTK < 4.14, GLib < 2.80) : le test vérifie que le script de
+# construction refuse de compiler, avec un message qui dit pourquoi, au lieu
+# des centaines d'erreurs de cgo.
+#
+# Usage : test-distribution.sh debian|redhat [refus]
 
 set -euo pipefail
 
 family="${1:-}"
+expectation="${2:-}"
 
 # Après setup-go, le lanceur de la CI donne à certains conteneurs (Rocky Linux
 # 10) un PATH sans les dossiers système : on les remet, derrière le reste.
@@ -131,6 +137,24 @@ window_broadway() {
     unset GDK_BACKEND BROADWAY_DISPLAY
 }
 
+# Distribution trop ancienne : le script de construction doit refuser.
+expect_refusal() {
+    local script out status=0
+    case "$family" in
+        debian) script=./build-deb.sh ;;
+        *) script=./build-rpm.sh ;;
+    esac
+    out="$(echo o | "$script" --no-version-change 2>&1)" || status=$?
+    echo "$out"
+    if [ "$status" -ne 0 ] && grep -q "trop anciennes" <<< "$out"; then
+        note "construction refusée, comme prévu :"
+        note "$(grep -A2 "trop anciennes" <<< "$out")"
+    else
+        note "ERREUR : la construction devait être refusée pour bibliothèques trop anciennes (code $status)"
+        return 1
+    fi
+}
+
 # Le programme installé, comme le lancerait une personne.
 run_installed() {
     echo "--- programme installé"
@@ -148,22 +172,30 @@ run_installed() {
         note "fenêtre : ouverte dans les quatre langues (pilote Broadway de GTK : pas de xvfb-run sur cette distribution, pas de capture)"
     else
         note "fenêtre : NON ESSAYÉE (ni xvfb-run ni gtk4-broadwayd sur cette distribution)"
+        note "dépôts : $(dnf -q repolist 2> /dev/null | awk 'NR > 1 { print $1 }' | tr '\n' ' ')"
+        note "serveurs d'affichage proposés : $(dnf -q list --available 2> /dev/null | awk '{ print $1 }' |
+            grep -i -E '^(xorg-x11-server-X(vfb|wayland)|xwayland-run|weston|cage|mutter|tigervnc-server-minimal|xorg-x11-server-Xvnc|gtk4-broadway)' | tr '\n' ' ')"
     fi
 }
 
 main() {
-    # Le sous-shell du tube hérite de « set +e » ci-dessous : on remet l'arrêt à
-    # la première erreur ici.
-    set -euo pipefail
     case "$family" in
         debian)
             install_debian
             versions
+            if [ "$expectation" = refus ]; then
+                expect_refusal
+                return
+            fi
             build_install_debian
             ;;
         redhat)
             install_redhat
             versions
+            if [ "$expectation" = refus ]; then
+                expect_refusal
+                return
+            fi
             build_install_redhat
             ;;
         *)
@@ -172,12 +204,20 @@ main() {
             ;;
     esac
     run_installed
+}
+
+everything() {
+    # Le sous-shell du tube hérite de « set +e » ci-dessous : on remet l'arrêt à
+    # la première erreur ici. « main » est appelée seule (pas dans un « && »,
+    # qui désactiverait « set -e » dans toute la fonction).
+    set -euo pipefail
+    main
     echo "=== RÉSUMÉ ==="
     cat "$summary"
 }
 
 set +e
-main 2>&1 | tee "$log"
+everything 2>&1 | tee "$log"
 status="${PIPESTATUS[0]}"
 set -e
 

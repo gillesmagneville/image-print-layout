@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+
+	"github.com/gillesmagneville/svg-print-layout/internal/i18n"
 )
 
 // version is overridden at build time:
@@ -20,14 +22,22 @@ import (
 var version = "dev"
 
 func main() {
-	showVersion := flag.Bool("version", false, "print the version and exit")
-	selfTest := flag.Bool("selftest", false, "check that the rendering engine works (loads a built-in SVG, renders it and exports a PDF) and exit")
+	// The language comes first: the descriptions of the flags are in it.
+	setting := requestedLanguage(os.Args[1:])
+	tr := i18n.New(i18n.Resolve(setting, os.Getenv))
+	showVersion := flag.Bool("version", false, tr.T("cli.flag.version"))
+	selfTest := flag.Bool("selftest", false, tr.T("cli.flag.selftest"))
+	lang := flag.String("lang", i18n.Auto, tr.T("cli.flag.lang"))
 	flag.Parse()
+	if !knownLanguageSetting(*lang) {
+		fmt.Fprintln(os.Stderr, tr.T("cli.error.language", "lang", *lang))
+		os.Exit(2)
+	}
 
 	// A failure here is not fatal: the libraries then use their own defaults,
 	// and the self-test says what is missing.
 	if err := prepareRuntime(); err != nil {
-		fmt.Fprintf(os.Stderr, "Avertissement : configuration du moteur de rendu : %v\n", err)
+		fmt.Fprintln(os.Stderr, tr.T("cli.warning.runtime", "error", err.Error()))
 	}
 
 	if *showVersion {
@@ -37,13 +47,13 @@ func main() {
 
 	if *selfTest {
 		if err := runSelfTest(os.Stdout); err != nil {
-			fmt.Fprintf(os.Stderr, "Échec : %v\n", err)
+			fmt.Fprintln(os.Stderr, tr.T("cli.error.selftest", "error", err.Error()))
 			os.Exit(1)
 		}
 		return
 	}
 
-	fmt.Fprintln(os.Stderr, "svg-print-layout : l'interface graphique n'est pas encore implémentée (squelette M0).")
+	fmt.Fprintln(os.Stderr, tr.T("cli.gui.missing"))
 	os.Exit(2)
 }
 

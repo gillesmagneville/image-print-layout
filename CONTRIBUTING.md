@@ -79,9 +79,12 @@ Le contrat complet est dans `ARCHITECTURE.md`. Les règles à ne pas enfreindre 
 ## Style de code
 
 - `gofmt` avant de proposer une pull request.
-- Identifiants et commentaires de code en anglais ; textes destinés à l'utilisateur en
-  français (la langue de l'interface reste à confirmer : voir « Questions ouvertes » dans
-  `ARCHITECTURE.md`).
+- Identifiants et commentaires de code en anglais. Aucun texte destiné à l'utilisateur dans
+  le code : il porte une clé (`tr.T("panel.paper.title")`) dont le texte est dans les
+  quatre catalogues de `internal/i18n` (français, anglais, espagnol, allemand). Le français
+  est la référence ; un test échoue si une langue oublie une clé, un texte ou un paramètre
+  `{nom}`, ou si le code demande une clé qui n'existe pas. Voir « Langues » dans
+  `ARCHITECTURE.md`.
 - Bibliothèque standard d'abord. Toute nouvelle dépendance doit se justifier : ce qu'elle
   apporte que la bibliothèque standard n'offre pas, sa licence, sa maintenance.
 - Chaque fichier source, document ou fichier de CI commence par

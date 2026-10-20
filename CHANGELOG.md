@@ -113,6 +113,25 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
     rastérisé par poppler), le déterminisme de l'export et l'intégrité du SVG source.
   - Tests : scénario de la fenêtre sous Xvfb (fond, annulation, feuilles, export refusé puis
     écrit puis annulé, textes en quatre langues).
+- **Projet dans la fenêtre et recette (jalon M5)** :
+  - `internal/app` : `ReadProject`, `Session.SaveProject` et `Session.OpenProject`. Le projet
+    enregistre où est le document (relatif au fichier projet, absolu en repli), l'empreinte du
+    fichier tel qu'il a été lu et sa taille ; la réouverture rend les avertissements qui ne
+    bloquent rien (document modifié, taille changée, coupures hors du document, fond de projet
+    introuvable : `project.background_lost`), retire les coupures hors du document et pose
+    document et réglages d'un seul bloc, sans rien changer si le projet est refusé. L'état
+    « modifié » se compare au dernier enregistrement ou à la dernière ouverture.
+  - Fenêtre : menu **Projet** (Ouvrir un projet, Enregistrer, Enregistrer sous ; Ctrl+Maj+O,
+    Ctrl+S, Ctrl+Maj+S), document déplacé à localiser sans perdre les réglages, question avant
+    de retirer des coupures, compte rendu des avertissements, astérisque devant le nom dans le
+    titre, question « Enregistrer, ne pas enregistrer, annuler » avant de fermer ou d'ouvrir un
+    autre document. `svgprintlayout fichier.svgpl` ouvre un projet.
+  - `internal/acceptance` : les tests 1 à 7 et 14 s'ajoutent aux tests 8 à 13 ; le test 14
+    exporte avant l'enregistrement et après la réouverture : les deux PDF ont les mêmes octets.
+  - CI : les 14 tests s'exécutent dans le job du moteur, sur chaque distribution Linux essayée
+    et sous MSYS2 sur Windows (poppler installé).
+  - Tests : scénario de la fenêtre (enregistrer, rouvrir, document manquant, document modifié,
+    coupures hors du document, fichier qui n'est pas un projet, fermeture).
 - **Dépendance de construction** : `libfontconfig-dev` (Debian et Ubuntu), `fontconfig-devel`
   (Fedora, RHEL), `mingw-w64-ucrt-x86_64-fontconfig` (MSYS2), ajoutés aux scripts, à la CI et à
   la documentation.

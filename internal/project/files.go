@@ -44,9 +44,19 @@ func SourceFor(projectPath, svgPath string, width, height float64) (model.Source
 	if err != nil {
 		return model.Source{}, err
 	}
-	src := model.Source{AbsolutePath: abs, SHA256: sum, Width: width, Height: height}
-	src.Path = relativeTo(projectPath, abs)
-	return src, nil
+	return DescribeSource(projectPath, abs, sum, width, height), nil
+}
+
+// DescribeSource is SourceFor for a fingerprint that is already known, such as
+// the one of the file as it was read when it was opened: it reads nothing, so
+// a document that has changed or gone since is still described as it was
+// worked on.
+func DescribeSource(projectPath, svgPath, sha string, width, height float64) model.Source {
+	abs, err := filepath.Abs(svgPath)
+	if err != nil {
+		abs = svgPath
+	}
+	return model.Source{AbsolutePath: abs, Path: relativeTo(projectPath, abs), SHA256: sha, Width: width, Height: height}
 }
 
 // relativeTo writes target relative to the directory of projectPath, or ""

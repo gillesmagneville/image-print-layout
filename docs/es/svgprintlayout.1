@@ -4,7 +4,7 @@
 svgprintlayout \- reparte un dibujo SVG en varias hojas y lo exporta como PDF
 .SH SINOPSIS
 .B svgprintlayout
-[\fB\-lang\fR \fIidioma\fR] [\fIarchivo.svg\fR]
+[\fB\-lang\fR \fIidioma\fR] [\fIarchivo.svg\fR | \fIproyecto.svgpl\fR]
 .br
 .B svgprintlayout
 [\fB\-version\fR | \fB\-selftest\fR]
@@ -17,10 +17,14 @@ vectorial de varias páginas. El dibujo conserva una única escala y el archivo
 SVG original nunca se modifica.
 .PP
 La ventana tiene tres zonas: los ajustes a la izquierda, la vista previa
-interactiva en el centro y la lista de páginas a la derecha. El programa está
-en desarrollo: la ventana abre un archivo SVG y lo muestra entero; la
-maquetación, los cortes y la exportación a PDF todavía no están disponibles
-en ella.
+interactiva en el centro y la lista de páginas a la derecha. Los cortes se
+colocan, se mueven y se borran con el ratón; el fondo del documento y el de la
+página se eligen con una vista previa inmediata; cada hoja se ve tal como se
+exportará. Una maquetación se guarda en un archivo de proyecto
+(\fI.svgpl\fR) que se puede abrir más tarde: conserva el papel, los márgenes,
+la escala, el fondo y los cortes, y el archivo SVG original nunca se modifica.
+La exportación vuelve a leer el PDF que ha escrito antes de ponerlo donde se
+pidió.
 .PP
 La interfaz está disponible en francés, inglés, español y alemán. Sigue el
 idioma del sistema, salvo que se elija otro en el menú de la ventana o con
@@ -47,6 +51,9 @@ contrario.
 Crea este archivo cuando la ventana ya se muestra y el documento está
 dibujado. Pensado para las pruebas y la documentación.
 .SH ARCHIVOS
+.TP
+.I proyecto.svgpl
+Un proyecto de maquetación: los ajustes y la ubicación del documento SVG, no el documento en sí.
 .TP
 .I ~/.config/svgprintlayout/settings.json
 Las preferencias del usuario (el idioma de la interfaz). En Windows:

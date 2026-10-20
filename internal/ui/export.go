@@ -170,6 +170,12 @@ func itemText(tr *i18n.Translator, it diag.Item) string {
 // diagnostics and buttons. Without buttons it has one to close it.
 func (w *window) showReport(headingKey, detailKey string, items []diag.Item, buttons []dialogButton) *gtk.Window {
 	tr := w.texts.tr
+	return w.showDialog(tr.T(headingKey), tr.T(detailKey), items, buttons)
+}
+
+// showDialog is showReport for texts that are already written.
+func (w *window) showDialog(heading, detailText string, items []diag.Item, buttons []dialogButton) *gtk.Window {
+	tr := w.texts.tr
 	dialog := gtk.NewWindow()
 	dialog.SetApplication(w.app)
 	dialog.SetTransientFor(&w.win.Window)
@@ -183,11 +189,11 @@ func (w *window) showReport(headingKey, detailKey string, items []diag.Item, but
 	column.SetMarginStart(18)
 	column.SetMarginEnd(18)
 
-	title := gtk.NewLabel(tr.T(headingKey))
+	title := gtk.NewLabel(heading)
 	title.AddCSSClass("title-3")
 	title.SetXAlign(0)
 	title.SetWrap(true)
-	detail := gtk.NewLabel(tr.T(detailKey))
+	detail := gtk.NewLabel(detailText)
 	detail.SetXAlign(0)
 	detail.SetWrap(true)
 	detail.SetMaxWidthChars(60)
@@ -238,7 +244,9 @@ func (w *window) showReport(headingKey, detailKey string, items []diag.Item, but
 
 	column.Append(title)
 	column.Append(detail)
-	column.Append(scroll)
+	if len(items) > 0 {
+		column.Append(scroll)
+	}
 	column.Append(row)
 	dialog.SetChild(column)
 	if primary != nil {

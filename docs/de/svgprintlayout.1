@@ -4,7 +4,7 @@
 svgprintlayout \- verteilt eine SVG\-Zeichnung auf mehrere Blätter und exportiert sie als PDF
 .SH SYNOPSE
 .B svgprintlayout
-[\fB\-lang\fR \fISprache\fR] [\fIDatei.svg\fR]
+[\fB\-lang\fR \fISprache\fR] [\fIDatei.svg\fR | \fIProjekt.svgpl\fR]
 .br
 .B svgprintlayout
 [\fB\-version\fR | \fB\-selftest\fR]
@@ -17,9 +17,14 @@ mehrseitiges Vektor\-PDF. Die Zeichnung behält einen einzigen Maßstab, und die
 ursprüngliche SVG\-Datei wird nie verändert.
 .PP
 Das Fenster hat drei Bereiche: die Einstellungen links, die interaktive
-Vorschau in der Mitte und die Seitenliste rechts. Das Programm befindet sich
-in Entwicklung: Das Fenster öffnet eine SVG\-Datei und zeigt sie vollständig;
-Seitenlayout, Schnitte und PDF\-Export sind darin noch nicht verfügbar.
+Vorschau in der Mitte und die Seitenliste rechts. Die Schnitte werden mit der
+Maus gesetzt, verschoben und gelöscht; der Hintergrund des Dokuments und der
+Seite wird mit sofortiger Vorschau gewählt; jedes Blatt lässt sich so ansehen,
+wie es exportiert wird. Ein Layout wird in einer Projektdatei (\fI.svgpl\fR)
+gespeichert und später wieder geöffnet: Sie merkt sich Papier, Ränder, Maßstab,
+Hintergrund und Schnitte, und die ursprüngliche SVG\-Datei wird nie verändert.
+Der Export liest das geschriebene PDF wieder ein, bevor er es dort ablegt, wo
+Sie es wollten.
 .PP
 Die Oberfläche gibt es auf Französisch, Englisch, Spanisch und Deutsch. Sie
 folgt der Systemsprache, es sei denn, im Menü des Fensters oder mit
@@ -47,6 +52,9 @@ sonst mit 1.
 Legt diese Datei an, sobald das Fenster angezeigt und das Dokument gezeichnet
 ist. Für Tests und Dokumentation gedacht.
 .SH DATEIEN
+.TP
+.I Projekt.svgpl
+Ein Layout-Projekt: die Einstellungen und der Ort des SVG\-Dokuments, nicht das Dokument selbst.
 .TP
 .I ~/.config/svgprintlayout/settings.json
 Die Einstellungen der Benutzerin oder des Benutzers (die Sprache der

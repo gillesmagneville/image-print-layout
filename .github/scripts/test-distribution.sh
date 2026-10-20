@@ -59,7 +59,7 @@ install_debian() {
     apt-get update
     apt-get install -y --no-install-recommends build-essential pkg-config dpkg-dev git ca-certificates \
         librsvg2-dev libfontconfig-dev libgtk-4-dev libgirepository1.0-dev \
-        fonts-dejavu-core adwaita-icon-theme xvfb xauth imagemagick
+        fonts-dejavu-core adwaita-icon-theme xvfb xauth imagemagick poppler-utils
     # IBM Plex est la police du jeu d'essai, mais Debian ne la fournit pas
     # partout ; le test n'en dépend pas (une police de remplacement suffit).
     apt-get install -y --no-install-recommends fonts-ibm-plex || echo "(fonts-ibm-plex absent de cette distribution)"
@@ -79,7 +79,7 @@ install_redhat() {
     dnf config-manager --set-enabled crb || dnf config-manager --set-enabled powertools || true
     dnf -y install gcc make pkgconf-pkg-config git tar gzip findutils which rpm-build \
         librsvg2-devel cairo-devel fontconfig-devel gtk4-devel gobject-introspection-devel \
-        dejavu-sans-fonts adwaita-icon-theme
+        dejavu-sans-fonts adwaita-icon-theme poppler-utils
     # L'écran virtuel est nécessaire pour essayer la fenêtre ; l'outil de
     # capture est facultatif. Un par un, pour que le journal dise lequel manque.
     local package
@@ -147,6 +147,15 @@ run_installed() {
     fi
 }
 
+# Les 14 tests d'acceptation du cahier des charges (§13), sur cette
+# distribution : le Mini-CAD synthétique, A4 portrait, 200 mm, des coupures, un
+# fond blanc, le PDF rastérisé par poppler, puis le projet rouvert.
+run_acceptance() {
+    echo "--- tests d'acceptation"
+    go test -count=1 ./internal/acceptance
+    note "tests d'acceptation 1 à 14 : réussis"
+}
+
 main() {
     case "$family" in
         debian)
@@ -173,6 +182,7 @@ main() {
             ;;
     esac
     run_installed
+    run_acceptance
 }
 
 everything() {

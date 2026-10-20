@@ -7,6 +7,9 @@
 #
 #   -Step build      construit les paquets avec build-windows.ps1 -Patch, comme un
 #                    utilisateur, et vérifie la gestion du fichier VERSION
+#   -Step acceptance exécute les 14 tests d'acceptation du cahier des charges
+#                    (go test ./internal/acceptance, sous MSYS2 UCRT64, poppler
+#                    rastérise les PDF)
 #   -Step portable   lance la version portable avec le seul PATH de Windows :
 #                    l'auto-test, puis la fenêtre dans les quatre langues
 #   -Step installer  installe, lance (auto-test et fenêtre), désinstalle en
@@ -15,7 +18,7 @@
 
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet("build", "portable", "installer", "clean")]
+    [ValidateSet("build", "acceptance", "portable", "installer", "clean")]
     [string]$Step
 )
 
@@ -189,6 +192,22 @@ function Test-Portable {
     }
 }
 
+# Les tests d'acceptation (cahier des charges, §13) : le moteur, l'export et le
+# projet sur ce Windows. poppler fournit pdftoppm et pdfinfo, qui rastérisent
+# les PDF écrits ; avec CI définie, un outil manquant fait échouer le test au
+# lieu de le sauter.
+function Test-Acceptance {
+    $root = if ($env:MSYS2_ROOT) { $env:MSYS2_ROOT } else { "C:\msys64" }
+    $bash = Join-Path $root "usr\bin\bash.exe"
+    if (-not (Test-Path $bash)) { throw "MSYS2 est introuvable ($root)" }
+    $env:MSYSTEM = "UCRT64"
+    $env:CHERE_INVOKING = "1"
+    & $bash -lc "pacman -S --needed --noconfirm mingw-w64-ucrt-x86_64-poppler" 2>&1 | ForEach-Object { Write-Host "$_" }
+    Assert-Success "l'installation de poppler"
+    & $bash -lc "CGO_ENABLED=1 go test -count=1 -v ./internal/acceptance" 2>&1 | ForEach-Object { Write-Host "$_" }
+    Assert-Success "go test ./internal/acceptance"
+}
+
 function Test-Installer {
     $setup = Join-Path (Get-Location) "svgprintlayout_$(Get-Version)_windows-setup.exe"
     $target = Join-Path $env:RUNNER_TEMP "installed"
@@ -213,6 +232,7 @@ try {
     & {
         switch ($Step) {
             "build"     { Invoke-Build }
+            "acceptance" { Test-Acceptance }
             "portable"  { Test-Portable }
             "installer" { Test-Installer }
             "clean"     { Test-Clean }

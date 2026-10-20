@@ -3,6 +3,8 @@
 package app
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -31,6 +33,9 @@ type Services struct {
 type Document struct {
 	// Path is the absolute path of the file.
 	Path string
+	// SHA256 is the fingerprint of the file as it was read, in hexadecimal: a
+	// project records it, to say later whether the document has changed.
+	SHA256 string
 	// Analysis is the reading of the source, with the findings and the
 	// background.
 	Analysis *svgdoc.Analysis
@@ -77,7 +82,8 @@ func Prepare(svc Services, src []byte, path string, bg model.Background) (*Opene
 		return nil, err
 	}
 	w, h := eng.Size()
-	d := &Document{Path: path, Analysis: a, Size: layout.Doc{W: w, H: h}}
+	sum := sha256.Sum256(src)
+	d := &Document{Path: path, SHA256: hex.EncodeToString(sum[:]), Analysis: a, Size: layout.Doc{W: w, H: h}}
 	d.Findings = append(d.Findings, a.Items...)
 	if len(a.Blocks) <= MaxExactBlocks {
 		d.Blocks = Measure(eng, a)

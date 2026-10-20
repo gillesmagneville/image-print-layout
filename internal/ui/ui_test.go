@@ -26,6 +26,7 @@ import (
 	"github.com/gillesmagneville/svg-print-layout/internal/i18n"
 	"github.com/gillesmagneville/svg-print-layout/internal/layout"
 	"github.com/gillesmagneville/svg-print-layout/internal/model"
+	"github.com/gillesmagneville/svg-print-layout/internal/project"
 	"github.com/gillesmagneville/svg-print-layout/internal/testsvg"
 )
 
@@ -89,6 +90,26 @@ func expandAll(root gtk.Widgetter) {
 	for child := gtk.BaseWidget(root).FirstChild(); child != nil; child = gtk.BaseWidget(child).NextSibling() {
 		expandAll(child)
 	}
+}
+
+// clickButton presses the button that bears label, under root.
+func clickButton(root gtk.Widgetter, label string) bool {
+	var found *gtk.Button
+	var walk func(gtk.Widgetter)
+	walk = func(widget gtk.Widgetter) {
+		if b, ok := widget.(*gtk.Button); ok && found == nil && b.Label() == label {
+			found = b
+		}
+		for child := gtk.BaseWidget(widget).FirstChild(); child != nil; child = gtk.BaseWidget(child).NextSibling() {
+			walk(child)
+		}
+	}
+	walk(root)
+	if found == nil {
+		return false
+	}
+	found.Emit("clicked")
+	return true
 }
 
 // plain turns the no-break spaces of French typography into ordinary ones, so
@@ -834,8 +855,303 @@ func runScenario() {
 			return true
 		})
 
-		// 8. The new texts are in every language.
-		outputKeys := []string{"panel.background.title", "panel.export.title", "bg.doc.title", "bg.doc.keep", "bg.doc.whiten",
+		// 8. The project: saved, opened again, and the questions that go with it.
+		projectPath := filepath.Join(dir, "plan.svgpl")
+		missingProject := filepath.Join(dir, "missing", "plan.svgpl")
+		changedProject := filepath.Join(dir, "changed", "plan.svgpl")
+		outsideProject := filepath.Join(dir, "outside", "plan.svgpl")
+		brokenProject := filepath.Join(dir, "broken.svgpl")
+		var savedCuts []float64
+		cutPositions := func() []float64 {
+			var out []float64
+			for _, c := range w.session.Cuts() {
+				out = append(out, c.Position)
+			}
+			return out
+		}
+		// dialogs are the windows other than the main one; takeDialogs closes
+		// them and returns what each said.
+		takeDialogs := func() [][]string {
+			var out [][]string
+			for _, win := range application.Windows() {
+				if win.Object.Native() != w.win.Object.Native() {
+					out = append(out, texts(win))
+					win.Close()
+				}
+			}
+			return out
+		}
+		wantTexts := func(context string, shown []string, tr *i18n.Translator, keys ...string) {
+			for _, key := range keys {
+				if !contains(shown, tr.T(key)) {
+					fail("project: %s does not show %q (%s); it shows %q", context, tr.T(key), key, shown)
+				}
+			}
+		}
+		// A project file for a document elsewhere, written as the program writes it.
+		variant := func(path string, change func(p *model.Project)) {
+			p, err := project.Load(projectPath)
+			if err != nil {
+				fail("project: %v", err)
+				return
+			}
+			p.Source.AbsolutePath = ""
+			change(&p)
+			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+				fail("project: %v", err)
+				return
+			}
+			if err := project.Save(path, p); err != nil {
+				fail("project: %v", err)
+			}
+		}
+
+		add(func() bool {
+			if w.busy > 0 || w.rebuilding {
+				return false
+			}
+			tr := i18n.New(i18n.French)
+			if got, want := w.win.Title(), "*plan.svg — SVG Print Layout"; got != want {
+				fail("project: the title with unsaved changes is %q, want %q", got, want)
+			}
+			if !w.saveAct.Enabled() || !w.saveAsAct.Enabled() {
+				fail("project: saving is not offered with a document open")
+			}
+			// Closing the window with unsaved changes asks first.
+			if !w.closeRequested() {
+				fail("project: the window would close with unsaved changes")
+			}
+			dialogs := takeDialogs()
+			if len(dialogs) != 1 {
+				fail("project: %d windows asked about the unsaved changes", len(dialogs))
+			} else {
+				wantTexts("the question about unsaved changes", dialogs[0], tr,
+					"dialog.unsaved.title", "dialog.unsaved.detail", "dialog.cancel", "dialog.unsaved.discard", "dialog.unsaved.save")
+			}
+			if w.forceClose {
+				fail("project: the window agreed to close before being answered")
+			}
+			if !w.writeProject(projectPath) {
+				fail("project: the project was not written")
+				return true
+			}
+			if got, want := w.win.Title(), "plan.svgpl — SVG Print Layout"; got != want {
+				fail("project: the title after saving is %q, want %q", got, want)
+			}
+			if status := plain(w.status.Label()); status != "Projet enregistré : plan.svgpl." {
+				fail("project: the status after saving says %q", status)
+			}
+			if w.closeRequested() {
+				fail("project: a saved project asks before closing")
+			}
+			// A change brings the star back; saving again asks for nothing.
+			if _, err := w.session.AddCut(100, 0); err != nil {
+				fail("project: %v", err)
+			}
+			w.refreshAll()
+			if got := w.win.Title(); got != "*plan.svgpl — SVG Print Layout" {
+				fail("project: the title after a change is %q", got)
+			}
+			w.saveProject()
+			if got := w.win.Title(); got != "plan.svgpl — SVG Print Layout" || w.session.Dirty() {
+				fail("project: the title after saving again is %q", got)
+			}
+			if dialogs := takeDialogs(); len(dialogs) != 0 {
+				fail("project: saving a known project opened %d windows", len(dialogs))
+			}
+			savedCuts = cutPositions()
+			if len(savedCuts) != 4 {
+				fail("project: %d cuts were saved, want 4", len(savedCuts))
+			}
+			// Another document replaces the project: the cuts and the path go.
+			w.openPath(svg)
+			return true
+		})
+		add(func() bool {
+			if w.busy > 0 {
+				return false
+			}
+			if len(w.session.Cuts()) != 0 || w.session.ProjectPath() != "" || w.win.Title() != "plan.svg — SVG Print Layout" {
+				fail("project: opening an SVG kept the project: %d cuts, path %q, title %q", len(w.session.Cuts()), w.session.ProjectPath(), w.win.Title())
+			}
+			w.openProject(projectPath)
+			return true
+		})
+		add(func() bool {
+			if w.busy > 0 {
+				return false
+			}
+			if got := cutPositions(); fmt.Sprint(got) != fmt.Sprint(savedCuts) {
+				fail("project: the cuts after opening are %v, want %v", got, savedCuts)
+			}
+			p := w.session.Project()
+			if w.session.ProjectPath() != projectPath || w.session.Dirty() || w.session.CanUndo() {
+				fail("project: after opening: path %q, dirty %v, undo %v", w.session.ProjectPath(), w.session.Dirty(), w.session.CanUndo())
+			}
+			if p.Paper.Format != "A4" || w.session.Plan().ContentWidthMM != 200 || len(w.session.Plan().Pages) != len(savedCuts)+1 {
+				fail("project: after opening: paper %q, width %v, %d pages", p.Paper.Format, w.session.Plan().ContentWidthMM, len(w.session.Plan().Pages))
+			}
+			if w.win.Title() != "plan.svgpl — SVG Print Layout" {
+				fail("project: the title after opening is %q", w.win.Title())
+			}
+			if status := plain(w.status.Label()); status != "Projet ouvert : plan.svgpl." {
+				fail("project: the status after opening says %q", status)
+			}
+			if dialogs := takeDialogs(); len(dialogs) != 0 {
+				fail("project: a project that matches its document opened %d windows", len(dialogs))
+			}
+			if w.loadedBG != p.Background.Document {
+				fail("project: the engine holds the background %q, the project says %q", w.loadedBG, p.Background.Document)
+			}
+			// The document is not where the project says: the settings wait.
+			variant(missingProject, func(p *model.Project) { p.Source.Path = "gone/plan.svg" })
+			w.openProject(missingProject)
+			tr := i18n.New(i18n.French)
+			dialogs := takeDialogs()
+			if len(dialogs) != 1 {
+				fail("project: %d windows asked to locate the document", len(dialogs))
+			} else {
+				wantTexts("the request to locate the document", dialogs[0], tr,
+					"dialog.locate.title", "dialog.locate.go", "dialog.cancel")
+				if !contains(dialogs[0], tr.T("dialog.locate.detail", "project", "plan.svgpl", "svg", "plan.svg")) {
+					fail("project: the request does not name the project and the document: %q", dialogs[0])
+				}
+			}
+			if w.session.ProjectPath() != projectPath {
+				fail("project: a project without its document replaced the one that is open")
+			}
+			// The user has pointed at the document.
+			pf, err := app.ReadProject(missingProject)
+			if err != nil || pf.SourcePath != "" {
+				fail("project: the missing document is found at %q (%v)", pf.SourcePath, err)
+				return true
+			}
+			pf.SourcePath = svg
+			w.loadProject(pf)
+			return true
+		})
+		add(func() bool {
+			if w.busy > 0 {
+				return false
+			}
+			if w.session.ProjectPath() != missingProject || fmt.Sprint(cutPositions()) != fmt.Sprint(savedCuts) {
+				fail("project: the located project has path %q and cuts %v", w.session.ProjectPath(), cutPositions())
+			}
+			if dialogs := takeDialogs(); len(dialogs) != 0 {
+				fail("project: a located document that did not change opened %d windows", len(dialogs))
+			}
+			// The document has changed since the project was saved.
+			changed, err := os.ReadFile(svg)
+			if err != nil {
+				fail("project: %v", err)
+				return true
+			}
+			if err := os.MkdirAll(filepath.Dir(changedProject), 0o755); err != nil {
+				fail("project: %v", err)
+				return true
+			}
+			if err := os.WriteFile(filepath.Join(filepath.Dir(changedProject), "plan.svg"), append(changed, []byte("\n<!-- edited -->\n")...), 0o644); err != nil {
+				fail("project: %v", err)
+				return true
+			}
+			variant(changedProject, func(p *model.Project) { p.Source.Path = "plan.svg" })
+			w.openProject(changedProject)
+			return true
+		})
+		add(func() bool {
+			if w.busy > 0 {
+				return false
+			}
+			tr := i18n.New(i18n.French)
+			dialogs := takeDialogs()
+			if len(dialogs) != 1 {
+				fail("project: %d windows reported the changed document", len(dialogs))
+			} else {
+				wantTexts("the report on the project", dialogs[0], tr, "dialog.project_warnings.title", "dialog.project_warnings.detail", "diag.project.source_changed", "dialog.close")
+			}
+			if w.session.ProjectPath() != changedProject || fmt.Sprint(cutPositions()) != fmt.Sprint(savedCuts) {
+				fail("project: the project of a changed document has path %q and cuts %v", w.session.ProjectPath(), cutPositions())
+			}
+			// Cuts that the document no longer has: asked about first.
+			variant(outsideProject, func(p *model.Project) {
+				// The project was saved for a document twice as tall.
+				p.Source.AbsolutePath = svg
+				p.Source.Height = 10000
+				p.Cuts[len(p.Cuts)-1].Position = 9000
+			})
+			w.lastReport = nil
+			w.openProject(outsideProject)
+			return true
+		})
+		add(func() bool {
+			if w.busy > 0 {
+				return false
+			}
+			tr := i18n.New(i18n.French)
+			dialogs := w.lastReport
+			if dialogs == nil {
+				fail("project: no question about the cuts outside the document; windows: %q, status %q", takeDialogs(), plain(w.status.Label()))
+				return true
+			}
+			shown := texts(dialogs)
+			wantTexts("the question about the cuts", shown, tr, "dialog.cuts_outside.title", "dialog.cuts_outside.detail", "dialog.cuts_outside.go", "dialog.cancel")
+			if !contains(shown, tr.T("diag.project.cuts_outside", "count", 1)) {
+				fail("project: the question does not count the cuts: %q", shown)
+			}
+			if w.session.ProjectPath() != changedProject {
+				fail("project: the project changed before the answer")
+			}
+			// Cancelled: nothing changes.
+			if !clickButton(dialogs, tr.T("dialog.cancel")) {
+				fail("project: no Cancel button")
+			}
+			if w.session.ProjectPath() != changedProject || len(w.session.Cuts()) != len(savedCuts) {
+				fail("project: cancelling changed the project: path %q, %d cuts", w.session.ProjectPath(), len(w.session.Cuts()))
+			}
+			w.lastReport = nil
+			w.openProject(outsideProject)
+			return true
+		})
+		add(func() bool {
+			if w.busy > 0 {
+				return false
+			}
+			tr := i18n.New(i18n.French)
+			if w.lastReport == nil || !clickButton(w.lastReport, tr.T("dialog.cuts_outside.go")) {
+				fail("project: no button to remove the cuts")
+				return true
+			}
+			w.lastReport = nil
+			if w.session.ProjectPath() != outsideProject || len(w.session.Cuts()) != len(savedCuts)-1 {
+				fail("project: after removing the cuts: path %q, %d cuts", w.session.ProjectPath(), len(w.session.Cuts()))
+			}
+			if !w.session.Dirty() || !strings.HasPrefix(w.win.Title(), "*") {
+				fail("project: removing cuts is a change to save; the title is %q", w.win.Title())
+			}
+			takeDialogs() // the report on the project, if any
+			// A file that is not a project.
+			if err := os.WriteFile(brokenProject, []byte("{\"not\": \"a project\"}"), 0o644); err != nil {
+				fail("project: %v", err)
+				return true
+			}
+			w.openProject(brokenProject)
+			dialogs := takeDialogs()
+			if len(dialogs) != 1 {
+				fail("project: %d windows reported the broken project", len(dialogs))
+			} else {
+				wantTexts("the error about the project", dialogs[0], tr, "dialog.error.open_project")
+				if want := tr.T("dialog.error.open_project.detail", "path", brokenProject, "reason", tr.T("diag.project.not_a_project")); !contains(dialogs[0], want) {
+					fail("project: the error does not say why: %q, want %q", dialogs[0], want)
+				}
+			}
+			if w.session.ProjectPath() != outsideProject {
+				fail("project: a broken project replaced the one that is open")
+			}
+			return true
+		})
+
+		// 9. The new texts are in every language.
+		outputKeys := []string{"action.project", "panel.background.title", "panel.export.title", "bg.doc.title", "bg.doc.keep", "bg.doc.whiten",
 			"bg.doc.remove", "bg.page.title", "bg.page.white", "bg.page.transparent", "bg.page.hint", "bg.workspace.hint",
 			"export.preview", "export.notes", "action.export", "view.document", "view.sheets"}
 		for _, lang := range i18n.Languages {

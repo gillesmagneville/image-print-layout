@@ -10,6 +10,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 
 	"github.com/diamondburned/gotk4/pkg/gio/v2"
@@ -122,6 +123,12 @@ type window struct {
 	undoAction *gio.SimpleAction
 	redoAction *gio.SimpleAction
 	exportAct  *gio.SimpleAction
+	saveAct    *gio.SimpleAction
+	saveAsAct  *gio.SimpleAction
+	projectBtn *gtk.MenuButton
+	// forceClose lets the window close without asking about unsaved changes:
+	// the user has answered.
+	forceClose bool
 	undoButton *gtk.Button
 	redoButton *gtk.Button
 	statusKey  string
@@ -177,6 +184,7 @@ func newWindow(application *gtk.Application, opts Options, settings app.Settings
 	w.win.SetChild(body)
 
 	w.texts.bind(func(tr *i18n.Translator) { w.updateTitle() })
+	w.win.ConnectCloseRequest(w.closeRequested)
 	w.refreshAll()
 	return w
 }
@@ -184,7 +192,11 @@ func newWindow(application *gtk.Application, opts Options, settings app.Settings
 func (w *window) show() {
 	w.win.Present()
 	if w.opts.Open != "" {
-		w.openPath(w.opts.Open)
+		if strings.EqualFold(filepath.Ext(w.opts.Open), projectExt) {
+			w.openProject(w.opts.Open)
+		} else {
+			w.openPath(w.opts.Open)
+		}
 	}
 	if w.opts.ReadyFile != "" {
 		w.announceReady()
@@ -382,11 +394,16 @@ func (w *window) buildActions() {
 		w.win.AddAction(a)
 		return a
 	}
-	add("open", w.openDialog)
+	add("open", func() { w.guardUnsaved(w.openDialog) })
+	add("open-project", func() { w.guardUnsaved(w.openProjectDialog) })
+	w.saveAct = add("save-project", w.saveProject)
+	w.saveAct.SetEnabled(false)
+	w.saveAsAct = add("save-project-as", func() { w.saveProjectAs(nil) })
+	w.saveAsAct.SetEnabled(false)
 	w.exportAct = add("export", w.exportPDF)
 	w.exportAct.SetEnabled(false)
 	add("about", w.showAbout)
-	add("quit", w.app.Quit)
+	add("quit", w.win.Close)
 	w.undoAction = add("undo", w.undo)
 	w.redoAction = add("redo", w.redo)
 	add("zoom-in", func() { w.pv.zoomIn() })
@@ -403,6 +420,9 @@ func (w *window) buildActions() {
 	w.win.AddAction(w.langAction)
 
 	w.app.SetAccelsForAction("win.open", []string{"<Control>o"})
+	w.app.SetAccelsForAction("win.open-project", []string{"<Control><Shift>o"})
+	w.app.SetAccelsForAction("win.save-project", []string{"<Control>s"})
+	w.app.SetAccelsForAction("win.save-project-as", []string{"<Control><Shift>s"})
 	w.app.SetAccelsForAction("win.export", []string{"<Control>e"})
 	w.app.SetAccelsForAction("win.quit", []string{"<Control>q"})
 	w.app.SetAccelsForAction("win.undo", []string{"<Control>z"})
@@ -425,6 +445,14 @@ func (w *window) buildHeaderBar() {
 		open.SetTooltipText(tr.T("action.open_svg.tooltip"))
 	})
 	bar.PackStart(open)
+
+	w.projectBtn = gtk.NewMenuButton()
+	w.texts.bind(func(tr *i18n.Translator) {
+		w.projectBtn.SetLabel(tr.T("action.project"))
+		w.projectBtn.SetTooltipText(tr.T("action.project.tooltip"))
+		w.projectBtn.SetMenuModel(w.buildProjectMenu(tr))
+	})
+	bar.PackStart(w.projectBtn)
 
 	history := gtk.NewBox(gtk.OrientationHorizontal, 0)
 	history.AddCSSClass("linked")
@@ -562,7 +590,14 @@ func (w *window) showSheets(n int) {
 func (w *window) updateTitle() {
 	title := "SVG Print Layout"
 	if doc := w.session.Document(); doc != nil {
-		title = baseName(doc.Path) + " — " + title
+		name := baseName(doc.Path)
+		if path := w.session.ProjectPath(); path != "" {
+			name = baseName(path)
+		}
+		if w.session.Dirty() {
+			name = "*" + name
+		}
+		title = name + " — " + title
 	}
 	w.win.SetTitle(title)
 	if w.status != nil && w.statusKey != "" {
@@ -588,6 +623,8 @@ func (w *window) refreshAll() {
 	w.syncBackground()
 	w.sheets.update()
 	w.refreshExportState()
+	w.refreshProjectState()
+	w.updateTitle()
 }
 
 // refreshExportState enables the export and says in the export section what
@@ -741,13 +778,22 @@ func (w *window) adopt(o *app.Opened) {
 		w.showOpenError(o.Document.Path, err)
 		return
 	}
+	w.install(o)
+	d := o.Document
+	w.setStatus("status.loaded", "name", baseName(d.Path), "w", shown(w.texts.tr, d.Size.W), "h", shown(w.texts.tr, d.Size.H))
+}
+
+// install shows the document the session has just accepted: the engine copy
+// replaces the previous one, and the views start from the whole drawing.
+func (w *window) install(o *app.Opened) {
 	previous := w.engineDoc
 	w.engineDoc = o.Engine
 	if previous != nil {
 		w.engine.do(previous.Close)
 	}
 	d := o.Document
-	w.loadedBG = model.KeepBackground
+	// The working copy was loaded with the background the project asks for.
+	w.loadedBG = w.session.Project().Background.Document
 	w.rebuilding = false
 	w.docRev++
 	w.selCut, w.selPage = 0, 0
@@ -756,7 +802,6 @@ func (w *window) adopt(o *app.Opened) {
 	w.pv.setDocument(d.Size.W, d.Size.H)
 	w.updateTitle()
 	w.refreshAll()
-	w.setStatus("status.loaded", "name", baseName(d.Path), "w", shown(w.texts.tr, d.Size.W), "h", shown(w.texts.tr, d.Size.H))
 }
 
 // ---- drawing ----------------------------------------------------------------------------------

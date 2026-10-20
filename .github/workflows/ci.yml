@@ -62,8 +62,11 @@ jobs:
         with:
           go-version-file: go.mod
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends librsvg2-dev libfontconfig-dev poppler-utils fonts-ibm-plex
-      - run: go vet ./internal/engine ./internal/testsvg
+      - run: go vet ./internal/engine ./internal/testsvg ./internal/acceptance
       - run: go test -count=1 -v ./internal/engine ./internal/testsvg
+      # The 14 acceptance tests of the specification (section 13), on the whole
+      # chain; poppler rasterises the PDFs they write.
+      - run: go test -count=1 -v ./internal/acceptance
 
   # The window: everything is built with cgo (the program links GTK4), and the
   # tests of the window run on a virtual screen. gotk4 compiles slowly the
@@ -282,6 +285,9 @@ jobs:
       - name: Build with build-windows.ps1
         shell: powershell
         run: .\.github\scripts\windows-package.ps1 -Step build
+      - name: Acceptance tests of the specification (section 13)
+        shell: powershell
+        run: .\.github\scripts\windows-package.ps1 -Step acceptance
       - name: Run the portable version with only Windows' own PATH
         shell: powershell
         run: .\.github\scripts\windows-package.ps1 -Step portable

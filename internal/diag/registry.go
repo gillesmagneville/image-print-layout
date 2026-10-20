@@ -88,11 +88,12 @@ var Registry = map[string]Spec{
 	"correction.none": {Info, nil},
 
 	// Project files.
-	"project.not_a_project":  {Failure, nil},
-	"project.too_new":        {Failure, []string{"version", "supported"}},
-	"project.bad_version":    {Failure, []string{"version"}},
-	"project.invalid":        {Failure, []string{"field"}},
-	"project.source_changed": {Warning, nil},
-	"project.size_changed":   {Warning, []string{"w", "h", "was_w", "was_h"}},
-	"project.cuts_outside":   {Warning, []string{"count"}},
+	"project.not_a_project":   {Failure, nil},
+	"project.too_new":         {Failure, []string{"version", "supported"}},
+	"project.bad_version":     {Failure, []string{"version"}},
+	"project.invalid":         {Failure, []string{"field"}},
+	"project.source_changed":  {Warning, nil},
+	"project.size_changed":    {Warning, []string{"w", "h", "was_w", "was_h"}},
+	"project.cuts_outside":    {Warning, []string{"count"}},
+	"project.background_lost": {Warning, nil},
 }

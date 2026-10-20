@@ -4,7 +4,7 @@
 svgprintlayout \- met en page un dessin SVG sur plusieurs feuilles et l'exporte en PDF
 .SH SYNOPSIS
 .B svgprintlayout
-[\fB\-lang\fR \fIlangue\fR] [\fIfichier.svg\fR]
+[\fB\-lang\fR \fIlangue\fR] [\fIfichier.svg\fR | \fIprojet.svgpl\fR]
 .br
 .B svgprintlayout
 [\fB\-version\fR | \fB\-selftest\fR]
@@ -17,9 +17,14 @@ PDF multipage vectoriel. Le dessin garde une échelle unique et le fichier SVG
 d'origine n'est jamais modifié.
 .PP
 La fenêtre a trois zones : les paramètres à gauche, l'aperçu interactif au
-centre et la liste des pages à droite. Le programme est en cours de
-développement : la fenêtre ouvre un fichier SVG et l'affiche en entier ; la
-mise en page, les coupures et l'export PDF n'y sont pas encore disponibles.
+centre et la liste des pages à droite. Les coupures se placent, se déplacent
+et se suppriment à la souris ; le fond du document et celui de la page se
+choisissent avec un aperçu immédiat ; chaque feuille se voit telle qu'elle sera
+exportée. Une mise en page s'enregistre dans un fichier de projet
+(\fI.svgpl\fR) qu'on rouvre plus tard : il garde le papier, les marges,
+l'échelle, le fond et les coupures, et le fichier SVG d'origine n'est jamais
+modifié. L'export relit le PDF qu'il a écrit avant de le mettre où vous l'avez
+demandé.
 .PP
 L'interface existe en français, anglais, espagnol et allemand. Elle suit la
 langue du système, sauf si une langue est choisie dans le menu de la fenêtre
@@ -46,6 +51,10 @@ incorporée. Quitte avec le code 0 si tout fonctionne, 1 sinon.
 Crée ce fichier une fois la fenêtre affichée et le document dessiné. Destiné
 aux tests et à la documentation.
 .SH FICHIERS
+.TP
+.I projet.svgpl
+Un projet de mise en page : les réglages et l'emplacement du document SVG, pas
+le document lui-même.
 .TP
 .I ~/.config/svgprintlayout/settings.json
 Les préférences de l'utilisateur (la langue de l'interface). Sous Windows :

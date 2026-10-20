@@ -191,6 +191,12 @@ jobs:
     container: ${{ matrix.image }}
     timeout-minutes: 60
     continue-on-error: ${{ matrix.exploratory }}
+    # Chemin absolu : après setup-go, le PATH que le lanceur donne au conteneur
+    # de Rocky Linux 10 ne contient plus /usr/bin, et « sh » n'est plus trouvé
+    # (code 127). Le script remet les dossiers système dans le PATH.
+    defaults:
+      run:
+        shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
     strategy:
       fail-fast: false
       matrix:
@@ -221,27 +227,26 @@ jobs:
           fi
       - uses: actions/checkout@v4
       - name: PATH before setup-go
-        shell: sh
         run: echo "::notice title=PATH avant setup-go::$PATH ; bash=$(command -v bash) ; sh=$(command -v sh)"
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache: false
       - name: PATH after setup-go
-        shell: sh
         run: echo "::notice title=PATH après setup-go::$PATH ; bash=$(command -v bash) ; sh=$(command -v sh) ; go=$(command -v go)"
       # Les outils que le script suppose présents : si une image minimale en
       # manque un, l'annotation le dit (les journaux ne se lisent pas sans
       # téléchargement).
       - name: Tools the script needs
         run: |
+          PATH="$PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
           missing=""
           for tool in bash env tee tail awk sed grep sort tr seq mktemp dirname; do
             command -v "$tool" > /dev/null || missing="$missing $tool"
           done
           echo "::notice title=Outils::manquants :${missing:- aucun}; shell=$SHELL; $(. /etc/os-release && echo "$PRETTY_NAME")"
       - name: Build the package, install it, run it
-        run: bash .github/scripts/test-distribution.sh ${{ matrix.family }}
+        run: /usr/bin/bash .github/scripts/test-distribution.sh ${{ matrix.family }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:

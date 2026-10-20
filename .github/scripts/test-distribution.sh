@@ -21,6 +21,12 @@
 set -euo pipefail
 
 family="${1:-}"
+
+# Après setup-go, le lanceur de la CI donne à certains conteneurs (Rocky Linux
+# 10) un PATH sans les dossiers système : on les remet, derrière le reste.
+PATH="$PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+export PATH
+
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 log="${RUNNER_TEMP:-/tmp}/distribution.log"
 screenshots="$PWD/screenshots"

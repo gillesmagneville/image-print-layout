@@ -12,6 +12,8 @@ entre les pages sur un aperçu, puis on exporte **un seul PDF multipage vectorie
 Elle s'adresse à toute personne qui doit imprimer un grand dessin (un schéma, par exemple)
 sans connaître les coordonnées SVG, la programmation ou la géométrie.
 
+> **Auteur :** SVG Print Layout est développé par Gilles MAGNEVILLE, et conçu avec l'aide de claude.ai.
+
 > **Note sur ce document :** PROJECT_CONTEXT.md dit *pourquoi* le projet existe et *ce qu'il
 > valorise*. Il ne répète ni les formules, ni les interfaces, ni les formats de fichier :
 > ceux-ci vivent une seule fois, de façon canonique, dans `ARCHITECTURE.md`, pour que les

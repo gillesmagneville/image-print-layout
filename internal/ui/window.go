@@ -152,7 +152,7 @@ func newWindow(application *gtk.Application, opts Options, settings app.Settings
 	}
 	w.win = gtk.NewApplicationWindow(application)
 	w.win.SetDefaultSize(1280, 800)
-	gtk.WindowSetDefaultIconName(AppID)
+	gtk.WindowSetDefaultIconName(IconName)
 
 	w.buildActions()
 	w.buildHeaderBar()
@@ -290,21 +290,6 @@ func (w *window) statusText() string {
 	return w.texts.tr.T(w.statusKey, args...)
 }
 
-// showAbout opens the About box.
-func (w *window) showAbout() {
-	tr := w.texts.tr
-	about := gtk.NewAboutDialog()
-	about.SetProgramName("SVG Print Layout")
-	about.SetVersion(w.opts.Version)
-	about.SetComments(tr.T("app.tagline"))
-	about.SetWebsite(Website)
-	about.SetLicenseType(gtk.LicenseGPL30_Only)
-	about.SetLogoIconName(AppID)
-	about.SetTransientFor(&w.win.Window)
-	about.SetModal(true)
-	about.Present()
-}
-
 // openDialog asks for an SVG document.
 func (w *window) openDialog() {
 	tr := w.texts.tr
@@ -372,6 +357,9 @@ func (w *window) showMessage(heading, detail string) {
 	column.Append(closeButton)
 	dialog.SetChild(column)
 	dialog.SetDefaultWidget(closeButton)
+	// The first widget that can take the focus gets it when the window opens, and
+	// a selectable label then shows its whole text selected.
+	dialog.SetFocus(closeButton)
 	dialog.Present()
 }
 
@@ -433,8 +421,9 @@ func (w *window) buildActions() {
 	w.app.SetAccelsForAction("win.fit-width", []string{"<Control>1", "<Control>KP_1"})
 }
 
-// buildHeaderBar fills the title bar: open, undo and redo on the left, the
-// menu on the right.
+// buildHeaderBar fills the title bar: open, project and history on the left,
+// the menu on the right. The export is in the left panel (and Ctrl+E): a second
+// button here would only say the same thing twice.
 func (w *window) buildHeaderBar() {
 	bar := gtk.NewHeaderBar()
 
@@ -464,14 +453,6 @@ func (w *window) buildHeaderBar() {
 	history.Append(w.redoButton)
 	bar.PackStart(history)
 
-	export := gtk.NewButton()
-	export.SetActionName("win.export")
-	export.AddCSSClass("suggested-action")
-	w.texts.bind(func(tr *i18n.Translator) {
-		export.SetLabel(tr.T("action.export"))
-		export.SetTooltipText(tr.T("action.export.tooltip"))
-	})
-
 	w.menuButton = gtk.NewMenuButton()
 	w.menuButton.SetIconName("open-menu-symbolic")
 	w.texts.bind(func(tr *i18n.Translator) {
@@ -479,7 +460,6 @@ func (w *window) buildHeaderBar() {
 		w.menuButton.SetMenuModel(w.buildMenu(tr))
 	})
 	bar.PackEnd(w.menuButton)
-	bar.PackEnd(export)
 
 	w.win.SetTitlebar(bar)
 }

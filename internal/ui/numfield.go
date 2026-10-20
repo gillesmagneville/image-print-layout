@@ -170,17 +170,27 @@ func (f *numField) set(v float64, notify bool) {
 	}
 }
 
-// show writes the value in the notation of the language.
+// show writes the value in the notation of the language. The cursor goes to the
+// end: GtkEntry leaves it at the start after SetText.
 func (f *numField) show() {
 	f.updating = true
 	f.entry.SetText(f.tr().Number(round(f.value, f.decimals), -1))
+	f.entry.SetPosition(-1)
 	f.updating = false
 }
 
 // SetValue changes the value from the program: onChange is not called. A field
-// the user is typing in is left alone.
+// the user is typing in is left alone: while a value waits to be applied, and
+// once the field already shows the value, in whatever notation (the user typed
+// "65", the program says 65 after applying it: writing "65" again would send
+// the cursor back to the start, and the next digit would go before the first).
+// The canonical notation is written when the user leaves the field.
 func (f *numField) SetValue(v float64) {
-	if f.typing.pending() || (f.entry.HasFocus() && f.value == v) {
+	if f.typing.pending() {
+		return
+	}
+	if shown, ok := f.parse(); ok && round(shown, f.decimals) == round(v, f.decimals) {
+		f.value = v
 		return
 	}
 	f.value = v

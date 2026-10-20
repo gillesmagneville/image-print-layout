@@ -90,7 +90,7 @@ VIProductVersion "${APP_VERSION_NUMERIC}"
     VIAddVersionKey /LANG=${LANG} "ProductName" "SVG Print Layout"
     VIAddVersionKey /LANG=${LANG} "ProductVersion" "${APP_VERSION}"
     VIAddVersionKey /LANG=${LANG} "CompanyName" "Gilles MAGNEVILLE"
-    VIAddVersionKey /LANG=${LANG} "LegalCopyright" "GNU GPL v3"
+    VIAddVersionKey /LANG=${LANG} "LegalCopyright" "Gilles MAGNEVILLE - GNU GPL v3"
     VIAddVersionKey /LANG=${LANG} "FileDescription" "${DESCRIPTION}"
     VIAddVersionKey /LANG=${LANG} "FileVersion" "${APP_VERSION}"
 !macroend

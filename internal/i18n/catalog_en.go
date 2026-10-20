@@ -14,7 +14,12 @@ var en = map[string]string{
 	"cli.error.language":  "unknown language “{lang}”: choose fr, en, es or de",
 
 	// Application.
-	"app.tagline": "Layout, cutting and printing of vector documents",
+	"app.tagline":     "Layout, cutting and printing of vector documents",
+	"about.version":   "Version {version}",
+	"about.developed": "Developed by {name}",
+	"about.designed":  "Designed with the help of claude.ai",
+	"about.website":   "Project website",
+	"about.license":   "Free software, under the GNU GPL version 3 only. It comes with no warranty.",
 
 	// Title bar and menu.
 	"action.open_svg":         "Open an SVG…",

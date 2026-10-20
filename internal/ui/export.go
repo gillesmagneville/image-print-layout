@@ -251,6 +251,9 @@ func (w *window) showDialog(heading, detailText string, items []diag.Item, butto
 	dialog.SetChild(column)
 	if primary != nil {
 		dialog.SetDefaultWidget(primary)
+		// Without this the first selectable label takes the focus and shows its
+		// text selected as the window opens.
+		dialog.SetFocus(primary)
 	}
 	dialog.Present()
 	w.lastReport = dialog

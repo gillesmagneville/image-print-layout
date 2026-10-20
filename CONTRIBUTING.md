@@ -5,6 +5,8 @@
 Merci de l'intérêt porté à ce projet ! Ce document explique comment signaler un problème,
 proposer une amélioration, ou contribuer du code.
 
+SVG Print Layout est développé par Gilles MAGNEVILLE, et conçu avec l'aide de claude.ai.
+
 ## Signaler un bug
 
 Ouvrez une issue en précisant :

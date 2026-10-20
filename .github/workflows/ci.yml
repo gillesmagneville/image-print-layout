@@ -76,19 +76,22 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends librsvg2-dev rpm lintian appstream desktop-file-utils
+      # The scripts ask which version to build and for a confirmation, like a
+      # user's run: "o" answers the confirmation, --no-version-change keeps
+      # VERSION as it is. The packages are written at the root of the repository.
       - name: Build the .deb and the .rpm
         run: |
-          ./build-deb.sh
-          ./build-rpm.sh
+          echo o | ./build-deb.sh --no-version-change
+          echo o | ./build-rpm.sh --no-version-change
       - name: Check the .deb with lintian, AppStream and desktop-file-validate
         run: |
-          lintian --fail-on error dist/*.deb
-          dpkg-deb --extract dist/*.deb "$RUNNER_TEMP/deb"
+          lintian --fail-on error ./*.deb
+          dpkg-deb --extract ./*.deb "$RUNNER_TEMP/deb"
           desktop-file-validate "$RUNNER_TEMP"/deb/usr/share/applications/*.desktop
           appstreamcli validate --no-net "$RUNNER_TEMP"/deb/usr/share/metainfo/*.metainfo.xml
       - name: Install the .deb, run it, remove it
         run: |
-          sudo apt-get install -y ./dist/*.deb
+          sudo apt-get install -y ./*.deb
           svgprintlayout -version
           svgprintlayout -selftest
           man -w svgprintlayout
@@ -96,24 +99,29 @@ jobs:
           test ! -e /usr/bin/svgprintlayout
       - name: Run the program from the .rpm
         run: |
-          rpm -qpi dist/*.rpm
-          rpm -qpl dist/*.rpm
+          rpm -qpi ./*.rpm
+          rpm -qpl ./*.rpm
           mkdir "$RUNNER_TEMP/rpm"
-          rpm2cpio dist/*.rpm | (cd "$RUNNER_TEMP/rpm" && cpio -idm)
+          rpm2cpio ./*.rpm | (cd "$RUNNER_TEMP/rpm" && cpio -idm)
           "$RUNNER_TEMP/rpm/usr/bin/svgprintlayout" -selftest
       - name: Check that building twice gives the same files
         run: |
-          sha256sum dist/*.deb dist/*.rpm > "$RUNNER_TEMP/first.sha"
-          ./build-deb.sh >/dev/null
-          ./build-rpm.sh >/dev/null
+          sha256sum ./*.deb ./*.rpm > "$RUNNER_TEMP/first.sha"
+          echo o | ./build-deb.sh --no-version-change >/dev/null
+          echo o | ./build-rpm.sh --no-version-change >/dev/null
           sha256sum --check "$RUNNER_TEMP/first.sha"
       - uses: actions/upload-artifact@v4
         with:
           name: linux-packages
           path: |
-            dist/*.deb
-            dist/*.rpm
+            *.deb
+            *.rpm
           retention-days: 14
+      # Last, because it builds again with other versions and removes the
+      # packages: the choice of the next version, the cancelled confirmation,
+      # VERSION written only after a successful build.
+      - name: Check how the scripts manage VERSION
+        run: .github/scripts/test-version-handling.sh
 
   windows-package:
     name: Windows package (portable and installer)
@@ -125,7 +133,8 @@ jobs:
         shell: pwsh
         run: choco install nsis --no-progress -y
       # The same entry point as a user's: it checks MSYS2 and its packages,
-      # installs what is missing (-Oui answers yes), then builds both packages.
+      # installs what is missing (-Oui answers yes), then builds both packages
+      # as -Patch, which also checks that VERSION is updated after the build.
       # Windows PowerShell 5.1 on purpose: it is what a user has. The steps
       # are in a script so that a failure leaves its last lines as an error
       # annotation on the run.
@@ -142,6 +151,9 @@ jobs:
         with:
           name: windows-package
           path: |
-            dist/*_windows-portable.zip
-            dist/*_windows-setup.exe
+            *_windows-portable.zip
+            *_windows-setup.exe
           retention-days: 14
+      - name: Check that build-windows.ps1 -Clean removes the packages
+        shell: powershell
+        run: .\.github\scripts\windows-package.ps1 -Step clean

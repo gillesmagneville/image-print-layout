@@ -9,21 +9,29 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
-Aucune version n'est encore publiée : l'application n'est pas utilisable. Le dépôt contient
-le squelette, les documents de référence, la bibliothèque d'unités et le prototype du moteur de
-rendu (M0a) ; le prototype de l'interface GTK4 et le build sous Windows (M0b) sont la prochaine
-étape.
+## [0.1.0] - 2026-10-19
+
+Première version. Le dépôt contient le squelette, les documents de référence, la bibliothèque
+d'unités et de formats papier, le prototype du moteur de rendu (M0a), les scripts qui
+construisent les paquets `.deb`, `.rpm` et Windows, et la CI. Le programme n'a pas encore
+d'interface graphique : il n'offre que `-version` et `-selftest`. Le prototype de l'interface
+GTK4 et le build de celle-ci sous Windows (M0b) sont la prochaine étape.
 
 ### Ajouté
 
-- **Paquets** : `./build-deb.sh`, `./build-rpm.sh` et `.\build-windows.ps1` construisent
-  dans `dist/` un `.deb`, un `.rpm`, une version portable (`.zip`) et un installeur NSIS de
+- **Paquets** : `./build-deb.sh`, `./build-rpm.sh` et `.\build-windows.ps1` construisent à la
+  racine du dépôt un `.deb`, un `.rpm`, une version portable (`.zip`) et un installeur NSIS de
   Windows, avec les outils natifs de chaque plate-forme (`dpkg-deb`, `rpmbuild`, MSYS2 et
-  NSIS). Les paquets Linux contiennent le programme, l'entrée de menu, les métadonnées
-  AppStream, l'icône et la page de manuel, avec des dépendances déduites du binaire ; le
-  paquet Windows embarque aussi les DLL de cairo et de librsvg, fontconfig, les chargeurs
-  d'images et la licence de chaque bibliothèque. Les constructions sont reproductibles, et
-  les scripts ne modifient jamais `VERSION`. Voir `packaging/README.md`.
+  NSIS). Ils ont les options et la gestion de `VERSION` de ceux de Planche-Contact :
+  `--major`, `--minor`, `--patch`, `--no-version-change`, `--clean`, `--help` (`-Major`… sous
+  PowerShell), menu interactif sans option, confirmation avant de construire, `VERSION`
+  écrit une fois le paquet construit. Une version `0.1.0-dev` est d'abord publiée (`--patch`
+  et `--minor` donnent `0.1.0`). Les paquets Linux contiennent le programme, l'entrée de
+  menu, les métadonnées AppStream, l'icône et la page de manuel, avec des dépendances
+  déduites du binaire ; le paquet Windows embarque aussi les DLL de cairo et de librsvg,
+  fontconfig, les chargeurs d'images et la licence de chaque bibliothèque. Les constructions
+  sont reproductibles. Même organisation des dossiers que Planche-Contact : `debian/`,
+  `metainfo/`, `icons/`, `windows/`. Voir le README, « Paquets », et `ARCHITECTURE.md`.
 - **`-version` et `-selftest`** : le programme affiche sa version et celles de librsvg et de
   cairo, et vérifie son moteur de rendu sur la machine où il tourne (chargement, mesure,
   rendu, image PNG incorporée, police incorporée au PDF, export déterministe). Les paquets
@@ -31,11 +39,17 @@ rendu (M0a) ; le prototype de l'interface GTK4 et le build sous Windows (M0b) so
 - **`engine.ConfigureRuntime`** : sous Windows, oriente fontconfig, gdk-pixbuf et pango vers
   les données livrées à côté du programme.
 - **CI** : un job `linux-packages` (construction, lintian, AppStream, installation et
-  désinstallation du `.deb`, essai du `.rpm`, constructions identiques) et un job
-  `windows-package` (construction par `build-windows.ps1`, essai de la version portable
-  avec le seul PATH de Windows, installation et désinstallation silencieuses).
+  désinstallation du `.deb`, essai du `.rpm`, constructions identiques, gestion de `VERSION`
+  par les scripts) et un job `windows-package` (construction par `build-windows.ps1 -Patch`,
+  essai de la version portable avec le seul PATH de Windows, installation et désinstallation
+  silencieuses, `-Clean`).
 - **`repocheck`** : l'en-tête de licence est aussi exigé dans les scripts PowerShell, les
-  scripts NSIS, les modèles et les fichiers d'empaquetage ; le dossier `dist/` est ignoré.
+  scripts NSIS et les fichiers d'empaquetage ; les trois scripts de construction doivent avoir
+  les mêmes options, le même calcul de version, et n'écrire `VERSION` qu'après la
+  construction ; la version de `VERSION` doit être dans le journal des modifications, dans les
+  métadonnées AppStream et dans la page de manuel ; `ARCHITECTURE.md` doit garder ses sections
+  numérotées de 1 à 15 sans trou ; les fichiers sont lus avec des fins de ligne Unix, comme ils
+  le sont dans une copie de travail Windows.
 - **`engine` (prototype M0a)** : chargement d'un SVG par librsvg (résolution imposée à 96 dpi),
   taille du document, boîte d'un élément dans le repère du document, rendu d'une fenêtre en
   image, et export PDF multipage : chaque page redessine le document sous un clip

@@ -21,25 +21,37 @@ Puis, depuis PowerShell, **à la racine du dépôt** :
 .\build-windows.ps1
 ```
 
-Options :
+Le script a les mêmes options que `build-deb.sh` et `build-rpm.sh` (et que le
+`build-windows.ps1` de Planche-Contact) :
 
 ```powershell
-.\build-windows.ps1 -SansInstalleur    # ne produit que la version portable
-.\build-windows.ps1 -Oui               # répond « oui » à toutes les questions
-.\build-windows.ps1 -Clean             # supprime le dossier de travail et les paquets Windows
+.\build-windows.ps1 -Major             # incrémente le numéro majeur   (1.2.3 -> 2.0.0)
+.\build-windows.ps1 -Minor             # incrémente le numéro mineur   (1.2.3 -> 1.3.0)
+.\build-windows.ps1 -Patch             # incrémente le numéro de patch (1.2.3 -> 1.2.4)
+.\build-windows.ps1 -NoVersionChange   # reconstruit sans changer la version
+.\build-windows.ps1 -Clean             # supprime le dossier de build et les paquets Windows
 .\build-windows.ps1 -Help              # aide
+.\build-windows.ps1 -Oui               # répond « oui » à toutes les questions (sans surveillance)
 ```
 
+Sans option de version, le script affiche la version actuelle (fichier `VERSION`),
+propose de passer en major, minor ou patch ou de ne rien changer, puis demande
+confirmation avant de construire. **`VERSION` n'est mis à jour qu'une fois les paquets
+construits** : un échec ne laisse pas une version sans paquet. Une version
+d'avant-publication comme `0.1.0-dev` est d'abord publiée : `-Minor` et `-Patch` donnent
+`0.1.0`, `-Major` donne `1.0.0`. Si vous avez déjà construit les paquets Linux de cette
+version, utilisez `-NoVersionChange`, pour ne pas l'incrémenter une seconde fois.
+
 Le script vérifie ses prérequis et propose d'installer ce qui manque (voir ci-dessous).
-À la fin, `dist\` contient :
+À la fin, la racine du dépôt contient :
 
 - `svgprintlayout_X.Y.Z_windows-portable.zip` : un dossier autonome, à décompresser
   n'importe où et à lancer sans installation ;
 - `svgprintlayout_X.Y.Z_windows-setup.exe` : l'installeur (menu Démarrer, désinstalleur),
   si NSIS est disponible.
 
-Comme pour les paquets Linux, **le numéro de version vient du fichier `VERSION` et n'est
-jamais modifié par le script**.
+Le dossier de travail est `%LOCALAPPDATA%\svgprintlayout-build`, hors du dépôt ; `-Clean`
+le supprime.
 
 ## Avertissement SmartScreen à l'installation
 
@@ -67,13 +79,15 @@ Aucun changement du code ne peut le supprimer.
 
 Sans NSIS, seule la version portable est produite ; ce n'est pas une erreur.
 
-Le script ne touche à rien hors de MSYS2 et de son dossier de travail
-(`dist\build\windows`). Si vous préférez, lancez-le à la main dans un terminal
-**MSYS2 UCRT64** (et pas MSYS ni MINGW64) :
+Le script ne touche à rien hors de MSYS2, de son dossier de travail et de la racine du
+dépôt, où il écrit les paquets. Si vous préférez, lancez la construction à la main dans un
+terminal **MSYS2 UCRT64** (et pas MSYS ni MINGW64) ; elle prend la version du fichier
+`VERSION`, ou celle de `--version`, et ne le modifie jamais :
 
 ```sh
 pacman -Syu
-./packaging/windows/build-windows.sh --install-deps
+./windows/build-windows.sh --install-deps
+./windows/build-windows.sh --version 1.2.3
 ```
 
 ## Contenu du paquet
@@ -106,9 +120,10 @@ l'aura si elle est installée ; sinon, une police de remplacement est choisie (v
 
 ## Comment ça marche
 
-`build-windows.ps1` (à la racine, un simple relais) appelle
-`packaging\windows\build-windows.ps1`, qui prépare MSYS2 et NSIS puis lance
-`packaging/windows/build-windows.sh` dans un terminal MSYS2 UCRT64. Ce dernier :
+`build-windows.ps1` (à la racine, un simple relais) appelle `windows\build-windows.ps1`,
+qui lit `VERSION`, calcule la version à construire, demande confirmation, prépare MSYS2 et
+NSIS, puis lance `windows/build-windows.sh --version X.Y.Z` dans un terminal MSYS2 UCRT64 ;
+quand tout a réussi, il écrit la nouvelle version dans `VERSION`. Le script bash :
 
 1. vérifie les paquets MSYS2 (et les installe avec `--install-deps`) ;
 2. fabrique la ressource Windows (icône, propriétés du fichier) avec `windres` ;
@@ -138,9 +153,10 @@ C:\Outils\SVGPrintLayout\Uninstall.exe /S
 
 | Fichier | Rôle |
 | --- | --- |
-| `build-windows.ps1` | Prépare MSYS2 et NSIS (en proposant de les installer), lance la construction |
-| `build-windows.sh` | La construction, dans un terminal MSYS2 UCRT64 ; GitHub Actions l'utilise aussi |
+| `build-windows.ps1` | Options et version, prérequis (MSYS2, NSIS, en proposant de les installer), lance la construction |
+| `build-windows.sh` | La construction, dans un terminal MSYS2 UCRT64 |
 | `installer.nsi` | Le script NSIS de l'installeur |
+| `svgprintlayout.ico` | L'icône du programme et de l'installeur |
 
 Les deux fichiers `.ps1` et `installer.nsi` sont en **UTF-8 avec marque d'ordre des
 octets (BOM)** : Windows PowerShell 5.1 et NSIS en ont besoin pour lire les accents.
@@ -149,10 +165,12 @@ Ne les enregistrez pas sans BOM.
 ## Ce qui est vérifié, et par qui
 
 La CI (job `windows-package`, sur `windows-latest`) fait exactement ce que fait un
-utilisateur : elle exécute `.\build-windows.ps1 -Oui` dans Windows PowerShell 5.1, puis
+utilisateur : elle exécute `.\build-windows.ps1 -Patch -Oui` dans Windows PowerShell 5.1 (et vérifie que
+`VERSION` est mis à jour après la construction), puis
 décompresse le `.zip` et lance `svgprintlayout.exe -selftest` avec le seul PATH de
 Windows, puis installe en silence avec l'installeur, lance `-selftest` depuis le dossier
-installé, et désinstalle en vérifiant que rien ne reste.
+installé, et désinstalle en vérifiant que rien ne reste ; enfin `-Clean` doit retirer les
+paquets.
 
 L'installeur a aussi été compilé et exécuté sous Wine, sur Linux, avec une arborescence
 d'essai : installation, mise à jour par-dessus une installation, désinstallation.

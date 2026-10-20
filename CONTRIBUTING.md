@@ -103,11 +103,15 @@ Le contrat complet est dans `ARCHITECTURE.md`. Les règles à ne pas enfreindre 
   PDF, ou des moyennes par carrés (voir « Test de couture » dans `ARCHITECTURE.md`).
 
 - Les scripts de construction des paquets (`build-deb.sh`, `build-rpm.sh`,
-  `build-windows.ps1`) passent sous `shellcheck` sans avertissement. Un changement qui les
-  touche se vérifie en construisant le paquet, en l'installant et en lançant
+  `windows/build-windows.sh`) passent sous `shellcheck` sans avertissement. Un changement qui
+  les touche se vérifie en construisant le paquet, en l'installant et en lançant
   `svgprintlayout -selftest` ; la CI le fait pour les trois formats. Deux constructions du
   même code doivent donner des fichiers identiques : ne mettez dans un paquet ni date, ni
   chemin de la machine, ni ordre de fichiers laissé au hasard.
+- Les trois scripts (`build-deb.sh`, `build-rpm.sh`, `windows/build-windows.ps1`) ont les
+  mêmes options et la même gestion de `VERSION` que ceux de Planche-Contact, et ne partagent
+  aucun code : si vous changez l'un de ces comportements, changez-le dans les trois. Le test
+  de `repocheck` et la CI (`.github/scripts/`) signalent les écarts.
 - Les fichiers `.ps1` et `installer.nsi` sont en UTF-8 **avec** marque d'ordre des octets
   (BOM), nécessaire à Windows PowerShell 5.1 et à NSIS pour lire les accents ; les scripts
   lus par bash gardent des fins de ligne Unix (`.gitattributes`).
@@ -133,12 +137,35 @@ est dans le fichier `VERSION`, que l'on injecte à la compilation :
 go build -ldflags "-X main.version=$(cat VERSION)" ./cmd/svgprintlayout
 ```
 
-Les scripts de construction des paquets lisent `VERSION` et ne le modifient jamais.
+Les scripts de construction des paquets gèrent `VERSION` : avec `--major`, `--minor` ou
+`--patch` (ou le menu qu'ils affichent sans option), ils l'incrémentent une fois le paquet
+construit ; avec `--no-version-change`, ils la laissent telle quelle. **Pour un essai de
+construction, utilisez `--no-version-change`**, sans quoi vous modifiez `VERSION` sans le
+vouloir. Une version qui porte un suffixe (`0.1.0-dev`) est d'abord publiée : `--minor` et
+`--patch` donnent `0.1.0`, `--major` donne `1.0.0`.
 
-Une release est une pull request à part, « Release X.Y.Z », qui met à jour `VERSION` et
-déplace les notes de `[Non publié]` sous le nouveau numéro dans `CHANGELOG.md` ; le tag
-`vX.Y.Z` est posé ensuite. Tant que `VERSION` porte un suffixe (`0.1.0-dev`), aucune
-version n'est publiée.
+Une release est une pull request à part, « Release X.Y.Z » :
+
+1. construisez le premier format avec l'incrément voulu (`./build-deb.sh --minor`) : le
+   script met `VERSION` à jour ;
+2. construisez les autres avec `--no-version-change` (`./build-rpm.sh --no-version-change`,
+   `.\build-windows.ps1 -NoVersionChange`) ;
+3. mettez à jour **tous les fichiers qui nomment la version**, dans la même pull request :
+   - `CHANGELOG.md` : déplacez les notes de `[Non publié]` sous
+     `## [X.Y.Z] - AAAA-MM-JJ` (le plus récent en premier) ;
+   - `metainfo/io.github.gillesmagneville.svgprintlayout.metainfo.xml` : ajoutez
+     `<release version="X.Y.Z" date="AAAA-MM-JJ">` en tête de `<releases>`, avec sa
+     description ;
+   - `docs/svgprintlayout.1` : la date et `svg-print-layout X.Y.Z` de la ligne `.TH` ;
+   - `README.md`, `ARCHITECTURE.md` (§14, « État ») et les rapports de `docs/` quand ce
+     qu'ils annoncent a changé avec la version ;
+
+   `go test ./internal/repocheck` échoue tant que `VERSION`, le CHANGELOG, le fichier
+   AppStream et la page de manuel ne disent pas la même version et la même date ; la CI
+   le lance ;
+4. fusionnez ; le tag `vX.Y.Z` est posé ensuite.
+
+Tant que `VERSION` porte un suffixe (`0.1.0-dev`), aucune version n'est publiée.
 
 ## Questions
 

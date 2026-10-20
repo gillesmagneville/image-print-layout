@@ -1,8 +1,12 @@
 # Binaries
 /bin/
-/dist/
 *.exe
 *.test
+
+# Packages built by build-deb.sh, build-rpm.sh and build-windows.ps1 at the root
+/*.deb
+/*.rpm
+/*.zip
 
 # Go tooling
 coverage.out

@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -25,17 +26,19 @@ func repoRoot(t *testing.T) string {
 	return root
 }
 
+// read returns the text of a file with Unix line endings: on Windows, git
+// checks text files out with CRLF, which would break every pattern anchored on
+// the end of a line. The byte order mark, if any, is kept.
 func read(t *testing.T, path string) string {
 	t.Helper()
 	b, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return string(b)
+	return strings.ReplaceAll(string(b), "\r\n", "\n")
 }
 
-// walk calls fn for every tracked-looking file under root, skipping .git and
-// the output of package builds (dist/).
+// walk calls fn for every tracked-looking file under root, skipping .git.
 func walk(t *testing.T, root string, fn func(path, rel string)) {
 	t.Helper()
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
@@ -43,7 +46,7 @@ func walk(t *testing.T, root string, fn func(path, rel string)) {
 			return err
 		}
 		if d.IsDir() {
-			if d.Name() == ".git" || (d.Name() == "dist" && path == filepath.Join(root, "dist")) {
+			if d.Name() == ".git" {
 				return filepath.SkipDir
 			}
 			return nil
@@ -70,7 +73,7 @@ func TestEveryFileHasTheLicenceHeader(t *testing.T) {
 	root := repoRoot(t)
 	walk(t, root, func(path, rel string) {
 		switch filepath.Ext(rel) {
-		case ".go", ".md", ".yml", ".yaml", ".sh", ".ps1", ".nsi", ".nsh", ".in", ".desktop", ".xml", ".1":
+		case ".go", ".md", ".yml", ".yaml", ".sh", ".ps1", ".nsi", ".nsh", ".desktop", ".xml", ".1":
 		default:
 			return
 		}
@@ -138,5 +141,30 @@ func TestArchitectureNamesEveryPackage(t *testing.T) {
 		if !strings.Contains(architecture, "── "+e.Name()+"/") {
 			t.Errorf("ARCHITECTURE.md, \"Disposition du dépôt\", does not list internal/%s", e.Name())
 		}
+	}
+}
+
+var architectureSection = regexp.MustCompile(`(?m)^## (\d+)\. `)
+
+// lastArchitectureSection is the number of the last numbered section of
+// ARCHITECTURE.md ("Risques et questions ouvertes").
+const lastArchitectureSection = 15
+
+// ARCHITECTURE.md numbers its sections from 1 to the last with no gap, in
+// order: the other documents and the comments of the code refer to them
+// (§6, §11...), and a section lost when the file is rewritten would otherwise
+// go unnoticed until someone looks for it.
+func TestArchitectureSectionsAreAllThere(t *testing.T) {
+	root := repoRoot(t)
+	var got []string
+	for _, m := range architectureSection.FindAllStringSubmatch(read(t, filepath.Join(root, "ARCHITECTURE.md")), -1) {
+		got = append(got, m[1])
+	}
+	var want []string
+	for n := 1; n <= lastArchitectureSection; n++ {
+		want = append(want, strconv.Itoa(n))
+	}
+	if strings.Join(got, " ") != strings.Join(want, " ") {
+		t.Errorf("ARCHITECTURE.md has the sections %s, want %s", strings.Join(got, " "), strings.Join(want, " "))
 	}
 }

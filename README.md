@@ -4,7 +4,7 @@
 
 Application de bureau (Linux/Ubuntu et Windows 10/11, écrite en Go) pour **mettre en page, découper et imprimer un document vectoriel SVG sur plusieurs feuilles de papier standard**, puis l'exporter en **PDF multipage vectoriel**.
 
-> **État : prototype du moteur de rendu (M0a).** Rien n'est encore utilisable : le dépôt contient l'organisation des paquets, la bibliothèque de conversions d'unités et de formats papier, un prototype du moteur (librsvg + cairo : rendu d'une fenêtre et export PDF multipage, validé sur le Mini-CAD, voir [`docs/M0.md`](docs/M0.md)), les scripts qui construisent les paquets `.deb`, `.rpm` et Windows (qui n'installent pour l'instant qu'un programme sans interface, voir [`packaging/README.md`](packaging/README.md)) et la CI. Le prototype de l'interface GTK4 est la prochaine étape.
+> **État : prototype du moteur de rendu (M0a).** Rien n'est encore utilisable : le dépôt contient l'organisation des paquets, la bibliothèque de conversions d'unités et de formats papier, un prototype du moteur (librsvg + cairo : rendu d'une fenêtre et export PDF multipage, validé sur le Mini-CAD, voir [`docs/M0.md`](docs/M0.md)), les scripts qui construisent les paquets `.deb`, `.rpm` et Windows (qui n'installent pour l'instant qu'un programme sans interface, voir [Paquets](#paquets)) et la CI. Le prototype de l'interface GTK4 est la prochaine étape.
 
 ## Principe
 
@@ -25,8 +25,8 @@ Règles fondamentales, reprises du cahier des charges :
 
 ```
 cmd/svgprintlayout/   point d'entrée (-version, -selftest)
-packaging/   données et modèles des paquets .deb, .rpm et Windows
 build-deb.sh, build-rpm.sh, build-windows.ps1   construisent les paquets (voir Paquets)
+debian/, metainfo/, icons/, windows/   fichiers qu'ils empaquettent ; docs/svgprintlayout.1 : page de manuel
 internal/
   units/     conversions SVG / px / pt / mm, formats papier, marges      (Go pur, testé)
   model/     types de données partagés                                    (Go pur)
@@ -80,22 +80,60 @@ Les dépendances de l'interface (GTK4) et la procédure pour Windows (MSYS2) ser
 
 ## Paquets
 
-Trois scripts, à la racine, construisent les paquets dans `dist/` à partir du code et du
-numéro de `VERSION` (qu'ils ne modifient jamais) :
+Trois scripts, à la racine, construisent les paquets (comme dans Planche-Contact) :
 
 ```sh
-./build-deb.sh              # Debian, Ubuntu : dist/svgprintlayout_<version>_amd64.deb
-./build-rpm.sh              # Fedora, RHEL : dist/svgprintlayout-<version>-<release>.x86_64.rpm
+./build-deb.sh              # Debian, Ubuntu : svgprintlayout_<version>-1_amd64.deb
+./build-rpm.sh              # Fedora, RHEL : svgprintlayout-<version>-<release>.x86_64.rpm
 ```
 
 ```powershell
 .\build-windows.ps1         # Windows 10 et 11 : un .zip portable et un installeur .exe
 ```
 
-Chaque script répond à `--help` (`-Help` sous PowerShell) et vérifie ses prérequis. Les
-détails (contenu des paquets, numéros de version, construction reproductible,
-dépannage) sont dans [`packaging/README.md`](packaging/README.md) et
-[`packaging/windows/README.md`](packaging/windows/README.md).
+Les paquets sont écrits à la racine du dépôt (non versionnés). Les trois scripts ont les
+mêmes options et gèrent le fichier `VERSION` de la même façon :
+
+| Option (PowerShell) | Effet |
+| --- | --- |
+| `--major` (`-Major`) | incrémente le numéro majeur (1.2.3 → 2.0.0) |
+| `--minor` (`-Minor`) | incrémente le numéro mineur (1.2.3 → 1.3.0) |
+| `--patch` (`-Patch`) | incrémente le numéro de patch (1.2.3 → 1.2.4) |
+| `--no-version-change` (`-NoVersionChange`) | reconstruit sans changer la version |
+| `--clean` (`-Clean`) | supprime le dossier de build et les paquets déjà construits |
+| `--help`, `-h` (`-Help`) | affiche l'aide |
+
+Sans option, le script affiche la version actuelle, propose de passer en major, minor ou
+patch ou de ne rien changer, puis demande confirmation (`o`) avant de construire. **Le
+fichier `VERSION` n'est mis à jour qu'une fois le paquet construit** : un échec ne laisse
+jamais une version sans paquet. Sous PowerShell, `-Oui` répond « oui » à toutes les
+questions (pour un usage sans surveillance).
+
+Une version d'avant-publication comme `0.1.0-dev` est d'abord publiée : `--minor` et
+`--patch` la font passer à `0.1.0`, `--major` à `1.0.0`. Les versions ordinaires
+s'incrémentent comme d'habitude. Quand on construit les trois formats d'une même version,
+on incrémente avec le premier script et on relance les deux autres avec
+`--no-version-change` (`-NoVersionChange`) :
+
+```sh
+./build-deb.sh --minor
+./build-rpm.sh --no-version-change
+```
+
+Après une version sans suffixe, ajoutez sa section `## [X.Y.Z]` à `CHANGELOG.md`
+(voir `CONTRIBUTING.md`).
+
+Chaque script vérifie ses prérequis. Les paquets Linux s'installent avec `apt install ./…deb`
+ou `dnf install ./…rpm`. Sous Debian et Ubuntu, les prérequis de construction sont :
+
+```sh
+sudo apt install golang-go build-essential pkg-config librsvg2-dev dpkg-dev rpm
+```
+
+L'organisation des paquets (contenu, numéros de version `0.1.0~dev-1` / `0.1.dev`,
+construction reproductible, dépendances) est décrite dans `ARCHITECTURE.md`, §4 « Paquets » ;
+la construction Windows (MSYS2, NSIS, SmartScreen, dépannage) dans
+[`windows/README.md`](windows/README.md).
 
 Le programme installé sait s'auto-vérifier : `svgprintlayout -selftest` contrôle le
 moteur de rendu (bibliothèques, polices, images incorporées, export PDF) sur la machine

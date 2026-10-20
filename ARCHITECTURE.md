@@ -124,9 +124,9 @@ type Doc interface {
 svg-print-layout/
 ├── go.mod
 ├── VERSION                    # version courante (SemVer), voir CONTRIBUTING.md
-├── build-deb.sh               # construisent les paquets dans dist/ (voir « Paquets »)
-├── build-rpm.sh
-├── build-windows.ps1          # relais vers packaging/windows/
+├── build-deb.sh               # construisent les paquets à la racine (voir « Paquets »),
+├── build-rpm.sh               #   avec les options et la gestion de VERSION de
+├── build-windows.ps1          #   Planche-Contact ; celui-ci relaie vers windows/
 ├── cmd/svgprintlayout/        # point d'entrée : câble les paquets ; -version, -selftest
 ├── internal/
 │   ├── model/                 # types de données partagés, sans logique
@@ -142,8 +142,11 @@ svg-print-layout/
 │   ├── app/                   # état de l'application et commandes
 │   ├── ui/                    # interface GTK4 (cgo)
 │   └── repocheck/             # tests sur le dépôt lui-même (en-têtes, versions, docs)
-├── packaging/                 # données et modèles des paquets .deb, .rpm et Windows
-├── docs/                      # rapports de jalon (M0.md)
+├── debian/                    # copyright, postinst, postrm, lintian-overrides du .deb
+├── metainfo/                  # entrée de menu (.desktop) et métadonnées AppStream
+├── icons/                     # icône de l'application (SVG et PNG)
+├── windows/                   # script de construction Windows, installeur NSIS, icône .ico
+├── docs/                      # rapports de jalon (M0.md), page de manuel (svgprintlayout.1)
 └── testdata/                  # SVG de référence
 ```
 
@@ -152,27 +155,55 @@ Les paquets hors `ui` et `engine` n'utilisent pas cgo, et un test le vérifie.
 
 ### Paquets
 
-Trois scripts construisent les paquets dans `dist/` (non versionné), à partir du code et du
-fichier `VERSION`, qu'ils ne modifient jamais : une version se change par une pull request
-« Release ».
+Trois scripts, à la racine du dépôt, construisent les paquets à partir du code ; ils
+reprennent les options et la gestion du fichier `VERSION` de `build-deb.sh` et de
+`windows/build-windows.ps1` de Planche-Contact, et écrivent les paquets à la racine (non
+versionnés : `.gitignore`).
 
 | Paquet | Script | Outil de construction |
 | --- | --- | --- |
 | `.deb` (Debian, Ubuntu) | `build-deb.sh` | `dpkg-deb`, dépendances par `dpkg-shlibdeps` |
 | `.rpm` (Fedora, RHEL) | `build-rpm.sh` | `rpmbuild`, dépendances déduites du binaire |
-| Windows : `.zip` portable et installeur | `build-windows.ps1`, `packaging/windows/` | MSYS2 UCRT64 (Go, gcc, librsvg, cairo), NSIS |
+| Windows : `.zip` portable et installeur | `build-windows.ps1`, `windows/` | MSYS2 UCRT64 (Go, gcc, librsvg, cairo), NSIS |
 
+- **Options et version.** `--major`, `--minor`, `--patch`, `--no-version-change`, `--clean`,
+  `--help` (`-Major`… sous PowerShell) ; sans option, un menu propose les quatre choix et la
+  version qui en résulterait, puis le script demande confirmation. Le fichier `VERSION` n'est
+  écrit qu'une fois le paquet construit : un échec ne laisse jamais une version sans paquet.
+  Une version d'avant-publication (`0.1.0-dev`) est d'abord publiée : `--minor` et `--patch`
+  donnent `0.1.0`, `--major` donne `1.0.0` (règle de node-semver) ; sans suffixe, c'est
+  l'incrément habituel. Les trois scripts n'ont aucun code en commun, comme chez
+  Planche-Contact : un test de `repocheck` vérifie qu'ils ont les mêmes options et la même
+  fonction de calcul (`next_version`, identique dans les deux scripts shell), que `VERSION`
+  est écrit une seule fois après la construction, et la CI exécute les scénarios
+  (`.github/scripts/test-version-handling.sh` pour Linux, `windows-package.ps1` pour Windows).
+  Le script Windows a une option de plus, `-Oui`, qui répond « oui » à ses questions : la CI
+  ne peut pas répondre à un `Read-Host`.
 - **Outils natifs.** `dpkg-deb` et `rpmbuild` sont sur toute machine de la famille, sans
-  Ruby ni dépôt de modules (fpm et nfpm ne sont pas utilisés) ; ils empaquettent un dossier
-  que les scripts préparent, sans rien compiler.
-- **Numéros.** Une version d'avant-publication (`0.1.0-dev`) se classe avant la finale :
-  `0.1.0~dev-1` chez Debian, release `0.1.dev` chez RPM.
+  Ruby ni dépôt de modules (fpm et nfpm ne sont pas utilisés, alors que Planche-Contact
+  emploie fpm : ici le programme est un binaire, pas un environnement Python) ; ils
+  empaquettent un dossier que les scripts préparent, sans rien compiler. Le fichier
+  `control` du `.deb` et le `.spec` du `.rpm` sont écrits par les scripts, car leurs
+  dépendances, leur taille et leur numéro de version se calculent à la construction.
+- **Numéros.** Une version d'avant-publication se classe avant la finale : `0.1.0-dev` donne
+  `0.1.0~dev-1` chez Debian et la release `0.1.dev` chez RPM ; `0.1.0` donne `0.1.0-1` et la
+  release `1`. Windows garde `0.1.0-dev` (quatre nombres dans les propriétés du `.exe`).
+- **Contenu des paquets Linux.** `/usr/bin/svgprintlayout`, l'entrée de menu et les
+  métadonnées AppStream (identifiant `io.github.gillesmagneville.svgprintlayout`, nom de
+  domaine inversé : le fichier `.desktop` et `<launchable>` doivent s'y accorder, et
+  `desktop-file-validate` et `appstreamcli validate` le vérifient en CI), l'icône (SVG et PNG
+  256), la page de manuel, README et journal des modifications, copyright (`.deb`) ou licence
+  (`.rpm`).
 - **Reproductibilité.** `-trimpath`, `-buildvcs=false`, un identifiant de construction vide,
   `SOURCE_DATE_EPOCH` (date du dernier commit), ordre, propriétaires et permissions fixés :
-  deux constructions donnent le même fichier, à versions de Go, de librsvg et de cairo égales.
+  deux constructions donnent le même fichier, à versions de Go, de librsvg et de cairo égales
+  (la CI le vérifie pour le `.deb` et le `.rpm`).
 - **Paquets liés à leur machine de construction.** Les dépendances d'un `.deb` ou d'un `.rpm`
   sont déduites du binaire : on construit sur la distribution visée (Ubuntu 24.04 et suivantes
   pour le `.deb` ; les noms en `t64` n'existent pas avant).
+- **Dossier de travail.** Hors du dépôt, comme chez Planche-Contact : `~/deb-build/build`,
+  `~/rpm-build/build` et `%LOCALAPPDATA%\svgprintlayout-build`. `--clean` les supprime, et
+  supprime les paquets déjà construits à la racine.
 - **Disposition Windows.** Le dossier livré est un préfixe (`bin/` pour le programme et ses
   DLL, `etc/fonts/`, `lib/gdk-pixbuf-2.0/`, `share/licenses/`) : le programme peut être
   installé n'importe où. Fontconfig, gdk-pixbuf et pango ne savent pas où est leur
@@ -188,7 +219,8 @@ fichier `VERSION`, qu'ils ne modifient jamais : une version se change par une pu
   la CI le lance sur chaque paquet installé.
 - **Ce que les paquets ne font pas encore** : ils n'installent qu'un programme sans interface
   (`-version`, `-selftest`) ; l'interface GTK4 et ses dépendances viendront avec M0b et M2.
-  Rien n'est signé, et aucun dépôt de paquets n'existe.
+  Rien n'est signé, aucun dépôt de paquets n'existe, et l'architecture arm64 est reconnue
+  par les scripts Linux sans avoir été essayée.
 
 ## 5. Modèle géométrique
 

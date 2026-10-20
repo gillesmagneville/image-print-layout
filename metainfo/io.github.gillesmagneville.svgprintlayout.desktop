@@ -1,12 +1,23 @@
 # SPDX-License-Identifier: GPL-3.0-only
+# Le texte sans suffixe est l'anglais, langue de repli ; les suffixes [fr],
+# [es] et [de] donnent les trois autres langues du programme.
 [Desktop Entry]
 Type=Application
 Name=SVG Print Layout
-GenericName=Mise en page SVG pour l'impression
-Comment=Découpe un dessin SVG en pages et l'exporte en PDF multipage
+GenericName=SVG layout for printing
+GenericName[fr]=Mise en page SVG pour l'impression
+GenericName[es]=Maquetación de SVG para imprimir
+GenericName[de]=SVG-Seitenlayout für den Druck
+Comment=Splits an SVG drawing into pages and exports it as a multi-page PDF
+Comment[fr]=Découpe un dessin SVG en pages et l'exporte en PDF multipage
+Comment[es]=Divide un dibujo SVG en páginas y lo exporta como PDF de varias páginas
+Comment[de]=Teilt eine SVG-Zeichnung in Seiten auf und exportiert sie als mehrseitiges PDF
 Exec=svgprintlayout %f
 Icon=svgprintlayout
 Terminal=false
 Categories=Graphics;2DGraphics;VectorGraphics;
 MimeType=image/svg+xml;
-Keywords=SVG;PDF;impression;print;pages;coupures;
+Keywords=SVG;PDF;print;pages;cuts;
+Keywords[fr]=SVG;PDF;impression;pages;coupures;
+Keywords[es]=SVG;PDF;impresión;páginas;cortes;
+Keywords[de]=SVG;PDF;Druck;Seiten;Schnitte;

@@ -49,14 +49,26 @@ func TestVersionIsInEveryFileThatNamesIt(t *testing.T) {
 		t.Errorf("the AppStream release is dated %s but CHANGELOG.md says %s", appstream[2], date)
 	}
 
-	// Manual page: .TH NAME SECTION "date" "svg-print-layout X.Y.Z".
-	man := manPageHeader.FindStringSubmatch(read(t, filepath.Join(root, "docs", "svgprintlayout.1")))
-	switch {
-	case man == nil:
-		t.Error(`docs/svgprintlayout.1 has no .TH header of the form: .TH SVGPRINTLAYOUT 1 "date" "svg-print-layout X.Y.Z" ...`)
-	case man[2] != version:
-		t.Errorf("VERSION is %s but the manual page says %s", version, man[2])
-	case man[1] != date:
-		t.Errorf("the manual page is dated %s but CHANGELOG.md says %s", man[1], date)
+	// Manual pages, one per language of the program: .TH NAME SECTION "date"
+	// "svg-print-layout X.Y.Z".
+	for _, page := range manualPages {
+		man := manPageHeader.FindStringSubmatch(read(t, filepath.Join(root, filepath.FromSlash(page))))
+		switch {
+		case man == nil:
+			t.Errorf(`%s has no .TH header of the form: .TH SVGPRINTLAYOUT 1 "date" "svg-print-layout X.Y.Z" ...`, page)
+		case man[2] != version:
+			t.Errorf("VERSION is %s but %s says %s", version, page, man[2])
+		case man[1] != date:
+			t.Errorf("%s is dated %s but CHANGELOG.md says %s", page, man[1], date)
+		}
 	}
+}
+
+// manualPages are the manual pages of the program: the English one, which is
+// the fallback, then one per other language.
+var manualPages = []string{
+	"docs/svgprintlayout.1",
+	"docs/fr/svgprintlayout.1",
+	"docs/es/svgprintlayout.1",
+	"docs/de/svgprintlayout.1",
 }

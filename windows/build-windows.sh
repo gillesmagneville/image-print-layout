@@ -6,7 +6,7 @@ set -euo pipefail
 # et, si NSIS est installé, un installeur (.exe), à la racine du dépôt.
 #
 # Ce script s'exécute dans un terminal MSYS2 UCRT64 (c'est là que se trouvent
-# Go, le compilateur C, librsvg et cairo pour Windows). On le lance de
+# Go, le compilateur C, GTK 4, librsvg et cairo pour Windows). On le lance de
 # préférence par build-windows.ps1, à la racine du dépôt : celui-ci gère les
 # options et le fichier VERSION comme build-deb.sh, prépare MSYS2 et NSIS, puis
 # appelle ce script avec le numéro de version choisi. Ce script ne modifie
@@ -36,20 +36,37 @@ require_tool() {
 }
 
 # Paquets MSYS2 nécessaires à la construction (les bibliothèques d'exécution
-# viennent avec librsvg et cairo).
+# viennent avec GTK 4, librsvg et cairo). Les thèmes d'icônes sont livrés avec
+# le programme : sans eux, les boutons de la fenêtre n'ont pas d'image.
 MSYS_PACKAGES=(
     mingw-w64-ucrt-x86_64-go
     mingw-w64-ucrt-x86_64-gcc
     mingw-w64-ucrt-x86_64-pkgconf
     mingw-w64-ucrt-x86_64-librsvg
     mingw-w64-ucrt-x86_64-cairo
+    mingw-w64-ucrt-x86_64-gtk4
+    mingw-w64-ucrt-x86_64-gobject-introspection
+    mingw-w64-ucrt-x86_64-adwaita-icon-theme
+    mingw-w64-ucrt-x86_64-hicolor-icon-theme
     zip
     git
 )
 
+# Deux exécutables : svgprintlayout.exe, celui de la fenêtre (sous-système
+# Windows : pas de console qui s'ouvre derrière), et svgprintlayout-console.exe,
+# le même programme en sous-système console, pour -version, -selftest et les
+# messages d'erreur dans un terminal (un programme fenêtré n'écrit nulle part
+# dans un terminal).
+GUI_EXE="$PACKAGE_NAME.exe"
+CONSOLE_EXE="$PACKAGE_NAME-console.exe"
+
+# Langues de GTK livrées avec le programme (le texte de ses propres boutons) ;
+# l'anglais est dans le code de GTK.
+GTK_LOCALES=(fr es de)
+
 # Formats d'image que les chargeurs gdk-pixbuf livrés savent lire : ceux des
 # images incorporées aux SVG (Inkscape produit surtout du PNG et du JPEG).
-PIXBUF_LOADERS=(png jpeg gif bmp webp)
+PIXBUF_LOADERS=(png jpeg gif bmp webp svg)
 
 show_help() {
     cat << EOF2
@@ -131,18 +148,31 @@ check_go_prerequisites() {
     require_tool gcc "Installez le paquet MSYS2 mingw-w64-ucrt-x86_64-gcc."
     require_tool pkg-config "Installez le paquet MSYS2 mingw-w64-ucrt-x86_64-pkgconf."
     pkg-config --exists librsvg-2.0 cairo || die "les bibliothèques de développement de librsvg et de cairo sont absentes (paquets MSYS2 mingw-w64-ucrt-x86_64-librsvg et -cairo)."
+    pkg-config --exists gtk4 gobject-introspection-1.0 || die "les bibliothèques de développement de GTK 4 sont absentes (paquets MSYS2 mingw-w64-ucrt-x86_64-gtk4 et -gobject-introspection)."
 }
 
-# build_binary DESTINATION compile le programme. -trimpath, un identifiant de
+# build_binary DESTINATION SOUS-SYSTÈME compile le programme, en sous-système
+# « windows » (la fenêtre) ou « console ». -trimpath, un identifiant de
 # construction vide et l'absence d'informations VCS rendent le binaire
 # indépendant du dossier et de l'heure de la construction. Le numéro de
 # version est inscrit dans le programme (svgprintlayout -version).
 build_binary() {
-    step "Compilation de $PACKAGE_NAME $VERSION (cgo, librsvg, cairo)..."
-    mkdir -p "$(dirname "$1")"
+    local destination="$1" subsystem="$2" flags="-s -w -buildid= -X main.version=$VERSION" expected
+    if [ "$subsystem" = "windows" ]; then
+        flags="$flags -H windowsgui"
+        expected="Windows GUI"
+    else
+        expected="Windows CUI"
+    fi
+    step "Compilation de $(basename "$destination") $VERSION (cgo, GTK4, librsvg, cairo ; sous-système $subsystem)..."
+    mkdir -p "$(dirname "$destination")"
     ( cd "$PROJECT_DIR" && CGO_ENABLED=1 go build -trimpath -buildvcs=false \
-        -buildmode=exe -ldflags "-s -w -buildid= -X main.version=$VERSION" \
-        -o "$1" ./cmd/svgprintlayout )
+        -buildmode=exe -ldflags "$flags" -o "$destination" ./cmd/svgprintlayout )
+    # Un exécutable fenêtré lancé depuis un terminal n'écrit nulle part, un
+    # exécutable console ouvre une fenêtre noire derrière la fenêtre : on
+    # vérifie que chacun a le sous-système voulu.
+    objdump -p "$destination" | grep -E '^Subsystem' | grep -q "$expected" \
+        || die "$(basename "$destination") n'a pas le sous-système « $subsystem » : $(objdump -p "$destination" | grep -E '^Subsystem')"
 }
 
 # normalize_tree RACINE fixe la date de tout le contenu.
@@ -166,7 +196,9 @@ find_makensis() {
 }
 
 # make_resources DOSSIER écrit dans le dossier du programme la ressource qui
-# lui donne son icône et ses propriétés (clic droit > Propriétés). Go la lie
+# lui donne son icône et ses propriétés (clic droit > Propriétés), en anglais
+# et sans accent : windres lit ce fichier dans la page de code de Windows, pas
+# en UTF-8. Go la lie
 # toute seule : tout fichier .syso du dossier d'un paquet est ajouté à l'édition
 # de liens. Elle est supprimée à la sortie du script.
 make_resources() {
@@ -185,10 +217,10 @@ FILETYPE 0x1
 BEGIN
   BLOCK "StringFileInfo"
   BEGIN
-    BLOCK "040c04b0"
+    BLOCK "040904b0"
     BEGIN
       VALUE "ProductName", "SVG Print Layout"
-      VALUE "FileDescription", "Mise en page et impression de dessins SVG"
+      VALUE "FileDescription", "Layout and printing of SVG drawings"
       VALUE "FileVersion", "$VERSION"
       VALUE "ProductVersion", "$VERSION"
       VALUE "CompanyName", "Gilles MAGNEVILLE"
@@ -198,7 +230,7 @@ BEGIN
   END
   BLOCK "VarFileInfo"
   BEGIN
-    VALUE "Translation", 0x040c, 1200
+    VALUE "Translation", 0x0409, 1200
   END
 END
 EOF2
@@ -233,17 +265,24 @@ $(grep 'not found' <<< "$listing")"
     printf '%s\n' "${!seen[@]}" | LC_ALL=C sort
 }
 
-# stage_windows RACINE BINAIRE prépare l'arborescence « à la manière d'un
-# préfixe » que le zip et l'installeur reproduisent à l'identique :
-#   bin/        le programme et ses DLL
+# stage_windows RACINE EXE_FENÊTRE EXE_CONSOLE prépare l'arborescence « à la
+# manière d'un préfixe » que le zip et l'installeur reproduisent à l'identique
+# (GLib et GTK retrouvent leurs fichiers à partir de l'emplacement de leurs DLL,
+# qui doivent donc être dans un dossier bin/ à côté de share/) :
+#   bin/        les deux exécutables et les DLL
 #   etc/fonts/  la configuration de fontconfig
 #   lib/gdk-pixbuf-2.0/  les chargeurs d'images, avec leur cache
-#   share/licenses/      les licences des bibliothèques livrées
+#   share/glib-2.0/schemas/  les schémas de réglages de GTK (sans eux, GTK
+#                            s'arrête à l'ouverture d'un sélecteur de fichier)
+#   share/icons/             les thèmes d'icônes (Adwaita et hicolor)
+#   share/locale/            les traductions des textes propres à GTK
+#   share/licenses/          les licences des bibliothèques livrées
 stage_windows() {
-    local root="$1" binary="$2" loaders=() loader dll name
+    local root="$1" gui="$2" console="$3" loaders=() loader dll name lang catalog
     rm -rf "${root:?}"
     install -d "$root/bin" "$root/etc" "$root/share/licenses"
-    install -m 0755 "$binary" "$root/bin/$PACKAGE_NAME.exe"
+    install -m 0755 "$gui" "$root/bin/$GUI_EXE"
+    install -m 0755 "$console" "$root/bin/$CONSOLE_EXE"
 
     step "Chargeurs d'images (gdk-pixbuf)..."
     local loader_src="$MINGW_PREFIX/lib/gdk-pixbuf-2.0/2.10.0/loaders"
@@ -259,8 +298,8 @@ stage_windows() {
 
     step "Bibliothèques dont le programme dépend..."
     local dlls=()
-    while IFS= read -r dll; do dlls+=("$dll"); done < <(dll_closure "$binary" "${loaders[@]}")
-    [ ${#dlls[@]} -gt 0 ] || die "aucune DLL trouvée pour $binary : ldd ne voit pas les bibliothèques de MSYS2 (terminal UCRT64 ?)."
+    while IFS= read -r dll; do dlls+=("$dll"); done < <(dll_closure "$gui" "$console" "${loaders[@]}")
+    [ ${#dlls[@]} -gt 0 ] || die "aucune DLL trouvée pour $gui : ldd ne voit pas les bibliothèques de MSYS2 (terminal UCRT64 ?)."
     for dll in "${dlls[@]}"; do
         install -m 0755 "$dll" "$root/bin/"
     done
@@ -284,8 +323,29 @@ stage_windows() {
     step "Configuration de fontconfig..."
     cp -rL "$MINGW_PREFIX/etc/fonts" "$root/etc/fonts"
 
+    step "Réglages, icônes et traductions de GTK..."
+    local schemas="$MINGW_PREFIX/share/glib-2.0/schemas/gschemas.compiled"
+    [ -f "$schemas" ] || die "les schémas de GTK sont introuvables : $schemas"
+    install -D -m 0644 "$schemas" "$root/share/glib-2.0/schemas/gschemas.compiled"
+    local theme
+    for theme in Adwaita hicolor; do
+        [ -d "$MINGW_PREFIX/share/icons/$theme" ] || die "le thème d'icônes $theme est introuvable dans $MINGW_PREFIX/share/icons."
+        mkdir -p "$root/share/icons"
+        cp -rL "$MINGW_PREFIX/share/icons/$theme" "$root/share/icons/$theme"
+    done
+    for lang in "${GTK_LOCALES[@]}"; do
+        for catalog in gtk40 glib20; do
+            if [ -f "$MINGW_PREFIX/share/locale/$lang/LC_MESSAGES/$catalog.mo" ]; then
+                install -D -m 0644 "$MINGW_PREFIX/share/locale/$lang/LC_MESSAGES/$catalog.mo" \
+                    "$root/share/locale/$lang/LC_MESSAGES/$catalog.mo"
+            else
+                echo "    (pas de traduction « $lang » de $catalog dans cette installation de MSYS2)"
+            fi
+        done
+    done
+
     step "Licences des bibliothèques livrées..."
-    write_licenses "$root" "${dlls[@]}" "${loaders[@]}"
+    write_licenses "$root" "${dlls[@]}" "${loaders[@]}" "$MINGW_PREFIX/share/icons/Adwaita/index.theme"
 
     install -m 0644 "$PROJECT_DIR/LICENSE" "$root/LICENSE"
     install -m 0644 "$PROJECT_DIR/README.md" "$root/README.md"
@@ -407,7 +467,7 @@ Lancez plutôt .\\build-windows.ps1 depuis PowerShell, à la racine du dépôt."
     require_tool zip "pacman -S zip"
 
     local pkgdir="${PACKAGE_NAME}-${VERSION}-windows-x64"
-    local binary="$WORK/$PACKAGE_NAME.exe"
+    local gui="$WORK/$GUI_EXE" console="$WORK/$CONSOLE_EXE"
     local root="$WORK/$pkgdir"
     local zip_out="$PROJECT_DIR/${PACKAGE_NAME}_${VERSION}_windows-portable.zip"
     local setup_out="$PROJECT_DIR/${PACKAGE_NAME}_${VERSION}_windows-setup.exe"
@@ -420,11 +480,12 @@ Lancez plutôt .\\build-windows.ps1 depuis PowerShell, à la racine du dépôt."
     rm -rf "${WORK:?}"
     mkdir -p "$WORK"
     make_resources "$PROJECT_DIR/cmd/$PACKAGE_NAME"
-    build_binary "$binary"
+    build_binary "$gui" windows
+    build_binary "$console" console
     rm -f "$SYSO"
 
     step "Préparation de l'arborescence du paquet..."
-    stage_windows "$root" "$binary"
+    stage_windows "$root" "$gui" "$console"
     normalize_tree "$root"
 
     # Le paquet doit marcher sur une machine où MSYS2 n'est pas installé : on
@@ -432,7 +493,7 @@ Lancez plutôt .\\build-windows.ps1 depuis PowerShell, à la racine du dépôt."
     step "Vérification du paquet (auto-test avec le seul PATH de Windows)..."
     local winroot
     winroot="$(cygpath -u "${SYSTEMROOT:-${SystemRoot:-C:\\Windows}}")"
-    env PATH="$winroot/System32:$winroot" "$root/bin/$PACKAGE_NAME.exe" -selftest \
+    env PATH="$winroot/System32:$winroot" "$root/bin/$CONSOLE_EXE" -selftest \
         || die "l'auto-test du programme échoue hors de MSYS2 : le paquet est incomplet (DLL, polices ou chargeurs d'images manquants)."
 
     step "Création de la version portable (.zip)..."

@@ -43,6 +43,13 @@ discuter avant qu'après. Les fonctions listées comme hors périmètre dans
    `CGO_ENABLED=1 go test ./internal/engine ./internal/testsvg`) : c'est ce que fait le job
    `engine` de l'intégration continue.
 
+   Si vous touchez à la fenêtre (`internal/ui`), ajoutez GTK 4 et un écran virtuel
+   (`sudo apt-get install librsvg2-dev libgtk-4-dev libgirepository1.0-dev xvfb xauth
+   imagemagick fonts-ibm-plex`) et lancez `xvfb-run -a go test ./internal/ui
+   ./cmd/svgprintlayout` : c'est le job `ui`, qui dépose aussi des captures de la fenêtre
+   dans les quatre langues (artefact `screenshots`). Un texte de l'interface s'ajoute aux
+   **quatre** catalogues de `internal/i18n` (le test dit lesquels l'oublient).
+
 3. Décrivez dans la pull request ce qui change et pourquoi, et dites ce que vous avez
    vérifié et ce que vous n'avez pas pu vérifier.
 
@@ -159,13 +166,15 @@ Une release est une pull request à part, « Release X.Y.Z » :
    - `metainfo/io.github.gillesmagneville.svgprintlayout.metainfo.xml` : ajoutez
      `<release version="X.Y.Z" date="AAAA-MM-JJ">` en tête de `<releases>`, avec sa
      description ;
-   - `docs/svgprintlayout.1` : la date et `svg-print-layout X.Y.Z` de la ligne `.TH` ;
+   - `docs/svgprintlayout.1`, `docs/fr/svgprintlayout.1`, `docs/es/svgprintlayout.1` et
+     `docs/de/svgprintlayout.1` : la date et `svg-print-layout X.Y.Z` de la ligne `.TH` ;
    - `README.md`, `ARCHITECTURE.md` (§14, « État ») et les rapports de `docs/` quand ce
      qu'ils annoncent a changé avec la version ;
 
    `go test ./internal/repocheck` échoue tant que `VERSION`, le CHANGELOG, le fichier
-   AppStream et la page de manuel ne disent pas la même version et la même date ; la CI
-   le lance ;
+   AppStream et les quatre pages de manuel ne disent pas la même version et la même date ;
+   la CI le lance. Un texte de la fiche AppStream (description de la release) s'écrit en
+   anglais et dans les trois autres langues : `repocheck` le vérifie aussi ;
 4. fusionnez ; le tag `vX.Y.Z` est posé ensuite.
 
 Tant que `VERSION` porte un suffixe (`0.1.0-dev`), aucune version n'est publiée.

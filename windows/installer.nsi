@@ -15,6 +15,11 @@
 ;                         entier, au cas où l'utilisateur aurait choisi un
 ;                         dossier d'installation qui contient autre chose.
 ;
+; L'installeur parle les quatre langues du programme. NSIS choisit celle de
+; Windows ; l'anglais, déclaré en premier, sert quand Windows est dans une autre
+; langue. Le désinstalleur choisit de la même façon : ses raccourcis sont donc
+; supprimés sous leurs quatre noms possibles.
+;
 ; Ce fichier est en UTF-8 avec marque d'ordre des octets (BOM), que NSIS exige
 ; pour lire les accents ; ne pas l'enregistrer sans BOM.
 
@@ -36,8 +41,9 @@ BrandingText "SVG Print Layout ${APP_VERSION}"
 !define MUI_ABORTWARNING
 !define MUI_ICON "${APP_ICON}"
 !define MUI_UNICON "${APP_ICON}"
-; Tant que le programme n'a pas d'interface graphique, il n'y a rien à lancer à
-; la fin de l'installation : ajouter ici MUI_FINISHPAGE_RUN le moment venu.
+; Pas de case « Lancer le programme » à la fin : l'installeur s'exécute en
+; administrateur, et le programme lancé d'ici le serait aussi. Le raccourci du
+; menu Démarrer le lance avec les droits de la personne.
 
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_DIRECTORY
@@ -47,22 +53,58 @@ BrandingText "SVG Print Layout ${APP_VERSION}"
 !insertmacro MUI_UNPAGE_CONFIRM
 !insertmacro MUI_UNPAGE_INSTFILES
 
+; L'anglais d'abord : c'est la langue de repli.
+!insertmacro MUI_LANGUAGE "English"
 !insertmacro MUI_LANGUAGE "French"
+!insertmacro MUI_LANGUAGE "Spanish"
+!insertmacro MUI_LANGUAGE "German"
+
+; Textes de l'installeur, dans chaque langue.
+LangString MSG_NEEDS_X64 ${LANG_ENGLISH} "SVG Print Layout requires 64-bit Windows (x64)."
+LangString MSG_NEEDS_X64 ${LANG_FRENCH}  "SVG Print Layout nécessite Windows 64 bits (x64)."
+LangString MSG_NEEDS_X64 ${LANG_SPANISH} "SVG Print Layout necesita Windows de 64 bits (x64)."
+LangString MSG_NEEDS_X64 ${LANG_GERMAN}  "SVG Print Layout benötigt 64-Bit-Windows (x64)."
+
+LangString SEC_MAIN ${LANG_ENGLISH} "SVG Print Layout (required)"
+LangString SEC_MAIN ${LANG_FRENCH}  "SVG Print Layout (obligatoire)"
+LangString SEC_MAIN ${LANG_SPANISH} "SVG Print Layout (obligatorio)"
+LangString SEC_MAIN ${LANG_GERMAN}  "SVG Print Layout (erforderlich)"
+
+LangString SEC_START_MENU ${LANG_ENGLISH} "Start Menu shortcut"
+LangString SEC_START_MENU ${LANG_FRENCH}  "Raccourci du menu Démarrer"
+LangString SEC_START_MENU ${LANG_SPANISH} "Acceso directo del menú Inicio"
+LangString SEC_START_MENU ${LANG_GERMAN}  "Verknüpfung im Startmenü"
+
+LangString SEC_DESKTOP ${LANG_ENGLISH} "Desktop shortcut"
+LangString SEC_DESKTOP ${LANG_FRENCH}  "Raccourci sur le Bureau"
+LangString SEC_DESKTOP ${LANG_SPANISH} "Acceso directo en el Escritorio"
+LangString SEC_DESKTOP ${LANG_GERMAN}  "Verknüpfung auf dem Desktop"
+
+LangString LNK_UNINSTALL ${LANG_ENGLISH} "Uninstall"
+LangString LNK_UNINSTALL ${LANG_FRENCH}  "Désinstaller"
+LangString LNK_UNINSTALL ${LANG_SPANISH} "Desinstalar"
+LangString LNK_UNINSTALL ${LANG_GERMAN}  "Deinstallieren"
 
 VIProductVersion "${APP_VERSION_NUMERIC}"
-VIAddVersionKey /LANG=${LANG_FRENCH} "ProductName" "SVG Print Layout"
-VIAddVersionKey /LANG=${LANG_FRENCH} "ProductVersion" "${APP_VERSION}"
-VIAddVersionKey /LANG=${LANG_FRENCH} "CompanyName" "Gilles MAGNEVILLE"
-VIAddVersionKey /LANG=${LANG_FRENCH} "LegalCopyright" "GNU GPL v3"
-VIAddVersionKey /LANG=${LANG_FRENCH} "FileDescription" "Installeur de SVG Print Layout"
-VIAddVersionKey /LANG=${LANG_FRENCH} "FileVersion" "${APP_VERSION}"
+!macro VersionKeys LANG DESCRIPTION
+    VIAddVersionKey /LANG=${LANG} "ProductName" "SVG Print Layout"
+    VIAddVersionKey /LANG=${LANG} "ProductVersion" "${APP_VERSION}"
+    VIAddVersionKey /LANG=${LANG} "CompanyName" "Gilles MAGNEVILLE"
+    VIAddVersionKey /LANG=${LANG} "LegalCopyright" "GNU GPL v3"
+    VIAddVersionKey /LANG=${LANG} "FileDescription" "${DESCRIPTION}"
+    VIAddVersionKey /LANG=${LANG} "FileVersion" "${APP_VERSION}"
+!macroend
+!insertmacro VersionKeys ${LANG_ENGLISH} "SVG Print Layout installer"
+!insertmacro VersionKeys ${LANG_FRENCH}  "Installeur de SVG Print Layout"
+!insertmacro VersionKeys ${LANG_SPANISH} "Instalador de SVG Print Layout"
+!insertmacro VersionKeys ${LANG_GERMAN}  "Installationsprogramm für SVG Print Layout"
 
 !define UNINSTALL_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\SVGPrintLayout"
 !define APP_KEY "Software\SVGPrintLayout"
 
 Function .onInit
     ${IfNot} ${RunningX64}
-        MessageBox MB_OK|MB_ICONSTOP "SVG Print Layout nécessite Windows 64 bits (x64)."
+        MessageBox MB_OK|MB_ICONSTOP "$(MSG_NEEDS_X64)"
         Abort
     ${EndIf}
     ; Écrire dans la base de registre 64 bits, et non dans la vue 32 bits de
@@ -84,7 +126,7 @@ Function un.onInit
     SetShellVarContext all
 FunctionEnd
 
-Section "SVG Print Layout (obligatoire)" SecMain
+Section "$(SEC_MAIN)" SecMain
     SectionIn RO
 
     ; Mise à jour : on retire d'abord la version installée, pour qu'il ne reste
@@ -119,13 +161,13 @@ Section "SVG Print Layout (obligatoire)" SecMain
     WriteUninstaller "$INSTDIR\Uninstall.exe"
 SectionEnd
 
-Section "Raccourci du menu Démarrer" SecStartMenu
+Section "$(SEC_START_MENU)" SecStartMenu
     CreateDirectory "$SMPROGRAMS\SVG Print Layout"
     CreateShortCut "$SMPROGRAMS\SVG Print Layout\SVG Print Layout.lnk" "$INSTDIR\bin\svgprintlayout.exe"
-    CreateShortCut "$SMPROGRAMS\SVG Print Layout\Désinstaller.lnk" "$INSTDIR\Uninstall.exe"
+    CreateShortCut "$SMPROGRAMS\SVG Print Layout\$(LNK_UNINSTALL).lnk" "$INSTDIR\Uninstall.exe"
 SectionEnd
 
-Section /o "Raccourci sur le Bureau" SecDesktop
+Section /o "$(SEC_DESKTOP)" SecDesktop
     CreateShortCut "$DESKTOP\SVG Print Layout.lnk" "$INSTDIR\bin\svgprintlayout.exe"
 SectionEnd
 
@@ -135,7 +177,12 @@ Section "Uninstall"
     RMDir "$INSTDIR"
 
     Delete "$SMPROGRAMS\SVG Print Layout\SVG Print Layout.lnk"
+    ; Le raccourci du désinstalleur porte le nom de la langue de l'installation,
+    ; peut-être pas celle de Windows aujourd'hui : on supprime les quatre.
+    Delete "$SMPROGRAMS\SVG Print Layout\Uninstall.lnk"
     Delete "$SMPROGRAMS\SVG Print Layout\Désinstaller.lnk"
+    Delete "$SMPROGRAMS\SVG Print Layout\Desinstalar.lnk"
+    Delete "$SMPROGRAMS\SVG Print Layout\Deinstallieren.lnk"
     RMDir "$SMPROGRAMS\SVG Print Layout"
     Delete "$DESKTOP\SVG Print Layout.lnk"
 

@@ -1,32 +1,56 @@
 .\" SPDX-License-Identifier: GPL-3.0-only
-.TH SVGPRINTLAYOUT 1 "2026-10-19" "svg-print-layout 0.1.0" "Commandes utilisateur"
-.SH NOM
-svgprintlayout \- met en page un dessin SVG sur plusieurs feuilles et l'exporte en PDF
+.TH SVGPRINTLAYOUT 1 "2026-10-19" "svg-print-layout 0.1.0" "User Commands"
+.SH NAME
+svgprintlayout \- lay out an SVG drawing over several sheets and export it as a PDF
 .SH SYNOPSIS
+.B svgprintlayout
+[\fB\-lang\fR \fIlanguage\fR] [\fIfile.svg\fR]
+.br
 .B svgprintlayout
 [\fB\-version\fR | \fB\-selftest\fR]
 .SH DESCRIPTION
 .B svgprintlayout
-prépare l'impression d'un document vectoriel SVG de dimensions quelconques sur
-plusieurs feuilles de papier standard : on choisit le format, les marges et la
-largeur du dessin, on place les coupures à la souris, puis on exporte un seul
-PDF multipage vectoriel. Le dessin garde une échelle unique et le fichier SVG
-d'origine n'est jamais modifié.
+prepares a vector SVG document of any size for printing on several sheets of
+standard paper: you choose the format, the margins and the width of the
+drawing, place the cuts with the mouse, then export a single multi\-page
+vector PDF. The drawing keeps a single scale and the original SVG file is
+never modified.
 .PP
-Le programme est en cours de développement : l'interface graphique n'est pas
-encore disponible, seules les options ci\-dessous fonctionnent.
+The window has three areas: the settings on the left, the interactive preview
+in the centre and the list of pages on the right. The program is under
+development: the window opens an SVG file and shows it whole; the layout, the
+cuts and the PDF export are not yet available from the window.
+.PP
+The interface is available in French, English, Spanish and German. It follows
+the language of the system unless a language is chosen in the menu of the
+window or with
+.BR \-lang .
 .SH OPTIONS
 .TP
+.BI \-lang " language"
+Language of the interface for this run: \fBfr\fR, \fBen\fR, \fBes\fR or
+\fBde\fR. Without it, the language chosen in the menu applies, or else the
+language of the system (the variables LANGUAGE, LC_ALL, LC_MESSAGES and LANG).
+.TP
 .B \-version
-Affiche la version du programme, la plate\-forme et les versions des
-bibliothèques de rendu (librsvg, cairo), puis quitte. À joindre à tout
-signalement de problème.
+Prints the version of the program, the platform and the versions of the
+rendering libraries (librsvg, cairo), then exits. To be attached to any
+problem report.
 .TP
 .B \-selftest
-Vérifie que le moteur de rendu fonctionne sur cette machine : charge un SVG
-intégré, le mesure, le dessine, l'exporte en PDF et contrôle que la police est
-incorporée. Quitte avec le code 0 si tout fonctionne, 1 sinon.
-.SH VOIR AUSSI
+Checks that the rendering engine works on this machine: loads a built\-in SVG,
+measures it, draws it, exports it as a PDF and checks that the font is
+embedded. Exits with code 0 if everything works, 1 otherwise.
+.TP
+.BI \-ready-file " file"
+Creates this file once the window is shown and the document drawn. Meant for
+tests and documentation.
+.SH FILES
+.TP
+.I ~/.config/svgprintlayout/settings.json
+The preferences of the user (the language of the interface). On Windows:
+.IR %AppData%\esvgprintlayout\esettings.json .
+.SH SEE ALSO
 https://github.com/gillesmagneville/svg-print-layout
-.SH AUTEUR
-Gilles MAGNEVILLE. Distribué sous la licence GNU GPL version 3.
+.SH AUTHOR
+Gilles MAGNEVILLE. Distributed under the GNU GPL version 3.

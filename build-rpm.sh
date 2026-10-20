@@ -44,8 +44,8 @@ svgprintlayout-<version>-<release>.<arch>.rpm. Une version d'avant-publication
 (0.1.0-dev) devient la release « 0.1.dev » et se classe avant la 0.1.0.
 
 Prérequis :
-  Fedora        : sudo dnf install golang gcc pkgconf librsvg2-devel cairo-devel rpm-build
-  Debian/Ubuntu : sudo apt install golang-go build-essential pkg-config librsvg2-dev rpm
+  Fedora        : sudo dnf install golang gcc pkgconf librsvg2-devel cairo-devel gtk4-devel gobject-introspection-devel rpm-build
+  Debian/Ubuntu : sudo apt install golang-go build-essential pkg-config librsvg2-dev libgtk-4-dev libgirepository1.0-dev rpm
 
 Les dépendances du paquet (bibliothèques partagées) sont déduites du binaire
 par rpmbuild. Le paquet est lié aux versions des bibliothèques de la machine
@@ -104,6 +104,9 @@ command -v pkg-config >/dev/null 2>&1 || erreur "pkg-config n'est pas installé.
 pkg-config --exists librsvg-2.0 cairo || erreur "les bibliothèques de développement de librsvg et de cairo sont absentes.
   Fedora        : sudo dnf install librsvg2-devel cairo-devel
   Debian/Ubuntu : sudo apt install librsvg2-dev"
+pkg-config --exists gtk4 gobject-introspection-1.0 || erreur "les bibliothèques de développement de GTK 4 sont absentes (GTK 4.14 ou plus récent).
+  Fedora        : sudo dnf install gtk4-devel gobject-introspection-devel
+  Debian/Ubuntu : sudo apt install libgtk-4-dev libgirepository1.0-dev"
 
 case "$(uname -m)" in
     x86_64)  RPM_ARCH="x86_64" ;;
@@ -238,7 +241,7 @@ mkdir -p "$BUILD_DIR"
 # adresse aléatoire (durcissement). Le numéro de version du paquet est inscrit
 # dans le programme (svgprintlayout -version), même si le fichier VERSION du
 # projet n'est mis à jour qu'après un build réussi (voir plus bas).
-echo ">>> Compilation (cgo, librsvg, cairo)..."
+echo ">>> Compilation (cgo, GTK4, librsvg, cairo)..."
 BINARY="$WORK_DIR/$PACKAGE_NAME"
 ( cd "$PROJECT_DIR" && CGO_ENABLED=1 go build -trimpath -buildvcs=false -buildmode=pie \
     -ldflags "-s -w -buildid= -X main.version=$NEW_VERSION" -o "$BINARY" ./cmd/svgprintlayout )
@@ -251,9 +254,15 @@ install -D -m 0644 "$PROJECT_DIR/metainfo/$APP_ID.desktop" "$BUILD_DIR/usr/share
 install -D -m 0644 "$PROJECT_DIR/metainfo/$APP_ID.metainfo.xml" "$BUILD_DIR/usr/share/metainfo/$APP_ID.metainfo.xml"
 install -D -m 0644 "$PROJECT_DIR/icons/svgprintlayout.svg" "$BUILD_DIR/usr/share/icons/hicolor/scalable/apps/svgprintlayout.svg"
 install -D -m 0644 "$PROJECT_DIR/icons/svgprintlayout-256.png" "$BUILD_DIR/usr/share/icons/hicolor/256x256/apps/svgprintlayout.png"
+# Page de manuel : en anglais dans man1 (langue de repli), traduite dans le
+# dossier de chaque langue (man-db choisit selon la langue de l'utilisateur).
 install -d -m 0755 "$BUILD_DIR/usr/share/man/man1"
 gzip -9n -c "$PROJECT_DIR/docs/svgprintlayout.1" > "$BUILD_DIR/usr/share/man/man1/$PACKAGE_NAME.1.gz"
-chmod 0644 "$BUILD_DIR/usr/share/man/man1/$PACKAGE_NAME.1.gz"
+for LANGUE in fr es de; do
+    install -d -m 0755 "$BUILD_DIR/usr/share/man/$LANGUE/man1"
+    gzip -9n -c "$PROJECT_DIR/docs/$LANGUE/svgprintlayout.1" > "$BUILD_DIR/usr/share/man/$LANGUE/man1/$PACKAGE_NAME.1.gz"
+done
+chmod 0644 "$BUILD_DIR"/usr/share/man/man1/*.gz "$BUILD_DIR"/usr/share/man/*/man1/*.gz
 install -D -m 0644 "$PROJECT_DIR/README.md" "$BUILD_DIR/usr/share/doc/$PACKAGE_NAME/README.md"
 install -D -m 0644 "$PROJECT_DIR/CHANGELOG.md" "$BUILD_DIR/usr/share/doc/$PACKAGE_NAME/CHANGELOG.md"
 install -D -m 0644 "$PROJECT_DIR/LICENSE" "$BUILD_DIR/usr/share/licenses/$PACKAGE_NAME/LICENSE"

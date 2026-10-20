@@ -75,6 +75,8 @@ Coûts assumés :
 
 GTK4 est retenu. Comme `Engine` renvoie des images (§4), Fyne reste un repli possible pour l'interface seule.
 
+**Version de gotk4.** `github.com/diamondburned/gotk4/pkg` v0.3.1, qui se compile avec GLib 2.80 et GTK 4.14 (Ubuntu 24.04) : la v0.4 demande GLib 2.84 ou plus, que cette Ubuntu n'a pas. La version est celle de `go.mod`. Passer à une version plus récente est un changement à part, qui doit garder le `.deb` constructible sur la plus ancienne Ubuntu prise en charge. gotk4 compile lentement (plusieurs minutes la première fois, le cache de compilation ensuite) ; la CI garde ce cache.
+
 ### Repli si M0 échoue
 
 Si la fidélité ou le packaging Windows ne passent pas, le moteur D prend le relais derrière la même interface `Engine`. Le calcul de pages, l'analyse du SVG, le projet et l'interface ne changent pas ; seuls l'aperçu et l'export changent de moteur.
@@ -164,9 +166,10 @@ L'interface est en français, en anglais, en espagnol et en allemand ; le paquet
 - **Les pluriels.** `tr.N("pages.count", n)` lit `pages.count.one` ou `pages.count.other` selon la langue (le français compte 0 au singulier, les trois autres non).
 - **Lire un nombre.** `ParseNumber` accepte la virgule comme le point et ignore les espaces, y compris l'espace insécable des milliers : une personne qui tape « 200,5 » ou « 200.5 » dans un champ de largeur obtient la même valeur, quelle que soit la langue de l'interface.
 - **Typographie française.** Le catalogue français s'écrit avec des espaces ordinaires ; au démarrage, l'espace insécable est mise avant « : », « ; », « ? », « ! » et dans les guillemets, pour qu'un libellé ne se coupe pas avant son deux-points.
-- **Choix de la langue.** Le réglage est un code (`fr`, `en`, `es`, `de`) ou `auto`. `auto` suit le système : variables `LANGUAGE`, `LC_ALL`, `LC_MESSAGES`, `LANG` sous Linux, langue de l'utilisateur sous Windows (`GetUserDefaultLocaleName`). Une langue du système qui n'est pas l'une des quatre donne l'anglais. L'option `-lang` de la ligne de commande l'emporte ; le choix fait dans l'interface sera enregistré dans les préférences de l'utilisateur (hors du fichier projet : le projet ne dépend pas de la langue de celui qui l'ouvre).
+- **Choix de la langue.** Le réglage est un code (`fr`, `en`, `es`, `de`) ou `auto`. `auto` suit le système : variables `LANGUAGE`, `LC_ALL`, `LC_MESSAGES`, `LANG` sous Linux, langue de l'utilisateur sous Windows (`GetUserDefaultLocaleName`). Une langue du système qui n'est pas l'une des quatre donne l'anglais. L'option `-lang` de la ligne de commande l'emporte ; le choix fait dans l'interface (menu de la fenêtre, effet immédiat) est enregistré dans les préférences de l'utilisateur, `settings.json` du dossier de configuration du système (`~/.config/svgprintlayout/` sous Linux, `%AppData%\svgprintlayout\` sous Windows), hors du fichier projet : le projet ne dépend pas de la langue de celui qui l'ouvre.
 - **Messages d'erreur et diagnostics.** Un diagnostic (`diag`) porte un code et des valeurs, jamais un texte : l'interface le traduit par la clé `diag.<code>`. Ainsi une erreur de moteur ou d'export s'affiche dans la langue de l'utilisateur sans que les paquets de calcul connaissent les langues.
-- **Composants de GTK.** Les boutons des boîtes de dialogue standard (« Annuler », « Ouvrir »…) sont traduits par GTK lui-même, à partir de la langue choisie : l'interface la lui donnera avant de l'initialiser, et le paquet Windows embarquera les catalogues de GTK pour ces quatre langues.
+- **Composants de GTK.** Les boutons des boîtes de dialogue standard (« Annuler », « Ouvrir »…) sont traduits par GTK lui-même, à partir de la langue choisie : l'interface la lui donne par la variable `LANGUAGE` avant de l'initialiser (sous Windows aussi dans l'environnement de la bibliothèque C, où gettext la lit), et le paquet Windows embarque les catalogues de GTK pour le français, l'espagnol et l'allemand.
+- **Fichiers lus par le système.** L'entrée de menu (`.desktop`), la fiche AppStream et la page de manuel existent dans les quatre langues, l'anglais étant le texte sans suffixe : le système le prend quand sa langue n'est pas l'une des quatre. Des tests de `repocheck` vérifient que chaque langue a ses lignes, et que les quatre pages de manuel portent la même version. Le programme d'installation Windows (NSIS) parle lui aussi les quatre langues, selon celle de Windows.
 - **Ce qui reste en français.** Les sorties de diagnostic `-version` et `-selftest` (utiles au support, relues par les scripts de paquets) ; les documents du dépôt (`ARCHITECTURE.md`, `CONTRIBUTING.md`, journal des modifications) ; les identifiants et commentaires du code, en anglais.
 - **Ajouter un texte ou une langue.** Un texte : ajouter la clé aux quatre catalogues (le test dit lesquels l'oublient). Une langue : un catalogue, son nom dans `Name` et `Languages`, sa règle de pluriel dans `isSingular`, son séparateur décimal dans `Number`.
 
@@ -181,7 +184,7 @@ versionnés : `.gitignore`).
 | --- | --- | --- |
 | `.deb` (Debian, Ubuntu) | `build-deb.sh` | `dpkg-deb`, dépendances par `dpkg-shlibdeps` |
 | `.rpm` (Fedora, RHEL) | `build-rpm.sh` | `rpmbuild`, dépendances déduites du binaire |
-| Windows : `.zip` portable et installeur | `build-windows.ps1`, `windows/` | MSYS2 UCRT64 (Go, gcc, librsvg, cairo), NSIS |
+| Windows : `.zip` portable et installeur | `build-windows.ps1`, `windows/` | MSYS2 UCRT64 (Go, gcc, GTK 4, librsvg, cairo), NSIS |
 
 - **Options et version.** `--major`, `--minor`, `--patch`, `--no-version-change`, `--clean`,
   `--help` (`-Major`… sous PowerShell) ; sans option, un menu propose les quatre choix et la
@@ -209,8 +212,9 @@ versionnés : `.gitignore`).
   métadonnées AppStream (identifiant `io.github.gillesmagneville.svgprintlayout`, nom de
   domaine inversé : le fichier `.desktop` et `<launchable>` doivent s'y accorder, et
   `desktop-file-validate` et `appstreamcli validate` le vérifient en CI), l'icône (SVG et PNG
-  256), la page de manuel, README et journal des modifications, copyright (`.deb`) ou licence
-  (`.rpm`).
+  256), les pages de manuel (anglais dans `man1`, français, espagnol et allemand dans le
+  dossier de leur langue), README et journal des modifications, copyright (`.deb`) ou licence
+  (`.rpm`). Les dépendances comprennent GTK 4 (`libgtk-4-1`).
 - **Reproductibilité.** `-trimpath`, `-buildvcs=false`, un identifiant de construction vide,
   `SOURCE_DATE_EPOCH` (date du dernier commit), ordre, propriétaires et permissions fixés :
   deux constructions donnent le même fichier, à versions de Go, de librsvg et de cairo égales
@@ -221,9 +225,16 @@ versionnés : `.gitignore`).
 - **Dossier de travail.** Hors du dépôt, comme chez Planche-Contact : `~/deb-build/build`,
   `~/rpm-build/build` et `%LOCALAPPDATA%\svgprintlayout-build`. `--clean` les supprime, et
   supprime les paquets déjà construits à la racine.
-- **Disposition Windows.** Le dossier livré est un préfixe (`bin/` pour le programme et ses
-  DLL, `etc/fonts/`, `lib/gdk-pixbuf-2.0/`, `share/licenses/`) : le programme peut être
-  installé n'importe où. Fontconfig, gdk-pixbuf et pango ne savent pas où est leur
+- **Disposition Windows.** Le dossier livré est un préfixe (`bin/` pour les programmes et les
+  DLL, `etc/fonts/`, `lib/gdk-pixbuf-2.0/`, `share/glib-2.0/schemas/`, `share/icons/`,
+  `share/locale/`, `share/licenses/`) : le programme peut être installé n'importe où. GLib et
+  GTK retrouvent leurs fichiers à partir de l'emplacement de leurs DLL, d'où ce préfixe ; sans
+  les schémas de réglages, GTK s'arrête à l'ouverture d'un sélecteur de fichier, et sans le
+  thème d'icônes les boutons de la fenêtre n'ont pas d'image. Il y a deux exécutables :
+  `svgprintlayout.exe` (sous-système Windows : aucune console ne s'ouvre derrière la
+  fenêtre, mais rien n'est écrit dans un terminal) et `svgprintlayout-console.exe`, le même
+  programme en sous-système console, pour `-version`, `-selftest` et les messages d'erreur ;
+  le script de construction vérifie le sous-système de chacun. Fontconfig, gdk-pixbuf et pango ne savent pas où est leur
   configuration dans ce cas ; `engine.ConfigureRuntime` la leur indique au démarrage (sous
   Windows, quand ce dossier existe). Pango utilise fontconfig, comme sous Linux : les polices
   d'un document sont résolues, et remplacées, de la même façon partout (§12). Le paquet
@@ -233,9 +244,12 @@ versionnés : `.gitignore`).
   accentué, image PNG incorporée), le mesure, le dessine et l'exporte en PDF, et vérifie
   qu'une police est incorporée et que deux exports sont identiques. Le script Windows le
   lance sur le dossier du paquet avec le seul PATH de Windows avant de produire le `.zip` ;
-  la CI le lance sur chaque paquet installé.
-- **Ce que les paquets ne font pas encore** : ils n'installent qu'un programme sans interface
-  (`-version`, `-selftest`) ; l'interface GTK4 et ses dépendances viendront avec M0b et M2.
+  la CI le lance sur chaque paquet installé. Elle ouvre aussi la fenêtre du programme
+  installé (option `-ready-file`, qui crée un fichier quand la fenêtre est affichée et le
+  document dessiné) sur un écran virtuel, en enregistre une capture, et le fait dans les
+  quatre langues pour le paquet portable de Windows.
+- **Ce que les paquets ne font pas encore** : le programme qu'ils installent ouvre un SVG et
+  l'affiche en entier ; la mise en page, les coupures et l'export viennent avec M1 à M4.
   Rien n'est signé, aucun dépôt de paquets n'existe, et l'architecture arm64 est reconnue
   par les scripts Linux sans avoir été essayée.
 
@@ -627,7 +641,7 @@ Un test vérifie que chacun des deux contrôles échoue quand une page est déca
 - **Trois niveaux.** Go pur (modèle, unités, mise en page, analyse, projet) avec `go test` partout sans cgo ; intégration du moteur (chargement, tuiles, export) avec librsvg installé ; interface sous Xvfb sur Linux, plus une liste de contrôle manuelle sur Windows.
 - **Tests de propriétés** sur `layout` : papiers, marges, échelles et coupures tirés au hasard, avec pour invariants la couverture exacte, `w` constant, `s` inchangé par les commandes et des états cohérents.
 - **Jeu d'essai.** Le Mini-CAD réel n'est pas dans le dépôt : il décrit une infrastructure réelle. Les tests le prennent quand `SVGPL_MINICAD` donne son chemin. Le générateur déterministe `internal/testsvg` produit un équivalent public de 1 280 × 5 479 unités (fond gris, blocs avec texte, bandeau pleine largeur, rectangle transformé) ; il doit aussi servir de test de charge avec 100 000 éléments (pas encore fait).
-- **Intégration continue** : un job `engine` sur Ubuntu avec `librsvg2-dev`, `poppler-utils` et `fonts-ibm-plex` (en place) ; un job `linux-packages` (construction du `.deb` et du `.rpm`, lintian, AppStream, installation, `-selftest`, constructions identiques) et un job `windows-package` sous MSYS2 UCRT64 (construction par `build-windows.ps1`, `-selftest` de la version portable et du programme installé, désinstallation) — en place ; l'interface GTK4 sous Windows, avec le paquet `mingw-w64-ucrt-x86_64-gtk4` et ses dépendances (M0b).
+- **Intégration continue** (tous en place) : un job `engine` sur Ubuntu avec `librsvg2-dev`, `poppler-utils` et `fonts-ibm-plex` ; un job `ui` (GTK4 sous Xvfb : tests de la fenêtre, puis captures dans les quatre langues, déposées en artefact) ; un job `linux-packages` (construction du `.deb` et du `.rpm`, lintian, AppStream, installation, `-selftest`, fenêtre du programme installé, constructions identiques) et un job `windows-package` sous MSYS2 UCRT64 (construction par `build-windows.ps1`, `-selftest` puis fenêtre dans les quatre langues de la version portable, programme installé, désinstallation). Les autres paquets se construisent et se testent sans cgo (`CGO_ENABLED=0`), où `ui` est un bouchon.
 - **Références.** Les rasters de référence sont stockés par plateforme, avec tolérance, et jamais comparés d'une plateforme à l'autre.
 
 ## 14. Plan de livraison
@@ -643,13 +657,13 @@ Six jalons, dont M0 est le point de décision : le calcul de pages (M1) ne dépe
 | M4. Fond et export | Détection et remplacement du fond, export PDF, vérifications, aperçu de page | Tests 8 à 13 passés |
 | M5. Projet, paquets, recette | Enregistrement et réouverture dans l'interface, paquet .deb, installateur Windows, recette complète | Les 14 tests réussissent sur Ubuntu, sur Windows 10 et sur Windows 11 |
 
-**État.** Le squelette du dépôt, le paquet `units`, le prototype du moteur (M0a, `docs/M0.md`) et les scripts qui construisent les paquets `.deb`, `.rpm` et Windows (pour un programme sans interface) existent. M0 n'est pas terminé : l'interface GTK4 et son build sous Windows (M0b) restent à faire. Le paquet de traduction `i18n` existe. Le `CHANGELOG.md` tient le détail.
+**État.** Le squelette du dépôt, le paquet `units`, le prototype du moteur (M0a, `docs/M0.md`), les scripts qui construisent les paquets `.deb`, `.rpm` et Windows, le paquet de traduction `i18n` et une première fenêtre GTK4 (trois panneaux, quatre langues, ouverture d'un SVG affiché en entier ; M0b) existent, avec leur CI. M0 n'est pas terminé : la comparaison du plan produit sous Windows et sous Linux reste à faire. Le `CHANGELOG.md` tient le détail.
 
 Après la v1, le §14 du cahier reste la liste des suites possibles. L'aperçu du PDF réel relu par un moteur PDF indépendant (le cahier demande « un aperçu du PDF final ») est le premier candidat : la v1 s'en tient à l'aperçu produit par la même fonction de dessin, ce qui est fidèle au PDF par construction.
 
 ## 15. Risques et questions ouvertes
 
-Les cinq premiers risques se tranchent au jalon M0 ; aucun développement d'interface n'est engagé avant son verdict. M0a en a tranché un et avancé deux (voir sous le tableau).
+Les cinq premiers risques se tranchent au jalon M0. M0a en a tranché un et avancé deux (voir sous le tableau) ; la fenêtre de M0b ne va pas plus loin que ce qu'elle montre, et le moteur D reste le repli tant que le verdict n'est pas rendu.
 
 | Risque | Effet | Parade | Tranché en |
 | --- | --- | --- | --- |
@@ -668,7 +682,7 @@ Après M0a (`docs/M0.md`) :
 - **Fidélité de librsvg** : avancé. Le rendu concorde avec celui de Chromium (écart moyen d'un niveau de gris) ; la comparaison avec Inkscape reste à faire.
 - **Déterminisme** : avancé. Établi sur une machine, avec dates fixées ; il reste à constater entre versions et entre machines.
 - **Éléments rastérisés** : non avancé, le Mini-CAD n'a aucun filtre.
-- **Packaging Windows** : avancé pour le moteur seul. Le paquet (DLL de cairo et de librsvg, fontconfig, chargeurs d'images) se construit sous MSYS2 UCRT64 et passe `-selftest` avec le seul PATH de Windows en CI ; la comparaison du plan produit sous Windows et sous Linux, et GTK4, restent à faire (M0b).
+- **Packaging Windows** : avancé. Le paquet (DLL de GTK 4, de cairo et de librsvg, fontconfig, chargeurs d'images, schémas, icônes et traductions de GTK) se construit sous MSYS2 UCRT64, passe `-selftest` avec le seul PATH de Windows et ouvre sa fenêtre en CI ; la comparaison du plan produit sous Windows et sous Linux reste à faire.
 - **Police absente** : le risque est plus grand qu'on ne le pensait, car la substitution est silencieuse et le PDF incorpore la police de remplacement. La détection devient obligatoire, pas seulement souhaitable.
 - **Temps d'export** proportionnel au nombre de pages (environ 0,25 s par page sur le Mini-CAD), et rendu d'une fenêtre d'aperçu de 0,24 à 0,41 s : à traiter par un cache de tuiles en M2.
 

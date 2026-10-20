@@ -2,7 +2,9 @@
 <!-- SPDX-License-Identifier: GPL-3.0-only -->
 <!--
   Métadonnées AppStream de SVG Print Layout, pour les gestionnaires de logiciels
-  (GNOME Logiciels, App Center, KDE Discover).
+  (GNOME Logiciels, App Center, KDE Discover). Le texte sans attribut xml:lang
+  est l'anglais, langue de repli ; xml:lang="fr", "es" et "de" donnent les trois
+  autres langues du programme.
 
   L'<id> doit correspondre au nom de ce fichier (io.github.gillesmagneville.svgprintlayout.metainfo.xml)
   et le <launchable> au nom du fichier .desktop installé (io.github.gillesmagneville.svgprintlayout.desktop). Le nom
@@ -14,19 +16,54 @@
   <project_license>GPL-3.0-only</project_license>
 
   <name>SVG Print Layout</name>
-  <summary>Met en page un dessin SVG sur plusieurs feuilles et l'exporte en PDF</summary>
+  <summary>Lays out an SVG drawing over several sheets and exports it as a PDF</summary>
+  <summary xml:lang="fr">Met en page un dessin SVG sur plusieurs feuilles et l'exporte en PDF</summary>
+  <summary xml:lang="es">Reparte un dibujo SVG en varias hojas y lo exporta como PDF</summary>
+  <summary xml:lang="de">Verteilt eine SVG-Zeichnung auf mehrere Blätter und exportiert sie als PDF</summary>
 
   <description>
     <p>
+      SVG Print Layout prepares a vector SVG document of any size for printing
+      on several sheets of standard paper: you choose the format, the margins
+      and the width of the drawing, place the cuts with the mouse, then export
+      a single multi-page vector PDF.
+    </p>
+    <p xml:lang="fr">
       SVG Print Layout prépare l'impression d'un document vectoriel SVG de
       dimensions quelconques sur plusieurs feuilles de papier standard : on
       choisit le format, les marges et la largeur du dessin, on place les
       coupures à la souris, puis on exporte un seul PDF multipage vectoriel.
     </p>
+    <p xml:lang="es">
+      SVG Print Layout prepara la impresión de un documento vectorial SVG de
+      cualquier tamaño en varias hojas de papel estándar: se elige el formato,
+      los márgenes y el ancho del dibujo, se colocan los cortes con el ratón y
+      se exporta un único PDF vectorial de varias páginas.
+    </p>
+    <p xml:lang="de">
+      SVG Print Layout bereitet ein SVG-Vektordokument beliebiger Größe für den
+      Druck auf mehreren Blättern Standardpapier vor: Man wählt Format, Ränder
+      und Breite der Zeichnung, setzt die Schnitte mit der Maus und exportiert
+      ein einziges mehrseitiges Vektor-PDF.
+    </p>
     <p>
+      The drawing keeps a single scale: no page is silently shrunk to fit a
+      portion that is too tall. The original SVG file is never modified.
+    </p>
+    <p xml:lang="fr">
       Le dessin garde une échelle unique : aucune page n'est réduite en
       silence pour faire tenir une portion trop haute. Le fichier SVG d'origine
       n'est jamais modifié.
+    </p>
+    <p xml:lang="es">
+      El dibujo conserva una única escala: ninguna página se reduce en silencio
+      para que quepa una parte demasiado alta. El archivo SVG original nunca se
+      modifica.
+    </p>
+    <p xml:lang="de">
+      Die Zeichnung behält einen einzigen Maßstab: Keine Seite wird
+      stillschweigend verkleinert, damit ein zu hoher Abschnitt passt. Die
+      ursprüngliche SVG-Datei wird nie verändert.
     </p>
   </description>
 
@@ -47,7 +84,10 @@
   <releases>
     <release version="0.1.0" date="2026-10-19">
       <description>
-        <p>Première version : moteur de rendu SVG et PDF, paquets Debian, Fedora et Windows. L'interface graphique n'est pas encore là.</p>
+        <p>First version: SVG rendering and PDF export engine, Debian, Fedora and Windows packages. No graphical interface yet.</p>
+        <p xml:lang="fr">Première version : moteur de rendu SVG et PDF, paquets Debian, Fedora et Windows. L'interface graphique n'est pas encore là.</p>
+        <p xml:lang="es">Primera versión: motor de representación SVG y de exportación a PDF, paquetes para Debian, Fedora y Windows. Todavía sin interfaz gráfica.</p>
+        <p xml:lang="de">Erste Version: Motor für SVG-Darstellung und PDF-Export, Pakete für Debian, Fedora und Windows. Noch ohne grafische Oberfläche.</p>
       </description>
     </release>
   </releases>

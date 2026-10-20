@@ -7,8 +7,10 @@
 #
 #   -Step build      construit les paquets avec build-windows.ps1 -Patch, comme un
 #                    utilisateur, et vérifie la gestion du fichier VERSION
-#   -Step portable   lance la version portable avec le seul PATH de Windows
-#   -Step installer  installe, lance, désinstalle en silence
+#   -Step portable   lance la version portable avec le seul PATH de Windows :
+#                    l'auto-test, puis la fenêtre dans les quatre langues
+#   -Step installer  installe, lance (auto-test et fenêtre), désinstalle en
+#                    silence
 #   -Step clean      vérifie que build-windows.ps1 -Clean supprime les paquets
 
 param(
@@ -77,6 +79,76 @@ function Invoke-Build {
     }
 }
 
+# Les deux exécutables du programme : la fenêtre (sous-système Windows, rien
+# n'est écrit dans un terminal) et la console (-version, -selftest).
+$sampleSvg = @'
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="5479" viewBox="0 0 1280 5479">
+  <rect width="1280" height="5479" fill="#f4f5f8"/>
+  <rect width="1280" height="84" fill="#2b3a55"/>
+  <rect x="40" y="150" width="1200" height="60" fill="#ffffff" stroke="#8790a3" stroke-width="1.2"/>
+  <rect x="40" y="2600" width="1200" height="60" fill="#ffffff" stroke="#8790a3" stroke-width="1.2"/>
+  <rect x="40" y="5300" width="1200" height="60" fill="#ffffff" stroke="#8790a3" stroke-width="1.2"/>
+</svg>
+'@
+
+# Enregistre une capture de l'écran. Elle sert à regarder le résultat : un
+# échec ici ne fait pas échouer l'étape.
+function Save-Screenshot([string]$Path) {
+    try {
+        Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+        $bounds = [System.Windows.Forms.SystemInformation]::VirtualScreen
+        $bitmap = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+        $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+        $graphics.CopyFromScreen($bounds.Left, $bounds.Top, 0, 0, $bitmap.Size)
+        $bitmap.Save($Path, [System.Drawing.Imaging.ImageFormat]::Png)
+        $graphics.Dispose()
+        $bitmap.Dispose()
+        Write-Host "capture : $Path"
+    } catch {
+        Write-Host "capture impossible ($($_.Exception.Message))"
+    }
+}
+
+# Lance la fenêtre du programme (avec le seul PATH de Windows), attend qu'elle
+# soit affichée avec le document dessiné (-ready-file), enregistre une capture,
+# puis ferme le programme. Le rendu logiciel de GTK est demandé : une machine
+# virtuelle n'a pas de carte graphique.
+function Test-Window([string]$Exe, [string]$Lang, [string]$Name) {
+    $dir = Join-Path $env:RUNNER_TEMP "window"
+    New-Item -ItemType Directory -Force -Path $dir, "screenshots" | Out-Null
+    $svg = Join-Path $dir "plan.svg"
+    [System.IO.File]::WriteAllText($svg, $sampleSvg, (New-Object System.Text.UTF8Encoding $false))
+    $ready = Join-Path $dir "$Name.ready"
+    $stderr = Join-Path $dir "$Name.err"
+    $stdout = Join-Path $dir "$Name.out"
+    Remove-Item $ready, $stderr, $stdout -ErrorAction SilentlyContinue
+    $env:Path = $cleanPath
+    $env:GSK_RENDERER = "cairo"
+    $process = Start-Process -FilePath $Exe -PassThru `
+        -ArgumentList "-lang", $Lang, "-ready-file", "`"$ready`"", "`"$svg`"" `
+        -RedirectStandardError $stderr -RedirectStandardOutput $stdout
+    # Sans cette lecture, Windows PowerShell ne garde pas le descripteur du
+    # processus et ne sait plus donner son code de sortie.
+    $null = $process.Handle
+    $deadline = (Get-Date).AddSeconds(60)
+    while (-not (Test-Path $ready) -and -not $process.HasExited -and (Get-Date) -lt $deadline) {
+        Start-Sleep -Milliseconds 300
+    }
+    $shown = Test-Path $ready
+    if ($shown) {
+        Start-Sleep -Seconds 1
+        Save-Screenshot (Join-Path (Get-Location) "screenshots\$Name.png")
+    }
+    if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force }
+    if (-not $shown) {
+        $code = if ($process.HasExited) { $process.ExitCode } else { "toujours en cours" }
+        $messages = (Get-Content $stderr, $stdout -ErrorAction SilentlyContinue) -join "`n"
+        throw "la fenêtre ($Lang) ne s'est pas affichée en 60 secondes (code de sortie : $code)`n$messages"
+    }
+    Write-Host "ok  fenêtre ($Lang) affichée"
+}
+
 function Test-Clean {
     .\build-windows.ps1 -Clean
     Assert-Success "build-windows.ps1 -Clean"
@@ -97,17 +169,24 @@ function Test-Portable {
     Get-Content "$root\lib\gdk-pixbuf-2.0\2.10.0\loaders.cache" -ErrorAction SilentlyContinue | Select-Object -First 12 | ForEach-Object { Write-Host $_ }
     Write-Host "--- COMPOSANTS.txt"
     Get-Content "$root\share\licenses\COMPOSANTS.txt" | Select-Object -First 40 | ForEach-Object { Write-Host $_ }
+    foreach ($file in "bin\svgprintlayout.exe", "bin\svgprintlayout-console.exe", "share\glib-2.0\schemas\gschemas.compiled", "share\icons\Adwaita\index.theme", "share\icons\hicolor\index.theme") {
+        if (-not (Test-Path "$root\$file")) { throw "$file manque dans la version portable" }
+    }
+    Write-Host ("--- traductions de GTK : {0}" -f ((Get-ChildItem "$root\share\locale" -Recurse -Filter *.mo | ForEach-Object { $_.FullName.Substring($root.Length + 1) }) -join ", "))
     $env:Path = $cleanPath
-    $versionLine = (& "$root\bin\svgprintlayout.exe" -version) -join " "
-    Assert-Success "svgprintlayout.exe -version"
+    $versionLine = (& "$root\bin\svgprintlayout-console.exe" -version) -join " "
+    Assert-Success "svgprintlayout-console.exe -version"
     Write-Host $versionLine
     # Les versions des bibliothèques doivent ressembler à des versions (la lecture
     # de celle de librsvg a donné des nombres absurdes sous Windows).
     if ($versionLine -notmatch 'librsvg [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}, cairo [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$') {
         throw "la ligne de version est invalide : $versionLine"
     }
-    & "$root\bin\svgprintlayout.exe" -selftest
-    Assert-Success "svgprintlayout.exe -selftest"
+    & "$root\bin\svgprintlayout-console.exe" -selftest
+    Assert-Success "svgprintlayout-console.exe -selftest"
+    foreach ($lang in "fr", "en", "es", "de") {
+        Test-Window "$root\bin\svgprintlayout.exe" $lang "portable-$lang"
+    }
 }
 
 function Test-Installer {
@@ -120,8 +199,9 @@ function Test-Installer {
         throw "le raccourci du menu Démarrer manque"
     }
     $env:Path = $cleanPath
-    & "$target\bin\svgprintlayout.exe" -selftest
-    Assert-Success "svgprintlayout.exe -selftest (programme installé)"
+    & "$target\bin\svgprintlayout-console.exe" -selftest
+    Assert-Success "svgprintlayout-console.exe -selftest (programme installé)"
+    Test-Window "$target\bin\svgprintlayout.exe" "en" "installed-en"
     # _?= fait tourner le désinstalleur sur place et attendre, au lieu de se
     # copier dans un dossier temporaire et de rendre la main aussitôt.
     Start-Process -FilePath "$target\Uninstall.exe" -ArgumentList "/S", "_?=$target" -Wait

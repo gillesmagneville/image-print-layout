@@ -11,7 +11,7 @@
     Planche-Contact. Ce script vérifie les prérequis (MSYS2 et ses paquets,
     NSIS) en proposant d'installer ce qui manque, puis lance
     windows\build-windows.sh dans un terminal MSYS2 UCRT64 : c'est là que se
-    trouvent Go, le compilateur C, librsvg et cairo pour Windows.
+    trouvent Go, le compilateur C, GTK 4, librsvg et cairo pour Windows.
 
     Le fichier VERSION n'est mis à jour qu'une fois les paquets construits.
 
@@ -93,7 +93,7 @@ Les paquets sont créés à la racine du dépôt :
 
 Prérequis vérifiés automatiquement (avec proposition d'installation si absents) :
   - Windows 10 ou 11, 64 bits
-  - MSYS2 (https://www.msys2.org), dans C:\msys64, et ses paquets Go, gcc,
+  - MSYS2 (https://www.msys2.org), dans C:\msys64, et ses paquets Go, gcc, GTK 4,
     librsvg et cairo pour l'environnement UCRT64
   - NSIS (facultatif : nécessaire uniquement pour générer l'installeur .exe)
 '@
@@ -292,7 +292,7 @@ $script:Msys2Root = Find-Msys2
 if (-not $script:Msys2Root) {
     Write-Host ""
     Write-Host "MSYS2 est introuvable (cherché dans C:\msys64 et dans la variable MSYS2_ROOT)."
-    Write-Host "Il fournit Go, le compilateur C, librsvg et cairo pour Windows."
+    Write-Host "Il fournit Go, le compilateur C, GTK 4, librsvg et cairo pour Windows."
     if (Confirm-Action "L'installer avec winget maintenant ?") {
         try {
             winget install --id MSYS2.MSYS2 -e --accept-source-agreements --accept-package-agreements

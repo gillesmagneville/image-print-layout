@@ -63,6 +63,24 @@ var Registry = map[string]Spec{
 	"svg.more":            {Info, []string{"count"}},
 	"svg.coarse_blocks":   {Info, []string{"count"}},
 
+	// Export (internal/export).
+	"export.no_pages":          {Failure, nil},
+	"export.cuts_invalid":      {Failure, nil},
+	"export.bands_sum":         {Failure, []string{"sum", "height"}},
+	"export.width_differs":     {Failure, []string{"w", "want"}},
+	"export.outside_sheet":     {Failure, nil},
+	"export.outside_margins":   {Warning, nil},
+	"export.no_background":     {Warning, nil},
+	"export.background_covers": {Warning, nil},
+	"export.pdf_pages":         {Failure, []string{"got", "want"}},
+	"export.pdf_size":          {Failure, []string{"w", "h", "want_w", "want_h"}},
+	"export.pdf_clip":          {Failure, nil},
+	"export.pdf_offset":        {Failure, nil},
+	"export.pdf_unreadable":    {Failure, []string{"reason"}},
+
+	// Background.
+	"background.none": {Failure, nil},
+
 	// The application.
 	"app.no_document": {Failure, nil},
 

@@ -65,6 +65,11 @@ type preview struct {
 	plan      *layout.Plan
 	pageLabel func(n int) string
 
+	// transparentPage is set when the sheet is not painted white: a
+	// transparent page shows a chequerboard under the drawing, so that it is
+	// not taken for a white one.
+	transparentPage bool
+
 	// Hooks of the window.
 	onNeedRender func()
 	onView       func()
@@ -374,11 +379,44 @@ func (p *preview) drawGround(_ *gtk.DrawingArea, cr *cairo.Context, width, heigh
 	}
 	x0, y0 := p.view.ToScreen(0, 0)
 	x1, y1 := p.view.ToScreen(p.view.DocW, p.view.DocH)
-	// The sheet: the page colour under the drawing (white; the background of
-	// the document, if it has one, is part of the drawing).
+	// The sheet: the page colour under the drawing (the background of the
+	// document, if it has one, is part of the drawing).
 	cr.SetSourceRGB(1, 1, 1)
 	cr.Rectangle(math.Round(x0), math.Round(y0), math.Round(x1)-math.Round(x0), math.Round(y1)-math.Round(y0))
 	cr.Fill()
+	if p.transparentPage {
+		cr.Save()
+		cr.Rectangle(math.Round(x0), math.Round(y0), math.Round(x1)-math.Round(x0), math.Round(y1)-math.Round(y0))
+		cr.Clip()
+		drawChequerboard(cr, math.Round(x0), math.Round(y0), x1, y1)
+		cr.Restore()
+	}
+}
+
+// chequer is the side of a square of the chequerboard that stands for a
+// transparent page, in pixels.
+const chequer = 12.0
+
+// drawChequerboard paints the grey squares of the chequerboard over the white
+// of the sheet that lies under it, from (x0, y0) to (x1, y1).
+func drawChequerboard(cr *cairo.Context, x0, y0, x1, y1 float64) {
+	cr.SetSourceRGB(0.86, 0.86, 0.86)
+	for row, y := 0, y0; y < y1; row, y = row+1, y+chequer {
+		for col, x := 0, x0; x < x1; col, x = col+1, x+chequer {
+			if (row+col)%2 == 1 {
+				cr.Rectangle(x, y, chequer, chequer)
+			}
+		}
+	}
+	cr.Fill()
+}
+
+// setTransparentPage tells the preview how the sheet is painted.
+func (p *preview) setTransparentPage(on bool) {
+	if p.transparentPage != on {
+		p.transparentPage = on
+		p.ground.QueueDraw()
+	}
 }
 
 // Colours of the marks of the pages.

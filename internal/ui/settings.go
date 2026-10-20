@@ -62,6 +62,20 @@ type settingsPanel struct {
 	resultHeight        *gtk.Label
 	resultFactor        *gtk.Label
 
+	// Background.
+	bgNone                     *gtk.Label
+	bgFound                    *gtk.Label
+	bgKeep, bgWhiten, bgRemove *gtk.CheckButton
+	pageWhite, pageTransparent *gtk.CheckButton
+
+	// Export.
+	exportSummary  *gtk.Label
+	exportState    *gtk.Label
+	exportProgress *gtk.ProgressBar
+	exportBar      *gtk.Box
+	exportLabel    *gtk.Label
+	exportButton   *gtk.Button
+
 	// Placement.
 	hDrop   *gtk.DropDown
 	vDrop   *gtk.DropDown
@@ -89,13 +103,8 @@ func (w *window) buildSettingsPanel() gtk.Widgetter {
 	column.Append(w.section("panel.scale.title", s.buildScale(), true))
 	column.Append(w.section("panel.placement.title", s.buildPlacement(), false))
 
-	// These two sections wait for the commands that drive them.
-	for _, key := range []string{"panel.background.title", "panel.export.title"} {
-		soon := newLabel()
-		soon.AddCSSClass("dim-label")
-		w.texts.bind(func(tr *i18n.Translator) { soon.SetLabel(tr.T("panel.soon")) })
-		column.Append(w.section(key, soon, false))
-	}
+	column.Append(w.section("panel.background.title", s.buildBackground(), false))
+	column.Append(w.section("panel.export.title", s.buildExport(), true))
 
 	scroll := gtk.NewScrolledWindow()
 	scroll.SetPolicy(gtk.PolicyNever, gtk.PolicyAutomatic)
@@ -715,4 +724,6 @@ func (s *settingsPanel) sync() {
 	s.syncMargins()
 	s.syncScale()
 	s.syncPlacement()
+	s.syncBackground()
+	s.syncExport()
 }

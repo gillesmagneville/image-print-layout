@@ -8,8 +8,10 @@ import (
 	"bytes"
 	"compress/zlib"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"image"
+	"image/color"
 	"image/png"
 	"io"
 	"math"
@@ -586,5 +588,84 @@ func TestGeometryCheckDetectsASlightShift(t *testing.T) {
 	problems, _ := pageGeometry(contentStreams(t, export(t, d, shifted, PDFOptions{WhitePage: true})), expected, w, h)
 	if len(problems) < 2 {
 		t.Errorf("a band moved by 0.1 unit produced %d problems %v, want the clip and the offset", len(problems), problems)
+	}
+}
+
+// ----- the preview of a sheet and the progress of an export ------------------------------------
+
+func TestRenderPageIsTheSheetDrawnLikeThePDF(t *testing.T) {
+	d := load(t, testsvg.Generate(testsvg.Options{}))
+	w, h := d.Size()
+	pages, _ := scenarioPlan(t, w, h, scenarioCuts)
+	p := pages[1]
+	const pxPerPt = 0.5
+
+	white, err := d.RenderPage(p, pxPerPt, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := white.Bounds().Dx(), int(math.Ceil(p.WidthPt*pxPerPt)); got != want {
+		t.Errorf("width %d px, want %d", got, want)
+	}
+	if got, want := white.Bounds().Dy(), int(math.Ceil(p.HeightPt*pxPerPt)); got != want {
+		t.Errorf("height %d px, want %d", got, want)
+	}
+	// The corner is in the margin: opaque white on a white page.
+	if c := pixel(t, white, 1, 1); c != (color.RGBA{255, 255, 255, 255}) {
+		t.Errorf("corner of a white page = %v, want opaque white", c)
+	}
+	clear, err := d.RenderPage(p, pxPerPt, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c := pixel(t, clear, 1, 1); c.A != 0 {
+		t.Errorf("corner of a transparent page = %v, want alpha 0", c)
+	}
+	// Something is drawn inside the content window.
+	ink := 0
+	for y := 0; y < white.Bounds().Dy(); y += 3 {
+		for x := 0; x < white.Bounds().Dx(); x += 3 {
+			if c := pixel(t, white, x, y); c != (color.RGBA{255, 255, 255, 255}) {
+				ink++
+			}
+		}
+	}
+	if ink == 0 {
+		t.Error("nothing is drawn on the sheet")
+	}
+	// A sheet without a band is refused, not drawn.
+	if _, err := d.RenderPage(PageSpec{WidthPt: 100, HeightPt: 100, PtPerUnit: 1}, 1, true); err == nil {
+		t.Error("an empty band was drawn")
+	}
+}
+
+func TestExportReportsItsProgressAndCanBeStopped(t *testing.T) {
+	d := load(t, testsvg.Generate(testsvg.Options{}))
+	w, h := d.Size()
+	pages, _ := scenarioPlan(t, w, h, scenarioCuts)
+
+	var seen [][2]int
+	var out bytes.Buffer
+	err := d.ExportPDF(&out, pages, PDFOptions{Progress: func(done, total int) bool {
+		seen = append(seen, [2]int{done, total})
+		return true
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(seen) != len(pages) || seen[0] != [2]int{1, len(pages)} || seen[len(seen)-1] != [2]int{len(pages), len(pages)} {
+		t.Errorf("progress = %v, want 1..%d of %d", seen, len(pages), len(pages))
+	}
+
+	calls := 0
+	err = d.ExportPDF(&bytes.Buffer{}, pages, PDFOptions{Progress: func(done, total int) bool {
+		calls++
+		return done < 2
+	}})
+	if !errors.Is(err, ErrCancelled) {
+		t.Errorf("a stopped export returned %v, want ErrCancelled", err)
+	}
+	if calls != 2 {
+		t.Errorf("the export went on after being stopped: %d calls", calls)
 	}
 }

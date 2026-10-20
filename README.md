@@ -4,7 +4,7 @@
 
 Application de bureau (Linux — Debian, Ubuntu, Red Hat et leurs dérivés —, Windows 10 et 11, écrite en Go) pour **mettre en page, découper et imprimer un document vectoriel SVG sur plusieurs feuilles de papier standard**, puis l'exporter en **PDF multipage vectoriel**.
 
-> **État : en construction (M3 fait, M4 et M5 à venir).** La fenêtre GTK4, en **français, anglais, espagnol et allemand**, ouvre un SVG, l'analyse (fonctions non prises en charge, polices absentes, images introuvables), calcule ses pages avec les réglages de papier, de marges, d'échelle et de positionnement, et montre l'aperçu avec les limites et les numéros de page, la liste des pages et les corrections proposées quand une page dépasse. On y ajoute, déplace et supprime les coupures à la souris (double-clic, glisser, aimantation aux vides, clavier) ou on demande des coupures automatiques, sans jamais changer l'échelle. La gestion du fond, l'export PDF et l'enregistrement du projet dans la fenêtre sont la suite (M4 et M5). Le dépôt contient aussi le prototype du moteur (librsvg + cairo : rendu d'une fenêtre et export PDF multipage, validé sur le Mini-CAD, voir [`docs/M0.md`](docs/M0.md)), les scripts qui construisent les paquets `.deb`, `.rpm` et Windows (voir [Paquets](#paquets)) et la CI.
+> **État : en construction (M4 fait, M5 à venir).** La fenêtre GTK4, en **français, anglais, espagnol et allemand**, ouvre un SVG, l'analyse (fonctions non prises en charge, polices absentes, images introuvables), calcule ses pages avec les réglages de papier, de marges, d'échelle et de positionnement, et montre l'aperçu avec les limites et les numéros de page, la liste des pages et les corrections proposées quand une page dépasse. On y ajoute, déplace et supprime les coupures à la souris (double-clic, glisser, aimantation aux vides, clavier) ou on demande des coupures automatiques, sans jamais changer l'échelle. On y choisit le fond du document (le garder, le remplacer par du blanc, le supprimer, avec l'aperçu immédiat) et celui de la page (blanc opaque ou transparent), on voit chaque feuille telle qu'elle sera imprimée, puis on exporte un PDF multipage que le programme relit et vérifie avant de le livrer. L'enregistrement et la réouverture du projet dans la fenêtre sont la suite (M5). Le dépôt contient aussi le prototype du moteur (librsvg + cairo : rendu d'une fenêtre et export PDF multipage, validé sur le Mini-CAD, voir [`docs/M0.md`](docs/M0.md)), les scripts qui construisent les paquets `.deb`, `.rpm` et Windows (voir [Paquets](#paquets)) et la CI.
 
 ## Principe
 
@@ -34,13 +34,14 @@ internal/
   project/   fichier projet .svgpl (JSON versionné, écriture déterministe) (Go pur)
   svgdoc/    lecture du SVG : constats, polices, blocs, fond, copie de travail   (Go pur)
   engine/    moteur de rendu : interface Document, librsvg + cairo + fontconfig par cgo
-  export/    export PDF multipage et vérifications avant/après
+  export/    export PDF multipage : contrôles avant, relecture et vérification du PDF écrit   (Go pur)
   app/       session (projet, plan, historique), ouverture d'un document     (Go pur)
   viewport/  arithmétique de la vue : zoom, déplacement, fenêtre à dessiner   (Go pur)
   diag/      avertissements et erreurs destinés à l'utilisateur (un code et des valeurs)
   i18n/      traduction : français, anglais, espagnol, allemand ; nombres  (Go pur, testé)
   ui/        interface graphique : GTK4 via gotk4 (bouchon sans cgo)
   testsvg/   générateur de SVG d'essai déterministe                      (Go pur)
+  acceptance/ les tests d'acceptation du cahier des charges sur toute la chaîne
   repocheck/ tests sur le dépôt lui-même (en-têtes de licence, versions, documentation)
 docs/        rapports de jalon (M0.md)
 testdata/    SVG de référence

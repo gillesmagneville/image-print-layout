@@ -67,6 +67,8 @@ type pageRow struct {
 	scale *gtk.Label
 	span  *gtk.Label
 	warns *gtk.Box
+	// preview opens the sheet as it will be exported.
+	preview *gtk.Button
 }
 
 func (w *window) buildPagesPanel() gtk.Widgetter {
@@ -206,9 +208,19 @@ func (p *pagesPanel) newRow() *pageRow {
 	}
 	r.span.AddCSSClass("dim-label")
 
+	r.preview = gtk.NewButton()
+	r.preview.AddCSSClass("flat")
+	r.preview.AddCSSClass("caption")
+	r.preview.ConnectClicked(func() { p.w.showSheets(r.row.Index() + 1) })
+	p.w.texts.bind(func(tr *i18n.Translator) {
+		r.preview.SetLabel(tr.T("page.preview"))
+		r.preview.SetTooltipText(tr.T("page.preview.tooltip"))
+	})
+
 	head := gtk.NewBox(gtk.OrientationHorizontal, 6)
 	head.Append(r.title)
 	head.Append(r.state)
+	r.preview.SetHAlign(gtk.AlignEnd)
 	box := gtk.NewBox(gtk.OrientationVertical, 2)
 	box.SetMarginTop(8)
 	box.SetMarginBottom(8)
@@ -219,6 +231,7 @@ func (p *pagesPanel) newRow() *pageRow {
 	box.Append(r.scale)
 	box.Append(r.span)
 	box.Append(r.warns)
+	box.Append(r.preview)
 	r.row.SetChild(box)
 	return r
 }

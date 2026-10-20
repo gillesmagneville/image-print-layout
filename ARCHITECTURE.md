@@ -145,10 +145,11 @@ svg-print-layout/
 │   ├── svgdoc/                # analyse du SVG, copie de travail, blocs, détection du fond, polices demandées
 │   ├── engine/                # moteur de rendu derrière l'interface Document (cgo)
 │   ├── testsvg/               # générateur de SVG d'essai déterministe (Go pur)
-│   ├── export/                # export PDF et vérifications
+│   ├── export/                # export PDF : pages du plan, contrôles, relecture du PDF, écriture atomique
 │   ├── app/                   # session : projet, historique, plan ; ouverture d'un document
 │   ├── viewport/              # arithmétique de la vue (zoom, déplacement, fenêtre à dessiner)
 │   ├── ui/                    # interface GTK4 (cgo)
+│   ├── acceptance/            # les tests d'acceptation du §13 sur toute la chaîne (aucun code propre)
 │   └── repocheck/             # tests sur le dépôt lui-même (en-têtes, versions, docs)
 ├── debian/                    # copyright, postinst, postrm, lintian-overrides du .deb
 ├── metainfo/                  # entrée de menu (.desktop) et métadonnées AppStream
@@ -299,8 +300,10 @@ versionnés : `.gitignore`).
   quatre langues pour le paquet portable de Windows.
 - **Ce que les paquets ne font pas encore** : le programme qu'ils installent ouvre un SVG,
   l'analyse, l'affiche avec ses pages et ses réglages (papier, marges, échelle, positionnement)
-  et propose des coupures, qu'on place, déplace et supprime à la souris (M3) ; le fond et l'export viennent avec M4.
-  Rien n'est signé, aucun dépôt de paquets n'existe, et l'architecture arm64 est reconnue
+  et propose des coupures, qu'on place, déplace et supprime à la souris (M3) ; il remplace ou retire
+  le fond du document, montre les feuilles telles qu'elles seront imprimées et exporte le PDF
+  après l'avoir relu (M4). L'enregistrement et la réouverture du projet dans la fenêtre viennent
+  avec M5. Rien n'est signé, aucun dépôt de paquets n'existe, et l'architecture arm64 est reconnue
   par les scripts Linux sans avoir été essayée.
 
 ## 5. Modèle géométrique
@@ -416,6 +419,8 @@ En vue Document, le dessin est une image de la fenêtre visible (§9) et les lim
 
 ### Export
 
+Le moteur expose une seule fonction de dessin d'une page (`drawPage`) : l'export PDF et l'aperçu des feuilles (`RenderPage`, sur une surface image) l'appellent, si bien que ce que montre la vue Feuilles est ce que le PDF contient. Le PDF est d'abord écrit dans un fichier temporaire voisin de la destination (`.nom.pdf.part`), synchronisé sur le disque, relu et vérifié (§11), puis renommé : un export refusé, annulé ou raté ne laisse ni fichier à moitié écrit ni ancien fichier écrasé. La progression est rendue page par page et l'annulation est prise entre deux pages.
+
 Pour chaque page : taille de page fixée, fond de page (§8), sauvegarde du contexte, clip, matrice, rendu du document, restauration, page suivante. L'exporteur lit `s` dans le plan et ne le modifie pas. Les positions de clip et de chemin sont écrites par cairo en virgule fixe 24.8, soit au 1/256 de point (0,0014 mm) : la position d'une coupure dans le PDF est exacte à cette précision, sous la tolérance de 0,005 mm du §5.
 
 ## 7. Moteur de mise en page
@@ -521,7 +526,7 @@ Si rien ne correspond, le réglage affiche « Aucun fond détecté » et les cho
 
 Le choix est enregistré dans le projet comme une instruction : mode et identifiant de l'élément, ou à défaut son chemin d'indices (par exemple `/svg/g[1]/rect[1]`). Elle est rejouée à chaque chargement. Le fichier SVG source n'est jamais écrit.
 
-L'aperçu est immédiat : la copie modifiée est rechargée dans le moteur, hors du fil de l'interface, puis redessinée. Après l'export, un pixel de la marge haute doit être blanc opaque si ce fond a été demandé (§11).
+L'aperçu est immédiat : la copie modifiée est rechargée dans le moteur, hors du fil de l'interface (`app.Rebuild`), puis redessinée ; l'ancienne image reste affichée jusqu'à l'arrivée de la nouvelle, sans clignotement. Le projet est la seule source de vérité : la fenêtre compare le fond du projet à celui avec lequel le moteur a été chargé, si bien qu'annuler et rétablir n'ont pas de code propre. Si le chargement échoue, le projet revient au fond que le moteur a. Le fond de page, lui, ne recharge rien : l'aperçu peint un damier derrière une page transparente, pour qu'on la distingue d'une page blanche. Après l'export, un pixel de la marge haute doit être blanc opaque si ce fond a été demandé (test 9, §13).
 
 ## 9. Interface graphique
 
@@ -529,14 +534,14 @@ Une seule fenêtre à trois zones, sans dialogue pour les opérations courantes 
 
 ### Panneau gauche : paramètres
 
-Des sections repliables, dans l'ordre du cahier : fichier source (chemin, taille native, nombre d'avertissements d'analyse), papier, marges, échelle, positionnement, fond, export. Les marges sont quatre champs indépendants avec un bouton pour les lier. Une valeur saisie s'applique après 150 ms sans frappe : il n'y a pas de bouton Appliquer.
+Des sections repliables, dans l'ordre du cahier : fichier source (chemin, taille native, nombre d'avertissements d'analyse), papier, marges, échelle, positionnement, fond, export. La section Fond distingue les trois fonds du §8 : celui du document (conserver, remplacer par du blanc, supprimer, grisés quand aucun rectangle de fond n'est détecté), celui de la page (blanc opaque ou transparent) et une note sur la zone de travail grise. La section Export résume ce qui serait écrit (nombre de pages, format), dit si l'export est prêt, à confirmer ou bloqué, et porte le bouton d'export, celui de l'aperçu des feuilles et, pendant l'export, la barre de progression avec son bouton d'annulation. Les marges sont quatre champs indépendants avec un bouton pour les lier. Une valeur saisie s'applique après 150 ms sans frappe : il n'y a pas de bouton Appliquer.
 
 ### Zone centrale : aperçu interactif
 
 Deux vues, choisies par onglet :
 
 - **Document** (par défaut) : le dessin entier, avec les lignes de coupure, les limites et les numéros de page.
-- **Feuilles** : les pages côte à côte telles qu'elles seront imprimées, avec marges et positionnement.
+- **Feuilles** : les pages côte à côte telles qu'elles seront imprimées, avec marges et positionnement. Chaque feuille est dessinée par la fonction qui écrit le PDF (`RenderPage`), à l'échelle de la hauteur de la vue, sur une feuille de la couleur de page (damier si elle est transparente) ; un changement de fond de page redessine les feuilles sans recharger le document.
 
 Un `GtkOverlay` empile, dans l'ordre : une zone de travail, le dessin (une `GtkPicture` posée par un `GtkFixed`), puis une zone qui peint les limites et numéros de page, les lignes de coupure et les poignées, et reçoit les gestes.
 
@@ -567,13 +572,13 @@ En tête : nombre de pages, largeur du contenu en mm et en cm, échelle, puis de
 
 Puis la liste des coupures (rang, position en mm, nombre de blocs traversés et leurs noms), liée à l'aperçu : sélectionner une ligne sélectionne la coupure, et inversement. En pied : les corrections proposées (§7) quand une page dépasse, chacune sur son bouton.
 
-Le bouton d'aperçu de chaque carte (M4) ouvre la page rendue telle qu'elle sera exportée, avec la même fonction de dessin sur une surface image. « Aperçu complet » fait de même pour toutes les pages avant l'export.
+Le bouton « Aperçu » au pied de chaque carte ouvre la vue Feuilles sur cette page, rendue telle qu'elle sera exportée ; « Aperçu des feuilles », dans la section Export, ouvre la même vue sans sélection, pour toutes les pages avant l'export.
 
 ### Annulation et tâches longues
 
 - **Annuler et rétablir** : chaque modification est une commande qui produit un nouvel état immuable du projet. Un glisser compte pour une seule entrée d'historique. Ctrl+Z et Ctrl+Maj+Z ; une astérisque signale les changements non enregistrés, avec confirmation à la fermeture.
 - **Fil de l'interface** : le moteur est piloté par un acteur unique (une goroutine), si bien qu'un document chargé n'est jamais utilisé par deux fils à la fois. Les résultats reviennent au fil GTK par `glib.IdleAdd`.
-- **Export** : barre de progression, annulable.
+- **Export** : Ctrl+E ou le bouton de la barre de titre. Les contrôles du §11 passent d'abord : une erreur ouvre un compte rendu (page, motif) et rien n'est écrit ; un avertissement demande une confirmation qui le décrit ; puis le sélecteur de fichier (dossier du dernier export, nom du SVG en `.pdf`), l'export sur le fil du moteur avec sa barre de progression, annulable, et enfin la relecture. L'état final dit le nom du fichier, le nombre de pages et sa taille, et que le PDF relu correspond à l'aperçu.
 - **Erreurs** : chaque message dit ce qui a échoué, pourquoi et quoi faire, sans code technique brut.
 
 ## 10. Format de projet
@@ -632,7 +637,9 @@ Sept contrôles portent sur le plan avant l'export, et deux sur le PDF relu apr�
 | 8 | PDF relu : nombre de pages égal au nombre de bandes | Erreur |
 | 9 | PDF relu : taille de chaque page égale au papier demandé, tolérance 0,02 mm | Erreur |
 
-Le contrôle 9 compare des points : un A4 vaut 595,28 × 841,89 pt. La correspondance des coupures avec l'aperçu vient de la construction (même plan, §6) ; les contrôles 8 et 9 relisent le PDF écrit, sans bibliothèque PDF, et ce même relevé la prouve : le rectangle de clip et le décalage du dessin de chaque page se lisent dans le flux de contenu, et sont comparés au plan à 1/256 de point près (c'est la méthode des tests de `engine`, `docs/M0.md`). La vérification visuelle équivalente est faite par les tests (§13).
+Dans le code (`export.Check`, `export.Verify`), chaque contrôle produit un diagnostic enregistré (§4, `diag`) : `export.no_pages`, `export.cuts_invalid`, `export.bands_sum`, `export.width_differs`, `export.outside_sheet`, `export.outside_margins`, `export.no_background` et `export.background_covers` avant l'export ; `export.pdf_pages`, `export.pdf_size`, `export.pdf_clip`, `export.pdf_offset` et `export.pdf_unreadable` après. Ils portent le numéro de page et leurs valeurs, jamais un texte : l'interface les écrit dans la langue choisie.
+
+Le contrôle 9 compare des points : un A4 vaut 595,28 × 841,89 pt. La correspondance des coupures avec l'aperçu vient de la construction (même plan, §6) ; les contrôles 8 et 9 relisent le PDF écrit (`export.ReadPDF`, sans bibliothèque PDF : table des références, flux d'objets, contenus compressés), et ce même relevé la prouve : le rectangle de clip et le décalage du dessin de chaque page se lisent dans le flux de contenu, et sont comparés au plan à 1/256 de point près (c'est la méthode des tests de `engine`, `docs/M0.md`). La vérification visuelle équivalente est faite par les tests (§13).
 
 ### Déterminisme
 
@@ -671,7 +678,7 @@ Le texte est dessiné avec les polices du système. M0 montre qu'il reste du tex
 
 ## 13. Stratégie de tests
 
-Les 14 tests d'acceptation sont tous automatisés sauf le geste de souris, vérifié à la main sur chaque plateforme ; les commandes qu'il déclenche, elles, sont testées automatiquement.
+Les 14 tests d'acceptation sont tous automatisés sauf le geste de souris, vérifié à la main sur chaque plateforme ; les commandes qu'il déclenche, elles, sont testées automatiquement. Les tests 8 à 13 sont dans `internal/acceptance`, qui fait travailler ensemble la session, le moteur, l'export et le PDF écrit (`TestAcceptance8To13OnTheScenario`, avec le déterminisme et l'intégrité du SVG source) ; ils rastérisent le PDF avec poppler (`pdftoppm`, `pdfinfo`), donc le job `engine` de la CI l'installe.
 
 | # | Test d'acceptation | Vérification | Type |
 | --- | --- | --- | --- |
@@ -720,7 +727,7 @@ Six jalons, dont M0 est le point de décision : le calcul de pages (M1) ne dépe
 | M4. Fond et export | Détection et remplacement du fond, export PDF, vérifications, aperçu de page | Tests 8 à 13 passés |
 | M5. Projet, paquets, recette | Enregistrement et réouverture dans l'interface, paquet .deb, installateur Windows, recette complète | Les 14 tests réussissent sur chaque système pris en charge : Debian 13 et Ubuntu 24.04 (famille Debian), RHEL 10 ou un clone (famille Red Hat), Windows 10 et Windows 11 |
 
-**État.** Le squelette du dépôt, le paquet `units`, le prototype du moteur (M0a, `docs/M0.md`), les scripts qui construisent les paquets `.deb`, `.rpm` et Windows, le paquet de traduction `i18n` et une première fenêtre GTK4 (trois panneaux, quatre langues, ouverture d'un SVG affiché en entier ; M0b) existent, avec leur CI, qui construit et essaie le paquet sur sept distributions Linux (familles Debian et Red Hat) et sur Windows. M0 n'est pas terminé : la comparaison du plan produit sous Windows et sous Linux reste à faire. **M1 est fait** : `model`, `diag`, `layout` (échelle, feuille, plan, états, corrections, coupures, aimantation, coupures automatiques) et `project` (format `.svgpl`) sont écrits et testés sans cgo, avec des tests de propriétés ; les panneaux de la fenêtre ne les utilisent pas encore. **M2 est fait** : `svgdoc` (analyse, constats, polices, blocs, fond, copie de travail), l'interface `Document` du moteur (chargement par chemin pour les images liées, polices par fontconfig), `app` (session, historique, plan), `viewport` et la fenêtre (panneaux Fichier source, Papier, Marges, Échelle, Positionnement ; liste des pages avec les corrections proposées ; aperçu avec zoom, déplacement, limites et numéros de page, annuler et rétablir) existent et sont essayés sous Xvfb. **M3 est fait** : `app` donne à la session les commandes sur les coupures (ajouter, glisser, déplacer, pousser d'un pas, supprimer, coupures automatiques), chacune une entrée d'historique, et aucune ne touche l'échelle (tests 5, 6 et 7) ; l'aperçu les reçoit par la souris (double-clic, glisser, aimantation aux vides, Alt pour la désactiver, clic droit, clavier) et la liste des pages montre les coupures et leurs blocs traversés, avec une sélection partagée. Les panneaux Fond et Export, la détection du fond et l'export restent à faire (M4). Le `CHANGELOG.md` tient le détail.
+**État.** Le squelette du dépôt, le paquet `units`, le prototype du moteur (M0a, `docs/M0.md`), les scripts qui construisent les paquets `.deb`, `.rpm` et Windows, le paquet de traduction `i18n` et une première fenêtre GTK4 (trois panneaux, quatre langues, ouverture d'un SVG affiché en entier ; M0b) existent, avec leur CI, qui construit et essaie le paquet sur sept distributions Linux (familles Debian et Red Hat) et sur Windows. M0 n'est pas terminé : la comparaison du plan produit sous Windows et sous Linux reste à faire. **M1 est fait** : `model`, `diag`, `layout` (échelle, feuille, plan, états, corrections, coupures, aimantation, coupures automatiques) et `project` (format `.svgpl`) sont écrits et testés sans cgo, avec des tests de propriétés ; les panneaux de la fenêtre ne les utilisent pas encore. **M2 est fait** : `svgdoc` (analyse, constats, polices, blocs, fond, copie de travail), l'interface `Document` du moteur (chargement par chemin pour les images liées, polices par fontconfig), `app` (session, historique, plan), `viewport` et la fenêtre (panneaux Fichier source, Papier, Marges, Échelle, Positionnement ; liste des pages avec les corrections proposées ; aperçu avec zoom, déplacement, limites et numéros de page, annuler et rétablir) existent et sont essayés sous Xvfb. **M3 est fait** : `app` donne à la session les commandes sur les coupures (ajouter, glisser, déplacer, pousser d'un pas, supprimer, coupures automatiques), chacune une entrée d'historique, et aucune ne touche l'échelle (tests 5, 6 et 7) ; l'aperçu les reçoit par la souris (double-clic, glisser, aimantation aux vides, Alt pour la désactiver, clic droit, clavier) et la liste des pages montre les coupures et leurs blocs traversés, avec une sélection partagée. **M4 est fait** : `export` (pages du plan, contrôles avant l'export, relecture du PDF, écriture atomique), le moteur (`RenderPage`, progression, annulation), les commandes de fond de `app` (`SetDocBackground`, `SetPageBackground`, `Rebuild`), les sections Fond et Export, la vue Feuilles, le bouton d'aperçu de chaque page et `internal/acceptance` (tests 8 à 13, déterminisme, SVG source intact) existent, et la fenêtre exporte un PDF relu et vérifié. Reste M5 : l'enregistrement et la réouverture du projet dans la fenêtre, la recette complète sur chaque système et la version 1.0.0. Le `CHANGELOG.md` tient le détail.
 
 Après la v1, le §14 du cahier reste la liste des suites possibles. L'aperçu du PDF réel relu par un moteur PDF indépendant (le cahier demande « un aperçu du PDF final ») est le premier candidat : la v1 s'en tient à l'aperçu produit par la même fonction de dessin, ce qui est fidèle au PDF par construction.
 

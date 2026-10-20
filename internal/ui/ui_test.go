@@ -21,6 +21,8 @@ import (
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 
 	"github.com/gillesmagneville/svg-print-layout/internal/app"
+	"github.com/gillesmagneville/svg-print-layout/internal/engine"
+	"github.com/gillesmagneville/svg-print-layout/internal/export"
 	"github.com/gillesmagneville/svg-print-layout/internal/i18n"
 	"github.com/gillesmagneville/svg-print-layout/internal/layout"
 	"github.com/gillesmagneville/svg-print-layout/internal/model"
@@ -77,6 +79,16 @@ func texts(root gtk.Widgetter) []string {
 	}
 	walk(root)
 	return out
+}
+
+// expandAll opens every expander under root.
+func expandAll(root gtk.Widgetter) {
+	if e, ok := root.(*gtk.Expander); ok {
+		e.SetExpanded(true)
+	}
+	for child := gtk.BaseWidget(root).FirstChild(); child != nil; child = gtk.BaseWidget(child).NextSibling() {
+		expandAll(child)
+	}
 }
 
 // plain turns the no-break spaces of French typography into ordinary ones, so
@@ -547,6 +559,294 @@ func runScenario() {
 			}
 			return true
 		})
+
+		// 5. The background of the document: the choice is applied to the working
+		// copy off the thread of the window, and what the engine draws follows it,
+		// whatever way the choice was made (a radio button, undo, redo).
+		add(func() bool { w.setLanguageSetting("fr"); return true })
+		pixelAt := func() [4]uint8 {
+			// A spot of the document that only the background paints.
+			img, err := w.engineDoc.Render(engine.Box{X: 1270, Y: 2000, W: 2, H: 2}, 1, nil)
+			if err != nil {
+				fail("background: the engine cannot draw: %v", err)
+				return [4]uint8{}
+			}
+			c := img.RGBAAt(0, 0)
+			return [4]uint8{c.R, c.G, c.B, c.A}
+		}
+		ready := func() bool {
+			return !w.rebuilding && w.busy == 0 && w.loadedBG == w.session.Project().Background.Document
+		}
+		add(func() bool {
+			if got := pixelAt(); got != [4]uint8{0xf4, 0xf5, 0xf8, 255} {
+				fail("background: the kept background is %v, want #f4f5f8", got)
+			}
+			if _, ok := w.session.DocumentBackground(); !ok || !w.panel.bgWhiten.IsSensitive() || !w.panel.bgRemove.IsSensitive() {
+				fail("background: the detected background is not offered for replacement")
+			}
+			info, _ := w.session.DocumentBackground()
+			tr := i18n.New(i18n.French)
+			if want := tr.T("bg.doc.found", "element", tr.T("bg.element.rect"), "fill", info.Fill); plain(w.panel.bgFound.Label()) != plain(want) || !w.panel.bgFound.IsVisible() {
+				fail("background: the detected background is not described: %q, want %q", w.panel.bgFound.Label(), want)
+			}
+			docRev := w.docRev
+			w.panel.bgWhiten.SetActive(true)
+			if p := w.session.Project(); p.Background.Document != model.WhitenBackground || p.Background.Element == "" {
+				fail("background: the project says %+v after the choice of white", p.Background)
+			}
+			if w.session.Plan().ContentWidthMM != 200 {
+				fail("background: the choice changed the width of the drawing")
+			}
+			if !w.rebuilding || w.docRev != docRev {
+				fail("background: the working copy is not being prepared (rebuilding=%v)", w.rebuilding)
+			}
+			return true
+		})
+		add(func() bool {
+			if !ready() {
+				return false
+			}
+			if got := pixelAt(); got != [4]uint8{255, 255, 255, 255} {
+				fail("background: the whitened background is %v, want opaque white", got)
+			}
+			w.panel.bgRemove.SetActive(true)
+			return true
+		})
+		add(func() bool {
+			if !ready() {
+				return false
+			}
+			if got := pixelAt(); got[3] != 0 {
+				fail("background: the removed background still paints %v", got)
+			}
+			w.undo()
+			w.undo()
+			return true
+		})
+		add(func() bool {
+			if !ready() {
+				return false
+			}
+			if got := pixelAt(); got != [4]uint8{0xf4, 0xf5, 0xf8, 255} {
+				fail("background: after two undos the background is %v, want #f4f5f8", got)
+			}
+			if !w.panel.bgKeep.Active() {
+				fail("background: the radio buttons do not follow the undo")
+			}
+			w.redo()
+			return true
+		})
+		add(func() bool {
+			if !ready() {
+				return false
+			}
+			if got := pixelAt(); got != [4]uint8{255, 255, 255, 255} {
+				fail("background: after a redo the background is %v, want white", got)
+			}
+			// The page background is another thing: no engine work for it.
+			rev := w.docRev
+			w.panel.pageTransparent.SetActive(true)
+			if w.session.Project().Background.Page != model.TransparentPage || !w.pv.transparentPage {
+				fail("background: the transparent page is not applied")
+			}
+			if w.rebuilding || w.docRev != rev {
+				fail("background: the background of the page reloaded the document")
+			}
+			w.panel.pageWhite.SetActive(true)
+			if w.pv.transparentPage {
+				fail("background: the page is still shown transparent")
+			}
+			w.panel.bgKeep.SetActive(true)
+			return true
+		})
+
+		// 6. The sheets: every page drawn by the function that writes the PDF.
+		add(func() bool {
+			if !ready() {
+				return false
+			}
+			w.autoCuts()
+			w.showSheets(2)
+			return true
+		})
+		add(func() bool {
+			if w.busy > 0 {
+				return false
+			}
+			plan := w.session.Plan()
+			if name := w.stack.VisibleChildName(); name != "sheets" || !w.viewSheets.Active() {
+				fail("sheets: the visible page is %q", name)
+			}
+			if len(w.sheets.cards) != len(plan.Pages) || len(plan.Pages) != 4 {
+				fail("sheets: %d cards for %d pages", len(w.sheets.cards), len(plan.Pages))
+				return true
+			}
+			for i, c := range w.sheets.cards {
+				if !c.drawn.ok || !c.picture.IsVisible() {
+					fail("sheets: sheet %d is not drawn", i+1)
+				}
+				if c.selected != (i == 1) {
+					fail("sheets: sheet %d selected = %v", i+1, c.selected)
+				}
+			}
+			if w.selPage != 2 {
+				fail("sheets: page %d is selected, want 2", w.selPage)
+			}
+			// The preview button of a row shows that sheet.
+			w.pages.rows[2].preview.Emit("clicked")
+			if w.selPage != 3 {
+				fail("sheets: the preview button of page 3 selects page %d", w.selPage)
+			}
+			// The page background reaches the sheets; the document is not drawn again.
+			w.panel.pageTransparent.SetActive(true)
+			return true
+		})
+		add(func() bool {
+			if w.busy > 0 {
+				return false
+			}
+			for i, c := range w.sheets.cards {
+				if c.drawn.white || !c.drawn.ok {
+					fail("sheets: sheet %d was not drawn again without its white page", i+1)
+				}
+			}
+			w.panel.pageWhite.SetActive(true)
+			w.showView("preview")
+			if w.stack.VisibleChildName() != "preview" || !w.viewDoc.Active() {
+				fail("sheets: the switch does not go back to the document")
+			}
+			return true
+		})
+
+		// 7. The export: stopped by the checks, then written, then read back.
+		exportPath := filepath.Join(dir, "plan.pdf")
+		stoppedPath := filepath.Join(dir, "stopped.pdf")
+		add(func() bool {
+			if w.busy > 0 {
+				return false
+			}
+			// One page too tall: the export is refused, with the reason.
+			for _, c := range w.session.Cuts() {
+				_ = w.session.DeleteCut(c.ID)
+			}
+			w.refreshAll()
+			if !export.Blocked(w.session.CheckExport()) {
+				fail("export: a page that is too tall is not blocked")
+			}
+			w.exportPDF()
+			windows := application.Windows()
+			if len(windows) != 2 {
+				fail("export: a report should be open: %d windows", len(windows))
+				return true
+			}
+			var report []string
+			for _, win := range windows {
+				if win.Object.Native() != w.win.Object.Native() {
+					report = texts(win)
+					win.Close()
+				}
+			}
+			tr := i18n.New(i18n.French)
+			for _, key := range []string{"dialog.export_blocked.title", "dialog.export_blocked.detail", "dialog.close"} {
+				if !contains(report, tr.T(key)) {
+					fail("export: the report does not show %q; it shows %q", tr.T(key), report)
+				}
+			}
+			if !contains(report, "Page 1 : "+tr.T("diag.export.outside_sheet")) {
+				fail("export: the report does not name the page and the reason; it shows %q", report)
+			}
+			if !contains(texts(w.win), tr.T("export.state.blocked")) {
+				fail("export: the export section does not say it is blocked")
+			}
+			w.autoCuts() // the automatic cuts again
+			return true
+		})
+		add(func() bool {
+			items := w.session.CheckExport()
+			if export.Blocked(items) {
+				fail("export: with the automatic cuts the export is still blocked: %v", items)
+				return true
+			}
+			tr := i18n.New(i18n.French)
+			if export.NeedsConfirmation(items) {
+				// A warning asks for a confirmation, and says what it is about.
+				w.exportPDF()
+				var report []string
+				for _, win := range application.Windows() {
+					if win.Object.Native() != w.win.Object.Native() {
+						report = texts(win)
+						win.Close()
+					}
+				}
+				if !contains(report, tr.T("dialog.export_confirm.title")) || !contains(report, tr.T("dialog.export_confirm.go")) || !contains(report, tr.T("dialog.cancel")) {
+					fail("export: the confirmation is not shown; the dialog shows %q", report)
+				}
+			}
+			w.runExport(exportPath)
+			if !w.exporting || !w.panel.exportBar.IsVisible() {
+				fail("export: the progress is not shown")
+			}
+			return true
+		})
+		add(func() bool {
+			if w.exporting || w.busy > 0 {
+				return false
+			}
+			data, err := os.ReadFile(exportPath)
+			if err != nil {
+				fail("export: no file: %v", err)
+				return true
+			}
+			pdf, err := export.ReadPDF(data)
+			if err != nil || len(pdf.Pages) != 4 {
+				fail("export: the file has %d pages (%v), want 4", len(pdf.Pages), err)
+			}
+			if status := plain(w.status.Label()); !strings.HasPrefix(status, "plan.pdf : 4 pages, ") || !strings.Contains(status, "relu") {
+				fail("export: the status says %q", status)
+			}
+			if w.panel.exportBar.IsVisible() {
+				fail("export: the progress is still shown")
+			}
+			if entries, _ := filepath.Glob(filepath.Join(dir, ".*.part")); len(entries) != 0 {
+				fail("export: a temporary file is left: %v", entries)
+			}
+			if w.lastExportDir != dir {
+				fail("export: the folder of the next export is %q", w.lastExportDir)
+			}
+			// An export that is stopped writes nothing.
+			w.runExport(stoppedPath)
+			w.cancelExportRun()
+			return true
+		})
+		add(func() bool {
+			if w.exporting || w.busy > 0 {
+				return false
+			}
+			if _, err := os.Stat(stoppedPath); err == nil {
+				fail("export: a stopped export left a file")
+			}
+			if entries, _ := filepath.Glob(filepath.Join(dir, ".*.part")); len(entries) != 0 {
+				fail("export: a stopped export left %v", entries)
+			}
+			if status := plain(w.status.Label()); !strings.HasPrefix(status, "Export annulé") {
+				fail("export: the status after stopping says %q", status)
+			}
+			return true
+		})
+
+		// 8. The new texts are in every language.
+		outputKeys := []string{"panel.background.title", "panel.export.title", "bg.doc.title", "bg.doc.keep", "bg.doc.whiten",
+			"bg.doc.remove", "bg.page.title", "bg.page.white", "bg.page.transparent", "bg.page.hint", "bg.workspace.hint",
+			"export.preview", "export.notes", "action.export", "view.document", "view.sheets"}
+		for _, lang := range i18n.Languages {
+			add(func() bool {
+				w.setLanguageSetting(string(lang))
+				// The texts of a section that is folded are not shown.
+				expandAll(w.win)
+				checkTexts("output panels "+string(lang), lang, outputKeys...)
+				return true
+			})
+		}
 
 		// The steps run one at a time from the main loop; a step that is not
 		// done yet is asked again, for at most ten seconds.

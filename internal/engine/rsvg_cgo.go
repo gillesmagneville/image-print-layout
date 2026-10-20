@@ -252,8 +252,13 @@ func (d *Doc) Render(win Box, pxPerUnit float64, background color.Color) (*image
 	}
 	C.cairo_surface_flush(surf)
 
-	// cairo ARGB32 is premultiplied, native-endian: bytes B, G, R, A on
-	// little-endian machines. image.RGBA is premultiplied too, R, G, B, A.
+	return copyImage(surf, wpx, hpx), nil
+}
+
+// copyImage reads an ARGB32 image surface into an image. cairo's pixels are
+// premultiplied and native-endian: bytes B, G, R, A on little-endian machines.
+// image.RGBA is premultiplied too, R, G, B, A.
+func copyImage(surf *C.cairo_surface_t, wpx, hpx int) *image.RGBA {
 	stride := int(C.cairo_image_surface_get_stride(surf))
 	src := unsafe.Slice((*byte)(unsafe.Pointer(C.cairo_image_surface_get_data(surf))), stride*hpx)
 	img := image.NewRGBA(image.Rect(0, 0, wpx, hpx))
@@ -264,7 +269,57 @@ func (d *Doc) Render(win Box, pxPerUnit float64, background color.Color) (*image
 			out[x], out[x+1], out[x+2], out[x+3] = in[x+2], in[x+1], in[x], in[x+3]
 		}
 	}
-	return img, nil
+	return img
+}
+
+// drawPage draws one sheet on cr: the page background, then the band of the
+// document under its clip. The PDF and the preview of a sheet both call it, so
+// that what is previewed is what is exported.
+func (d *Doc) drawPage(cr *C.cairo_t, p PageSpec, whitePage bool) error {
+	if p.BandBottom <= p.BandTop || p.PtPerUnit <= 0 {
+		return errors.New("the band is empty or the scale is not positive")
+	}
+	if whitePage {
+		C.cairo_set_source_rgb(cr, 1, 1, 1)
+		C.cairo_paint(cr)
+	}
+	vp := d.viewport()
+	// The band rectangle is the clip: it is what materialises the cut.
+	C.cairo_save(cr)
+	C.cairo_rectangle(cr, C.double(p.OriginXPt), C.double(p.OriginYPt),
+		C.double(d.w*p.PtPerUnit), C.double((p.BandBottom-p.BandTop)*p.PtPerUnit))
+	C.cairo_clip(cr)
+	C.cairo_translate(cr, C.double(p.OriginXPt), C.double(p.OriginYPt-p.BandTop*p.PtPerUnit))
+	C.cairo_scale(cr, C.double(p.PtPerUnit), C.double(p.PtPerUnit))
+	var gerr *C.GError
+	if C.rsvg_handle_render_document(d.handle, cr, &vp, &gerr) == 0 {
+		C.cairo_restore(cr)
+		return fmt.Errorf("cannot render the SVG: %s", takeGError(gerr))
+	}
+	C.cairo_restore(cr)
+	return nil
+}
+
+// RenderPage draws a sheet as an image, pxPerPt pixels to the point, with the
+// function that writes the PDF. A transparent page stays transparent.
+func (d *Doc) RenderPage(p PageSpec, pxPerPt float64, whitePage bool) (*image.RGBA, error) {
+	wpx, hpx := int(math.Ceil(p.WidthPt*pxPerPt)), int(math.Ceil(p.HeightPt*pxPerPt))
+	if wpx <= 0 || hpx <= 0 || pxPerPt <= 0 {
+		return nil, errors.New("engine: empty sheet")
+	}
+	surf := C.cairo_image_surface_create(C.CAIRO_FORMAT_ARGB32, C.int(wpx), C.int(hpx))
+	defer C.cairo_surface_destroy(surf)
+	if s := C.cairo_surface_status(surf); s != C.CAIRO_STATUS_SUCCESS {
+		return nil, cairoError("image surface creation", s)
+	}
+	cr := C.cairo_create(surf)
+	defer C.cairo_destroy(cr)
+	C.cairo_scale(cr, C.double(pxPerPt), C.double(pxPerPt))
+	if err := d.drawPage(cr, p, whitePage); err != nil {
+		return nil, fmt.Errorf("engine: %w", err)
+	}
+	C.cairo_surface_flush(surf)
+	return copyImage(surf, wpx, hpx), nil
 }
 
 type pdfSink struct {
@@ -322,7 +377,6 @@ func (d *Doc) ExportPDF(out io.Writer, pages []PageSpec, opt PDFOptions) error {
 	C.cairo_pdf_surface_set_metadata(pdf, C.CAIRO_PDF_METADATA_CREATE_DATE, date)
 	C.cairo_pdf_surface_set_metadata(pdf, C.CAIRO_PDF_METADATA_MOD_DATE, date)
 
-	vp := d.viewport()
 	for i, p := range pages {
 		if p.BandBottom <= p.BandTop || p.PtPerUnit <= 0 {
 			C.cairo_surface_destroy(pdf)
@@ -330,31 +384,21 @@ func (d *Doc) ExportPDF(out io.Writer, pages []PageSpec, opt PDFOptions) error {
 		}
 		C.cairo_pdf_surface_set_size(pdf, C.double(p.WidthPt), C.double(p.HeightPt))
 		cr := C.cairo_create(pdf)
-		if opt.WhitePage {
-			C.cairo_set_source_rgb(cr, 1, 1, 1)
-			C.cairo_paint(cr)
-		}
-		// The band rectangle is the clip: it is what materialises the cut.
-		C.cairo_save(cr)
-		C.cairo_rectangle(cr, C.double(p.OriginXPt), C.double(p.OriginYPt),
-			C.double(d.w*p.PtPerUnit), C.double((p.BandBottom-p.BandTop)*p.PtPerUnit))
-		C.cairo_clip(cr)
-		C.cairo_translate(cr, C.double(p.OriginXPt), C.double(p.OriginYPt-p.BandTop*p.PtPerUnit))
-		C.cairo_scale(cr, C.double(p.PtPerUnit), C.double(p.PtPerUnit))
-		var gerr *C.GError
-		ok := C.rsvg_handle_render_document(d.handle, cr, &vp, &gerr)
-		if ok == 0 {
+		if err := d.drawPage(cr, p, opt.WhitePage); err != nil {
 			C.cairo_destroy(cr)
 			C.cairo_surface_destroy(pdf)
-			return fmt.Errorf("engine: cannot render the SVG on page %d: %s", i+1, takeGError(gerr))
+			return fmt.Errorf("engine: page %d: %w", i+1, err)
 		}
-		C.cairo_restore(cr)
 		C.cairo_show_page(cr)
 		status := C.cairo_status(cr)
 		C.cairo_destroy(cr)
 		if status != C.CAIRO_STATUS_SUCCESS {
 			C.cairo_surface_destroy(pdf)
 			return cairoError(fmt.Sprintf("drawing page %d", i+1), status)
+		}
+		if opt.Progress != nil && !opt.Progress(i+1, len(pages)) {
+			C.cairo_surface_destroy(pdf)
+			return ErrCancelled
 		}
 	}
 

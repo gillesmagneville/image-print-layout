@@ -28,6 +28,7 @@ type fakeDoc struct {
 func (d *fakeDoc) Size() (float64, float64)                                        { return d.w, d.h }
 func (d *fakeDoc) Measure(string) (engine.Box, error)                              { return engine.Box{}, fmt.Errorf("fake") }
 func (d *fakeDoc) Close()                                                          { d.closed = true }
+func (d *fakeDoc) RenderPage(engine.PageSpec, float64, bool) (*image.RGBA, error)  { return nil, nil }
 func (d *fakeDoc) ExportPDF(io.Writer, []engine.PageSpec, engine.PDFOptions) error { return nil }
 func (d *fakeDoc) Render(engine.Box, float64, color.Color) (*image.RGBA, error) {
 	return image.NewRGBA(image.Rect(0, 0, 1, 1)), nil

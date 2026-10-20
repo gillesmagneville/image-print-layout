@@ -42,6 +42,7 @@ type inkEngine struct {
 func (e *inkEngine) Size() (float64, float64)                                        { return e.w, e.h }
 func (e *inkEngine) Measure(string) (engine.Box, error)                              { return engine.Box{}, nil }
 func (e *inkEngine) MeasureBlocks([]string) map[string]engine.Box                    { return nil }
+func (e *inkEngine) RenderPage(engine.PageSpec, float64, bool) (*image.RGBA, error)  { return nil, nil }
 func (e *inkEngine) ExportPDF(io.Writer, []engine.PageSpec, engine.PDFOptions) error { return nil }
 func (e *inkEngine) Close()                                                          {}
 func (e *inkEngine) Render(win engine.Box, scale float64, _ color.Color) (*image.RGBA, error) {

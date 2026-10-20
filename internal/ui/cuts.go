@@ -148,6 +148,7 @@ func (w *window) selectPageFromList(n int) {
 	if plan := w.session.Plan(); plan != nil && n > 0 && n <= len(plan.Pages) {
 		page := plan.Pages[n-1]
 		w.pv.reveal(page.Top, page.Bottom)
+		w.sheets.scrollTo(n)
 	}
 }
 
@@ -169,6 +170,7 @@ func (w *window) selectCutFromList(id int) {
 func (w *window) showSelection() {
 	w.pv.setSelection(w.selCut, w.selPage)
 	w.pages.selectInLists()
+	w.sheets.update()
 }
 
 // pruneSelection forgets a selection that no longer exists.

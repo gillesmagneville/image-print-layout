@@ -10,6 +10,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 
 	"github.com/diamondburned/gotk4/pkg/gio/v2"
 	"github.com/diamondburned/gotk4/pkg/glib/v2"
@@ -76,8 +77,23 @@ type window struct {
 	// session is the work in progress: the document, the project, the plan and
 	// the history. It is used on the thread of the window only.
 	session *app.Session
-	// engineDoc is the loaded document; only the worker uses it.
-	engineDoc engine.Document
+	// engineDoc is the loaded document; only the worker uses it. It holds the
+	// working copy with the background of the document that loadedBG names:
+	// when the project asks for another one, it is loaded again (background.go).
+	engineDoc  engine.Document
+	loadedBG   model.DocBackground
+	rebuilding bool
+	// afterRebuild is what waits for the working copy to be ready.
+	afterRebuild []func()
+	// docRev changes with the engine document, so that the drawings of the
+	// sheets made from the old one are drawn again.
+	docRev int
+
+	// The export in progress, and where the last one went.
+	exporting     bool
+	cancelExport  atomic.Bool
+	lastExportDir string
+	lastReport    *gtk.Window
 
 	// A drawing is asked for after every movement of the view; an older answer
 	// is dropped (renderGen) when a newer one is on its way, and the program
@@ -93,14 +109,19 @@ type window struct {
 
 	// Widgets.
 	pv         *preview
+	sheets     *sheetsView
 	panel      *settingsPanel
 	pages      *pagesPanel
+	viewBar    *gtk.Box
+	viewDoc    *gtk.ToggleButton
+	viewSheets *gtk.ToggleButton
 	stack      *gtk.Stack
 	status     *gtk.Label
 	menuButton *gtk.MenuButton
 	langAction *gio.SimpleAction
 	undoAction *gio.SimpleAction
 	redoAction *gio.SimpleAction
+	exportAct  *gio.SimpleAction
 	undoButton *gtk.Button
 	redoButton *gtk.Button
 	statusKey  string
@@ -362,6 +383,8 @@ func (w *window) buildActions() {
 		return a
 	}
 	add("open", w.openDialog)
+	w.exportAct = add("export", w.exportPDF)
+	w.exportAct.SetEnabled(false)
 	add("about", w.showAbout)
 	add("quit", w.app.Quit)
 	w.undoAction = add("undo", w.undo)
@@ -380,6 +403,7 @@ func (w *window) buildActions() {
 	w.win.AddAction(w.langAction)
 
 	w.app.SetAccelsForAction("win.open", []string{"<Control>o"})
+	w.app.SetAccelsForAction("win.export", []string{"<Control>e"})
 	w.app.SetAccelsForAction("win.quit", []string{"<Control>q"})
 	w.app.SetAccelsForAction("win.undo", []string{"<Control>z"})
 	w.app.SetAccelsForAction("win.redo", []string{"<Control><Shift>z", "<Control>y"})
@@ -412,6 +436,14 @@ func (w *window) buildHeaderBar() {
 	history.Append(w.redoButton)
 	bar.PackStart(history)
 
+	export := gtk.NewButton()
+	export.SetActionName("win.export")
+	export.AddCSSClass("suggested-action")
+	w.texts.bind(func(tr *i18n.Translator) {
+		export.SetLabel(tr.T("action.export"))
+		export.SetTooltipText(tr.T("action.export.tooltip"))
+	})
+
 	w.menuButton = gtk.NewMenuButton()
 	w.menuButton.SetIconName("open-menu-symbolic")
 	w.texts.bind(func(tr *i18n.Translator) {
@@ -419,16 +451,19 @@ func (w *window) buildHeaderBar() {
 		w.menuButton.SetMenuModel(w.buildMenu(tr))
 	})
 	bar.PackEnd(w.menuButton)
+	bar.PackEnd(export)
 
 	w.win.SetTitlebar(bar)
 }
 
-// buildCentre is the preview, or an invitation to open a document.
+// buildCentre is the preview and the sheets, with the switch between them, or
+// an invitation to open a document.
 func (w *window) buildCentre() gtk.Widgetter {
 	w.pv = newPreview(&w.texts)
 	w.pv.pageLabel = func(n int) string { return w.texts.tr.T("pages.row.title", "n", n) }
 	w.pv.onNeedRender = func() { w.renderView(false) }
 	w.wireCuts()
+	w.sheets = newSheetsView(w)
 
 	empty := gtk.NewBox(gtk.OrientationVertical, 12)
 	empty.SetVAlign(gtk.AlignCenter)
@@ -453,10 +488,73 @@ func (w *window) buildCentre() gtk.Widgetter {
 	w.stack = gtk.NewStack()
 	w.stack.AddNamed(empty, "empty")
 	w.stack.AddNamed(w.pv.widget(), "preview")
+	w.stack.AddNamed(w.sheets.widget(), "sheets")
 	w.stack.SetVisibleChildName("empty")
 	w.stack.SetHExpand(true)
 	w.stack.SetVExpand(true)
-	return w.stack
+
+	// The switch between the drawing and the sheets.
+	w.viewDoc = gtk.NewToggleButton()
+	w.viewSheets = gtk.NewToggleButton()
+	w.viewSheets.SetGroup(w.viewDoc)
+	w.viewDoc.SetActive(true)
+	w.viewDoc.ConnectToggled(func() {
+		if w.viewDoc.Active() {
+			w.showView("preview")
+		}
+	})
+	w.viewSheets.ConnectToggled(func() {
+		if w.viewSheets.Active() {
+			w.showView("sheets")
+		}
+	})
+	w.texts.bind(func(tr *i18n.Translator) {
+		w.viewDoc.SetLabel(tr.T("view.document"))
+		w.viewDoc.SetTooltipText(tr.T("view.document.tooltip"))
+		w.viewSheets.SetLabel(tr.T("view.sheets"))
+		w.viewSheets.SetTooltipText(tr.T("view.sheets.tooltip"))
+	})
+	w.viewBar = gtk.NewBox(gtk.OrientationHorizontal, 0)
+	w.viewBar.AddCSSClass("linked")
+	w.viewBar.SetHAlign(gtk.AlignCenter)
+	w.viewBar.SetMarginTop(6)
+	w.viewBar.SetMarginBottom(6)
+	w.viewBar.Append(w.viewDoc)
+	w.viewBar.Append(w.viewSheets)
+	w.viewBar.SetVisible(false)
+
+	centre := gtk.NewBox(gtk.OrientationVertical, 0)
+	centre.Append(w.viewBar)
+	centre.Append(w.stack)
+	return centre
+}
+
+// showView shows the drawing ("preview") or the sheets ("sheets"). It keeps the
+// switch in step, whoever asked.
+func (w *window) showView(name string) {
+	if w.session.Document() == nil {
+		return
+	}
+	w.stack.SetVisibleChildName(name)
+	w.sheets.setShown(name == "sheets")
+	if name == "sheets" {
+		w.viewSheets.SetActive(true)
+	} else {
+		w.viewDoc.SetActive(true)
+	}
+}
+
+// showSheets shows the sheets, with page n selected (0 for none).
+func (w *window) showSheets(n int) {
+	if w.session.Document() == nil {
+		return
+	}
+	if n != 0 {
+		w.selPage, w.selCut = n, 0
+	}
+	w.showView("sheets")
+	w.showSelection()
+	w.sheets.scrollTo(n)
 }
 
 // ---- state -------------------------------------------------------------------------
@@ -485,7 +583,21 @@ func (w *window) refreshAll() {
 	w.pv.setPlan(w.session.Plan())
 	w.pv.setCuts(w.cuts)
 	w.pv.setSelection(w.selCut, w.selPage)
+	w.pv.setTransparentPage(w.session.Project().Background.Page == model.TransparentPage)
 	w.updateHistory()
+	w.syncBackground()
+	w.sheets.update()
+	w.refreshExportState()
+}
+
+// refreshExportState enables the export and says in the export section what
+// the checks make of the plan.
+func (w *window) refreshExportState() {
+	if w.exportAct == nil {
+		return
+	}
+	w.exportAct.SetEnabled(w.session.Document() != nil && !w.exporting)
+	w.panel.syncExport()
 }
 
 // updateHistory enables the undo and redo buttons and says what they do.
@@ -635,8 +747,12 @@ func (w *window) adopt(o *app.Opened) {
 		w.engine.do(previous.Close)
 	}
 	d := o.Document
+	w.loadedBG = model.KeepBackground
+	w.rebuilding = false
+	w.docRev++
 	w.selCut, w.selPage = 0, 0
-	w.stack.SetVisibleChildName("preview")
+	w.viewBar.SetVisible(true)
+	w.showView("preview")
 	w.pv.setDocument(d.Size.W, d.Size.H)
 	w.updateTitle()
 	w.refreshAll()

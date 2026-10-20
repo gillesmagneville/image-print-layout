@@ -87,6 +87,32 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
     coupures avec leurs blocs traversés, sélection partagée entre l'aperçu et les listes.
   - Tests : commandes de `app` (dont ceux de l'échelle), scénarios de la fenêtre sous Xvfb qui
     pilotent les gestes (ajout, glisser, aimantation, clavier, menu, sélection) en quatre langues.
+- **Fond, export PDF vérifié et aperçu des feuilles (jalon M4)** :
+  - `internal/export` (Go pur) : les pages du plan données au moteur ; les contrôles avant
+    l'export (coupures en ordre, bandes qui couvrent le document, largeur identique partout,
+    contenu dans la feuille, dépassement de marge, fond de page demandé comparé au fond
+    détecté) ; la relecture du PDF écrit, sans bibliothèque PDF, qui compare le nombre de pages,
+    leur taille (0,02 mm), le rectangle de clip et le décalage du dessin de chaque page au plan,
+    à 1/256 de point près ; l'écriture atomique (fichier temporaire synchronisé, relu, puis
+    renommé : un export refusé, annulé ou raté ne laisse rien). Treize diagnostics `export.*`
+    traduits en quatre langues.
+  - `internal/engine` : une seule fonction dessine une page, pour le PDF comme pour l'aperçu
+    des feuilles (`RenderPage`) ; progression page par page et annulation.
+  - `internal/app` : `SetDocBackground`, `SetPageBackground` (une entrée d'historique chacun),
+    `DocumentBackground`, `CheckExport`, et `Rebuild`, qui recharge la copie de travail avec le
+    fond choisi.
+  - Fenêtre : sections Fond (trois fonds distincts, choix grisés sans rectangle de fond
+    détecté) et Export (résumé, état prêt, à confirmer ou bloqué, progression annulable), vue
+    Feuilles à côté de la vue Document, bouton « Aperçu » sur chaque carte de page, Ctrl+E et
+    bouton de la barre de titre. Le fond se change hors du fil de l'interface, l'ancienne image
+    reste affichée jusqu'à la nouvelle ; annuler et rétablir suivent le projet. Une page
+    transparente est peinte sur un damier. Une erreur de contrôle ouvre un compte rendu par
+    page, un avertissement demande une confirmation.
+  - `internal/acceptance` : les tests d'acceptation 8 à 13 sur la chaîne entière (Mini-CAD de
+    1 280 × 5 479 unités à 200 mm, pages à 10 mm du haut, fond gris remplacé par du blanc, PDF
+    rastérisé par poppler), le déterminisme de l'export et l'intégrité du SVG source.
+  - Tests : scénario de la fenêtre sous Xvfb (fond, annulation, feuilles, export refusé puis
+    écrit puis annulé, textes en quatre langues).
 - **Dépendance de construction** : `libfontconfig-dev` (Debian et Ubuntu), `fontconfig-devel`
   (Fedora, RHEL), `mingw-w64-ucrt-x86_64-fontconfig` (MSYS2), ajoutés aux scripts, à la CI et à
   la documentation.

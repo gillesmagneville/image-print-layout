@@ -41,13 +41,15 @@ install_debian() {
     apt-get update
     apt-get install -y --no-install-recommends build-essential pkg-config dpkg-dev git ca-certificates \
         librsvg2-dev libgtk-4-dev libgirepository1.0-dev \
-        fonts-ibm-plex adwaita-icon-theme xvfb xauth imagemagick
+        fonts-dejavu-core adwaita-icon-theme xvfb xauth imagemagick
+    # IBM Plex est la police du jeu d'essai, mais Debian ne la fournit pas
+    # partout ; le test n'en dépend pas (une police de remplacement suffit).
+    apt-get install -y --no-install-recommends fonts-ibm-plex || echo "(fonts-ibm-plex absent de cette distribution)"
 }
 
 build_install_debian() {
     echo o | ./build-deb.sh --no-version-change
-    echo "--- Depends du paquet"
-    dpkg-deb -f ./svgprintlayout_*.deb Depends
+    note "Depends : $(dpkg-deb -f ./svgprintlayout_*.deb Depends)"
     apt-get install -y ./svgprintlayout_*.deb
 }
 
@@ -60,22 +62,29 @@ install_redhat() {
     dnf -y install gcc make pkgconf-pkg-config git tar gzip findutils which rpm-build \
         librsvg2-devel cairo-devel gtk4-devel gobject-introspection-devel \
         dejavu-sans-fonts adwaita-icon-theme
-    # L'écran virtuel et l'outil de capture sont facultatifs : sans eux, la
-    # fenêtre n'est pas essayée, et le journal le dit.
-    dnf -y install xorg-x11-server-Xvfb xorg-x11-xauth ImageMagick || echo "(Xvfb ou ImageMagick introuvable dans les dépôts)"
+    # L'écran virtuel est nécessaire pour essayer la fenêtre ; l'outil de
+    # capture est facultatif. Un par un, pour que le journal dise lequel manque.
+    local package
+    for package in xorg-x11-server-Xvfb xorg-x11-xauth ImageMagick; do
+        dnf -y install "$package" || echo "MANQUE : $package"
+    done
 }
 
 build_install_redhat() {
     echo o | ./build-rpm.sh --no-version-change
-    echo "--- Requires du paquet"
-    rpm -qpR ./svgprintlayout-*.rpm
+    note "Requires : $(rpm -qpR ./svgprintlayout-*.rpm | grep -v '^rpmlib\|^rtld' | sort -u | tr '\n' ' ')"
     dnf -y install ./svgprintlayout-*.rpm
 }
 
+# Les lignes du résumé, relues à la fin pour que l'annotation les montre.
+summary="${RUNNER_TEMP:-/tmp}/distribution-summary.txt"
+: > "$summary"
+note() { echo "$*" | tee -a "$summary"; }
+
 versions() {
-    echo "--- $(. /etc/os-release && echo "$PRETTY_NAME")"
-    echo "go $(go version | awk '{print $3}'), gcc $(gcc -dumpversion)"
-    echo "gtk4 $(pkg-config --modversion gtk4), glib $(pkg-config --modversion glib-2.0), librsvg $(pkg-config --modversion librsvg-2.0), cairo $(pkg-config --modversion cairo)"
+    note "$(. /etc/os-release && echo "$PRETTY_NAME")"
+    note "go $(go version | awk '{print $3}'), gcc $(gcc -dumpversion)"
+    note "gtk4 $(pkg-config --modversion gtk4), glib $(pkg-config --modversion glib-2.0), pango $(pkg-config --modversion pango), librsvg $(pkg-config --modversion librsvg-2.0), cairo $(pkg-config --modversion cairo)"
 }
 
 # Le programme installé, comme le lancerait une personne.
@@ -83,14 +92,15 @@ run_installed() {
     echo "--- programme installé"
     svgprintlayout -version
     svgprintlayout -selftest
-    if command -v xvfb-run > /dev/null && command -v import > /dev/null; then
+    note "-selftest : réussi"
+    if command -v xvfb-run > /dev/null; then
         mkdir -p "$screenshots"
         for lang in en fr es de; do
             .github/scripts/screenshot.sh /usr/bin/svgprintlayout "$lang" "$screenshots/$lang.png"
         done
-        echo "FENÊTRE : ouverte dans les quatre langues"
+        note "fenêtre : ouverte dans les quatre langues ($(command -v import > /dev/null && echo "avec captures" || echo "sans capture : ImageMagick absent"))"
     else
-        echo "FENÊTRE : non essayée (pas d'écran virtuel ou d'outil de capture sur cette distribution)"
+        note "fenêtre : NON ESSAYÉE (pas de xvfb-run sur cette distribution)"
     fi
 }
 
@@ -115,6 +125,8 @@ main() {
             ;;
     esac
     run_installed
+    echo "=== RÉSUMÉ ==="
+    cat "$summary"
 }
 
 set +e

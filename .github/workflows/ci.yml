@@ -202,7 +202,7 @@ jobs:
           - { name: "Fedora",            image: "fedora:latest",                   family: redhat, exploratory: false }
           - { name: "CentOS Stream 10",  image: "quay.io/centos/centos:stream10",  family: redhat, exploratory: false }
           - { name: "AlmaLinux 10",      image: "almalinux:10",                    family: redhat, exploratory: false }
-          - { name: "Rocky Linux 10",    image: "rockylinux:10",                   family: redhat, exploratory: false }
+          - { name: "Rocky Linux 10",    image: "rockylinux/rockylinux:10",         family: redhat, exploratory: false }
           - { name: "AlmaLinux 9",       image: "almalinux:9",                     family: redhat, exploratory: true }
     env:
       CGO_ENABLED: "1"

@@ -40,8 +40,15 @@ xvfb-run -a -s "-screen 0 1300x820x24" bash -c '
     done
     status=0
     if [ -e "$out.ready" ]; then
-        sleep 0.5
-        import -window root "$out" || status=$?
+        # La fenêtre est affichée, ce qui est déjà le but du test. La capture
+        # demande ImageMagick, absent de certaines distributions.
+        if command -v import > /dev/null; then
+            sleep 0.5
+            import -window root "$out" || status=$?
+        else
+            echo "ImageMagick (import) absent : pas de capture" >&2
+            : > "$out"
+        fi
     else
         echo "la fenêtre ne s'"'"'est pas affichée ; journal du programme :" >&2
         cat "$out.log" >&2
@@ -52,5 +59,10 @@ xvfb-run -a -s "-screen 0 1300x820x24" bash -c '
     exit "$status"
 ' _ "$program" "$lang" "$out" "$svg"
 
-[ -s "$out" ] || { echo "capture vide : $out" >&2; exit 1; }
-echo "capture : $out"
+if [ -s "$out" ]; then
+    echo "capture : $out"
+else
+    command -v import > /dev/null && { echo "capture vide : $out" >&2; exit 1; }
+    rm -f "$out"
+    echo "fenêtre affichée (sans capture)"
+fi

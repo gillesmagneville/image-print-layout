@@ -1,0 +1,59 @@
+// SPDX-License-Identifier: GPL-3.0-only
+
+package diag
+
+// Spec describes a code: how serious it is and the names of the values it
+// carries.
+type Spec struct {
+	Level Level
+	Args  []string
+}
+
+// Registry lists every code the program can produce. The catalogs of the
+// window have a text "diag.<code>" for each, which may use the values by
+// their names.
+var Registry = map[string]Spec{
+	// Paper and margins.
+	"paper.unknown":        {Failure, []string{"format"}},
+	"paper.custom_invalid": {Failure, []string{"w", "h"}},
+	"paper.orientation":    {Failure, []string{"orientation"}},
+	"margins.invalid":      {Failure, nil},
+	"margins.no_usable":    {Failure, []string{"w", "h"}},
+
+	// Scale.
+	"scale.invalid_width":   {Failure, nil},
+	"scale.invalid_percent": {Failure, nil},
+	"scale.invalid":         {Failure, nil},
+	"doc.invalid_size":      {Failure, []string{"w", "h"}},
+
+	// Pages.
+	"page.too_tall":  {Warning, []string{"h", "usable"}},
+	"page.too_wide":  {Warning, []string{"w", "usable"}},
+	"page.shifted":   {Warning, nil},
+	"page.off_sheet": {Failure, nil},
+	"page.empty":     {Warning, nil},
+
+	// Cuts.
+	"cut.out_of_range": {Failure, []string{"min", "max"}},
+	"cut.too_close":    {Failure, []string{"min"}},
+	"cut.unknown":      {Failure, nil},
+	"cut.invalid":      {Failure, nil},
+
+	// Automatic cuts.
+	"auto.no_cut_needed": {Info, nil},
+	"auto.cut_crosses":   {Warning, []string{"n", "count"}},
+	"auto.cut_near":      {Warning, []string{"n", "mm"}},
+	"auto.more_pages":    {Info, []string{"count", "min"}},
+
+	// Corrections.
+	"correction.none": {Info, nil},
+
+	// Project files.
+	"project.not_a_project":  {Failure, nil},
+	"project.too_new":        {Failure, []string{"version", "supported"}},
+	"project.bad_version":    {Failure, []string{"version"}},
+	"project.invalid":        {Failure, []string{"field"}},
+	"project.source_changed": {Warning, nil},
+	"project.size_changed":   {Warning, []string{"w", "h", "was_w", "was_h"}},
+	"project.cuts_outside":   {Warning, []string{"count"}},
+}

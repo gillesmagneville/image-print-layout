@@ -178,6 +178,62 @@ jobs:
       - name: Check how the scripts manage VERSION
         run: .github/scripts/test-version-handling.sh
 
+  # Les paquets Linux sont liés aux bibliothèques de la machine qui les a
+  # construits. Ce job construit donc le paquet dans un conteneur de chaque
+  # distribution visée (famille Debian : .deb ; famille Red Hat : .rpm), l'y
+  # installe avec apt ou dnf, et lance le programme installé. Une distribution
+  # « exploratoire » dont GTK est peut-être trop ancien ne fait pas échouer la
+  # CI : son résultat est dans l'annotation de l'exécution, et décide si on la
+  # déclare prise en charge.
+  distributions:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    container: ${{ matrix.image }}
+    timeout-minutes: 60
+    continue-on-error: ${{ matrix.exploratory }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: "Debian 13",         image: "debian:13",                       family: debian, exploratory: false }
+          - { name: "Debian 12",         image: "debian:12",                       family: debian, exploratory: true }
+          - { name: "Ubuntu 26.04",      image: "ubuntu:26.04",                    family: debian, exploratory: false }
+          - { name: "Ubuntu 22.04",      image: "ubuntu:22.04",                    family: debian, exploratory: true }
+          - { name: "Fedora",            image: "fedora:latest",                   family: redhat, exploratory: false }
+          - { name: "CentOS Stream 10",  image: "quay.io/centos/centos:stream10",  family: redhat, exploratory: false }
+          - { name: "AlmaLinux 10",      image: "almalinux:10",                    family: redhat, exploratory: false }
+          - { name: "Rocky Linux 10",    image: "rockylinux:10",                   family: redhat, exploratory: false }
+          - { name: "AlmaLinux 9",       image: "almalinux:9",                     family: redhat, exploratory: true }
+    env:
+      CGO_ENABLED: "1"
+      GSK_RENDERER: cairo
+      GTK_A11Y: none
+      NO_AT_BRIDGE: "1"
+      LIBGL_ALWAYS_SOFTWARE: "1"
+    steps:
+      # git d'abord : le script de construction lit la date du dernier commit.
+      - name: Install git
+        run: |
+          if command -v apt-get > /dev/null; then
+            apt-get update && apt-get install -y --no-install-recommends git ca-certificates tar gzip
+          else
+            dnf -y install git tar gzip
+          fi
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Build the package, install it, run it
+        run: .github/scripts/test-distribution.sh ${{ matrix.family }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: distribution-${{ matrix.family }}-${{ strategy.job-index }}
+          path: screenshots/*.png
+          if-no-files-found: ignore
+          retention-days: 14
+
   windows-package:
     name: Windows package (portable and installer)
     runs-on: windows-latest

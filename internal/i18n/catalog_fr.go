@@ -16,7 +16,12 @@ var fr = map[string]string{
 	"cli.error.language":  "langue inconnue « {lang} » : choisissez fr, en, es ou de",
 
 	// Application.
-	"app.tagline": "Mise en page, découpage et impression de documents vectoriels",
+	"app.tagline":     "Mise en page, découpage et impression de documents vectoriels",
+	"about.version":   "Version {version}",
+	"about.developed": "Développé par {name}",
+	"about.designed":  "Conçu avec l'aide de claude.ai",
+	"about.website":   "Site du projet",
+	"about.license":   "Logiciel libre, sous licence GNU GPL version 3 uniquement. Il est fourni sans aucune garantie.",
 
 	// Barre de titre et menu.
 	"action.open_svg":         "Ouvrir un SVG…",

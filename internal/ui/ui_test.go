@@ -1270,6 +1270,122 @@ func runScenario() {
 			})
 		}
 
+		// 10. The About box, in every language: the name is not selected, the
+		// logo is drawn, and it says who made the program. The title bar does
+		// not repeat the export button of the left panel.
+		for _, lang := range i18n.Languages {
+			add(func() bool {
+				w.setLanguageSetting(string(lang))
+				tr := i18n.New(lang)
+				takeDialogs()
+				w.showAbout()
+				var about *gtk.Window
+				for _, win := range application.Windows() {
+					if win.Object.Native() != w.win.Object.Native() {
+						about = win
+					}
+				}
+				if about == nil {
+					fail("about %s: no window", lang)
+					return true
+				}
+				if about.Title() != tr.T("menu.about") {
+					fail("about %s: the title is %q, want %q", lang, about.Title(), tr.T("menu.about"))
+				}
+				shown := texts(about)
+				wantTexts("the About box ("+string(lang)+")", shown, tr, "app.tagline", "about.designed", "about.license")
+				for _, want := range []string{
+					"SVG Print Layout",
+					tr.T("about.developed", "name", "Gilles MAGNEVILLE"),
+					tr.T("about.version", "version", "test"),
+				} {
+					if !contains(shown, want) {
+						fail("about %s: does not show %q; it shows %q", lang, want, shown)
+					}
+				}
+				if !strings.Contains(strings.Join(shown, "\n"), "claude.ai") {
+					fail("about %s: claude.ai is not credited", lang)
+				}
+				logos, selectable := 0, 0
+				var walk func(gtk.Widgetter)
+				walk = func(widget gtk.Widgetter) {
+					switch x := widget.(type) {
+					case *gtk.Label:
+						if x.Selectable() {
+							selectable++
+						}
+					case *gtk.Image:
+						if p := x.Paintable(); p != nil && p.IntrinsicWidth() > 0 {
+							logos++
+						}
+					}
+					for child := gtk.BaseWidget(widget).FirstChild(); child != nil; child = gtk.BaseWidget(child).NextSibling() {
+						walk(child)
+					}
+				}
+				walk(about)
+				if logos != 1 {
+					fail("about %s: %d logos, want 1", lang, logos)
+				}
+				if selectable != 0 {
+					fail("about %s: %d selectable labels (one would show selected)", lang, selectable)
+				}
+				takeDialogs()
+				if tb := w.win.Titlebar(); tb != nil {
+					if contains(texts(tb), tr.T("action.export")) {
+						fail("title bar %s: repeats the export button of the left panel", lang)
+					}
+				}
+				return true
+			})
+		}
+
+		// 11. Typing a number: the cursor stays after the digit, the next digit
+		// goes after it. The scale factor wrote its value back to the field, and
+		// the cursor went to the start of the line.
+		{
+			phase, since := 0, time.Now()
+			typed := func(e *gtk.Entry, digit string) {
+				at := int(e.Position())
+				e.Buffer().InsertText(uint(at), digit, -1)
+				e.SetPosition(at + len(digit))
+			}
+			add(func() bool {
+				e := w.panel.manualPercent.entry
+				switch phase {
+				case 0:
+					e.SetText("")
+					w.panel.manualPercent.typing.cancel()
+					typed(e, "1")
+					since, phase = time.Now(), 1
+				case 1:
+					if time.Since(since) < 500*time.Millisecond {
+						return false
+					}
+					if w.panel.manualPercent.typing.pending() || w.busy > 0 {
+						return false
+					}
+					typed(e, "2")
+					since, phase = time.Now(), 2
+				case 2:
+					if time.Since(since) < 500*time.Millisecond {
+						return false
+					}
+					if w.panel.manualPercent.typing.pending() || w.busy > 0 {
+						return false
+					}
+					if got := e.Text(); got != "12" || e.Position() != 2 {
+						fail("typing: after 1 then 2 the field says %q, cursor at %d; want \"12\", 2", got, e.Position())
+					}
+					if got := w.session.Project().Scale.Percent; got != 12 {
+						fail("typing: the scale factor is %v, want 12", got)
+					}
+					return true
+				}
+				return false
+			})
+		}
+
 		// The steps run one at a time from the main loop; a step that is not
 		// done yet is asked again, for at most ten seconds.
 		i, started := 0, time.Now()

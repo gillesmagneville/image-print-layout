@@ -153,7 +153,7 @@ svg-print-layout/
 │   └── repocheck/             # tests sur le dépôt lui-même (en-têtes, versions, docs)
 ├── debian/                    # copyright, postinst, postrm, lintian-overrides du .deb
 ├── metainfo/                  # entrée de menu (.desktop) et métadonnées AppStream
-├── icons/                     # icône de l'application (SVG et PNG)
+├── icons/                     # icône de l'application (SVG et PNG) ; le paquet Go `icons` embarque le PNG (fenêtre « À propos »)
 ├── windows/                   # script de construction Windows, installeur NSIS, icône .ico
 ├── docs/                      # rapports de jalon (M0.md), page de manuel (svgprintlayout.1)
 └── testdata/                  # SVG de référence
@@ -530,7 +530,7 @@ L'aperçu est immédiat : la copie modifiée est rechargée dans le moteur, hors
 
 ## 9. Interface graphique
 
-Une seule fenêtre à trois zones, sans dialogue pour les opérations courantes : les réglages se font dans les panneaux et la souris agit directement sur l'aperçu. La barre de titre porte Ouvrir un SVG, le menu Projet (Ouvrir un projet, Enregistrer, Enregistrer sous : Ctrl+Maj+O, Ctrl+S, Ctrl+Maj+S), Annuler et Rétablir, Exporter en PDF et le menu. `svgprintlayout fichier.svgpl` ouvre un projet comme un SVG.
+Une seule fenêtre à trois zones, sans dialogue pour les opérations courantes : les réglages se font dans les panneaux et la souris agit directement sur l'aperçu. La barre de titre porte Ouvrir un SVG, le menu Projet (Ouvrir un projet, Enregistrer, Enregistrer sous : Ctrl+Maj+O, Ctrl+S, Ctrl+Maj+S), Annuler et Rétablir et le menu ; le bouton d'export est dans la section Export du panneau de gauche, et nulle part ailleurs (Ctrl+E y mène aussi). La fenêtre « À propos » (menu) est une fenêtre du programme, dans la langue de l'interface : l'icône (embarquée, paquet `icons`), le nom, la version, « Développé par Gilles MAGNEVILLE », « Conçu avec l'aide de claude.ai », le site et la licence ; aucun texte n'y est sélectionnable, et le bouton Fermer a le focus. `svgprintlayout fichier.svgpl` ouvre un projet comme un SVG.
 
 ### Panneau gauche : paramètres
 
@@ -578,7 +578,7 @@ Le bouton « Aperçu » au pied de chaque carte ouvre la vue Feuilles sur cette 
 
 - **Annuler et rétablir** : chaque modification est une commande qui produit un nouvel état immuable du projet. Un glisser compte pour une seule entrée d'historique. Ctrl+Z et Ctrl+Maj+Z ; une astérisque devant le nom dans la barre de titre signale les changements non enregistrés (le projet de la session est comparé à celui du dernier enregistrement ou de la dernière ouverture : revenir à l'état enregistré fait disparaître l'astérisque). Fermer la fenêtre, ouvrir un autre SVG ou un autre projet avec des changements non enregistrés ouvre une question à trois réponses : annuler, ne pas enregistrer, enregistrer.
 - **Fil de l'interface** : le moteur est piloté par un acteur unique (une goroutine), si bien qu'un document chargé n'est jamais utilisé par deux fils à la fois. Les résultats reviennent au fil GTK par `glib.IdleAdd`.
-- **Export** : Ctrl+E ou le bouton de la barre de titre. Les contrôles du §11 passent d'abord : une erreur ouvre un compte rendu (page, motif) et rien n'est écrit ; un avertissement demande une confirmation qui le décrit ; puis le sélecteur de fichier (dossier du dernier export, nom du SVG en `.pdf`), l'export sur le fil du moteur avec sa barre de progression, annulable, et enfin la relecture. L'état final dit le nom du fichier, le nombre de pages et sa taille, et que le PDF relu correspond à l'aperçu.
+- **Export** : Ctrl+E ou le bouton de la section Export du panneau de gauche. Les contrôles du §11 passent d'abord : une erreur ouvre un compte rendu (page, motif) et rien n'est écrit ; un avertissement demande une confirmation qui le décrit ; puis le sélecteur de fichier (dossier du dernier export, nom du SVG en `.pdf`), l'export sur le fil du moteur avec sa barre de progression, annulable, et enfin la relecture. L'état final dit le nom du fichier, le nombre de pages et sa taille, et que le PDF relu correspond à l'aperçu.
 - **Erreurs** : chaque message dit ce qui a échoué, pourquoi et quoi faire, sans code technique brut.
 
 ## 10. Format de projet

@@ -22,5 +22,13 @@ type Options struct {
 // and its AppStream component, in reverse domain order.
 const AppID = "io.github.gillesmagneville.svgprintlayout"
 
+// IconName is the name of the icon of the program in the icon theme: the one
+// the packages install (hicolor/scalable/apps/svgprintlayout.svg) and the one
+// the desktop file names. It is not the AppID.
+const IconName = "svgprintlayout"
+
+// Author and Website are shown in the About box and in the documents.
+const Author = "Gilles MAGNEVILLE"
+
 // Website is the home of the project, shown in the About box.
 const Website = "https://github.com/gillesmagneville/svg-print-layout"

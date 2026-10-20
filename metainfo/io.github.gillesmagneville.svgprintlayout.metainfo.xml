@@ -82,6 +82,14 @@
   </categories>
 
   <releases>
+    <release version="0.3.1" date="2026-10-20">
+      <description>
+        <p>Fixes: replacing the document background with white, or removing it, now shows on every page and exports; typing a scale factor no longer sends the cursor back to the start; the About window shows the program icon and its credits (developed by Gilles MAGNEVILLE, designed with the help of claude.ai); the duplicate export button is gone from the title bar.</p>
+        <p xml:lang="fr">Corrections : remplacer le fond du document par du blanc, ou le supprimer, se voit désormais sur toutes les pages et s'exporte ; saisir un facteur d'échelle ne ramène plus le curseur au début ; la fenêtre « À propos » montre l'icône du programme et ses crédits (développé par Gilles MAGNEVILLE, conçu avec l'aide de claude.ai) ; le doublon du bouton d'export a disparu de la barre de titre.</p>
+        <p xml:lang="es">Correcciones: reemplazar el fondo del documento por blanco, o quitarlo, ahora se ve en todas las páginas y se exporta; al escribir un factor de escala el cursor ya no vuelve al principio; la ventana «Acerca de» muestra el icono del programa y sus créditos (desarrollado por Gilles MAGNEVILLE, diseñado con la ayuda de claude.ai); el botón de exportación duplicado ha desaparecido de la barra de título.</p>
+        <p xml:lang="de">Korrekturen: Das Ersetzen des Dokumenthintergrunds durch Weiß oder sein Entfernen ist jetzt auf allen Seiten sichtbar und wird exportiert; beim Eingeben eines Maßstabsfaktors springt der Cursor nicht mehr an den Anfang; das Fenster „Über“ zeigt das Programmsymbol und die Angaben zu den Urhebern (entwickelt von Gilles MAGNEVILLE, entworfen mit Hilfe von claude.ai); die doppelte Export-Schaltfläche in der Titelleiste ist entfallen.</p>
+      </description>
+    </release>
     <release version="0.3.0" date="2026-10-20">
       <description>
         <p>Complete page layout: paper, margins, scale and positioning, cuts placed with the mouse or proposed automatically, document and page backgrounds, a preview of every sheet, a verified multi-page PDF export, and projects that can be saved and reopened.</p>

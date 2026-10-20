@@ -4,7 +4,9 @@
 
 Application de bureau (Linux — Debian, Ubuntu, Red Hat et leurs dérivés —, Windows 10 et 11, écrite en Go) pour **mettre en page, découper et imprimer un document vectoriel SVG sur plusieurs feuilles de papier standard**, puis l'exporter en **PDF multipage vectoriel**.
 
-> **État : version 0.3.0, toutes les fonctions du cahier des charges sont là (jalons M1 à M5) ; reste la recette sur machines Windows 10 et 11 réelles avant la 1.0.0.** La fenêtre GTK4, en **français, anglais, espagnol et allemand**, ouvre un SVG, l'analyse (fonctions non prises en charge, polices absentes, images introuvables), calcule ses pages avec les réglages de papier, de marges, d'échelle et de positionnement, et montre l'aperçu avec les limites et les numéros de page, la liste des pages et les corrections proposées quand une page dépasse. On y ajoute, déplace et supprime les coupures à la souris (double-clic, glisser, aimantation aux vides, clavier) ou on demande des coupures automatiques, sans jamais changer l'échelle. On y choisit le fond du document (le garder, le remplacer par du blanc, le supprimer, avec l'aperçu immédiat) et celui de la page (blanc opaque ou transparent), on voit chaque feuille telle qu'elle sera imprimée, puis on exporte un PDF multipage que le programme relit et vérifie avant de le livrer. On enregistre le projet (réglages, coupures, fond, positions) et on le rouvre plus tard : le SVG d'origine n'est jamais modifié, un document déplacé se localise, et une astérisque dans le titre signale les changements non enregistrés. Les 14 tests d'acceptation du cahier des charges sont automatisés (`internal/acceptance`). Le dépôt contient aussi le prototype du moteur (librsvg + cairo : rendu d'une fenêtre et export PDF multipage, validé sur le Mini-CAD, voir [`docs/M0.md`](docs/M0.md)), les scripts qui construisent les paquets `.deb`, `.rpm` et Windows (voir [Paquets](#paquets)) et la CI.
+Développé par Gilles MAGNEVILLE, conçu avec l'aide de [claude.ai](https://claude.ai).
+
+> **État : version 0.3.1, toutes les fonctions du cahier des charges sont là (jalons M1 à M5) ; reste la recette sur machines Windows 10 et 11 réelles avant la 1.0.0.** La fenêtre GTK4, en **français, anglais, espagnol et allemand**, ouvre un SVG, l'analyse (fonctions non prises en charge, polices absentes, images introuvables), calcule ses pages avec les réglages de papier, de marges, d'échelle et de positionnement, et montre l'aperçu avec les limites et les numéros de page, la liste des pages et les corrections proposées quand une page dépasse. On y ajoute, déplace et supprime les coupures à la souris (double-clic, glisser, aimantation aux vides, clavier) ou on demande des coupures automatiques, sans jamais changer l'échelle. On y choisit le fond du document (le garder, le remplacer par du blanc, le supprimer, avec l'aperçu immédiat) et celui de la page (blanc opaque ou transparent), on voit chaque feuille telle qu'elle sera imprimée, puis on exporte un PDF multipage que le programme relit et vérifie avant de le livrer. On enregistre le projet (réglages, coupures, fond, positions) et on le rouvre plus tard : le SVG d'origine n'est jamais modifié, un document déplacé se localise, et une astérisque dans le titre signale les changements non enregistrés. Les 14 tests d'acceptation du cahier des charges sont automatisés (`internal/acceptance`). Le dépôt contient aussi le prototype du moteur (librsvg + cairo : rendu d'une fenêtre et export PDF multipage, validé sur le Mini-CAD, voir [`docs/M0.md`](docs/M0.md)), les scripts qui construisent les paquets `.deb`, `.rpm` et Windows (voir [Paquets](#paquets)) et la CI.
 
 ## Principe
 
@@ -184,6 +186,10 @@ la construction Windows (MSYS2, NSIS, SmartScreen, dépannage) dans
 Le programme installé sait s'auto-vérifier : `svgprintlayout -selftest` contrôle le
 moteur de rendu (bibliothèques, polices, images incorporées, export PDF) sur la machine
 où il tourne. C'est la première commande à lancer en cas de problème.
+
+## Auteur
+
+SVG Print Layout est développé par **Gilles MAGNEVILLE**, et conçu avec l'aide de [claude.ai](https://claude.ai). La fenêtre « À propos » du programme (menu principal) le dit aussi, dans la langue de l'interface, de même que la section AUTEUR de la page de manuel.
 
 ## Licence
 

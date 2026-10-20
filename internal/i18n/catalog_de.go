@@ -14,7 +14,12 @@ var de = map[string]string{
 	"cli.error.language":  "unbekannte Sprache „{lang}“: wählen Sie fr, en, es oder de",
 
 	// Anwendung.
-	"app.tagline": "Seitenaufteilung, Zuschnitt und Druck von Vektordokumenten",
+	"app.tagline":     "Seitenaufteilung, Zuschnitt und Druck von Vektordokumenten",
+	"about.version":   "Version {version}",
+	"about.developed": "Entwickelt von {name}",
+	"about.designed":  "Entworfen mit Hilfe von claude.ai",
+	"about.website":   "Projektseite",
+	"about.license":   "Freie Software unter der GNU GPL, ausschließlich Version 3. Sie wird ohne jede Gewährleistung bereitgestellt.",
 
 	// Titelleiste und Menü.
 	"action.open_svg":         "SVG öffnen…",

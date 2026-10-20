@@ -232,7 +232,7 @@ BEGIN
       VALUE "FileVersion", "$VERSION"
       VALUE "ProductVersion", "$VERSION"
       VALUE "CompanyName", "Gilles MAGNEVILLE"
-      VALUE "LegalCopyright", "GNU GPL v3"
+      VALUE "LegalCopyright", "Gilles MAGNEVILLE - GNU GPL v3"
       VALUE "OriginalFilename", "svgprintlayout.exe"
     END
   END

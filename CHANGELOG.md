@@ -9,8 +9,30 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+## [0.3.1] - 2026-10-20
+
+Corrections sur le fond du document, la saisie des nombres et la fenêtre « À propos », et mention
+de l'auteur partout où elle a sa place.
+
 ### Corrigé
 
+- **Saisie d'un nombre (facteur d'échelle, largeur, marges…) : le curseur retournait au début de
+  la ligne** après chaque chiffre tapé. Le champ réécrivait son texte quand le programme lui
+  redonnait la valeur qu'il venait d'appliquer, et GTK place alors le curseur au début : le
+  chiffre suivant s'insérait devant le premier (taper 12 donnait 21). Le test de focus qui devait
+  l'empêcher ne voyait jamais le focus (le focus d'un GtkEntry est dans le GtkText qu'il
+  contient). Le champ ne réécrit plus ce qu'il montre déjà ; la notation canonique est écrite
+  quand on le quitte, et le curseur reste à la fin quand le texte est réécrit.
+- **Fenêtre « À propos » : le nom était affiché sélectionné (en rouge) et l'icône du programme
+  manquait.** Le GtkAboutDialog donne le focus à son étiquette de titre, qui est sélectionnable,
+  et cherche son logo dans le thème d'icônes sous l'identifiant complet de l'application, alors
+  que les paquets installent l'icône sous le nom `svgprintlayout`. C'est maintenant une fenêtre du
+  programme : l'icône est embarquée dans l'exécutable (paquet `icons`), aucun texte n'est
+  sélectionnable, le bouton Fermer a le focus, et les textes sont dans la langue choisie dans le
+  programme et non dans celle du système. Les fenêtres de compte rendu et d'erreur ne
+  s'ouvrent plus avec un texte sélectionné non plus.
+- **Icône des fenêtres** : le programme la demande sous le nom `svgprintlayout`, celui des paquets,
+  et non sous l'identifiant complet de l'application.
 - **Fond du document : « Remplacer par du blanc » et « Supprimer le fond » ne se voyaient pas sur
   la dernière page.** L'aperçu « Document » teintait en bleu pâle une page sur deux (les pages
   2, 4…) par-dessus le dessin, d'un gris presque identique à celui du fond d'origine : la
@@ -31,6 +53,16 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
   8 mesure le haut de la bande par le fond conservé (le vrai Mini-CAD ne dessine rien dans ses
   43 premières unités) ; la fenêtre est essayée sur les marques des pages (rien sur le dessin) et
   sur les feuilles quand le fond change.
+
+### Modifié
+
+- **Le bouton « Exporter en PDF… » de la barre de titre est retiré** : il doublait celui de la
+  section Export du panneau de gauche. Ctrl+E reste.
+- **L'auteur est nommé** : « Développé par Gilles MAGNEVILLE » et « Conçu avec l'aide de
+  claude.ai » dans la fenêtre « À propos » (en français, anglais, espagnol et allemand), le
+  README, `PROJECT_CONTEXT.md`, `CONTRIBUTING.md`, la section AUTEUR des quatre pages de manuel,
+  `debian/copyright` et les propriétés de l'exécutable et de l'installeur Windows.
+- Le dépôt ne contient plus `err.txt`, un fichier vide ajouté par erreur.
 
 ## [0.3.0] - 2026-10-20
 

@@ -74,6 +74,9 @@ type preview struct {
 	pointerX, pointerY float64
 	startOX, startOY   float64
 	render             debouncer
+
+	// The cuts and the gestures that act on them (cutedit.go).
+	cutState
 }
 
 func newPreview(texts *translations) *preview {
@@ -109,6 +112,7 @@ func newPreview(texts *translations) *preview {
 
 	p.marks.ConnectResize(func(w, h int) { p.resized(float64(w), float64(h)) })
 	p.connectGestures()
+	p.connectCutGestures()
 	return p
 }
 
@@ -292,10 +296,6 @@ func (p *preview) place() {
 // ---- gestures ---------------------------------------------------------------
 
 func (p *preview) connectGestures() {
-	motion := gtk.NewEventControllerMotion()
-	motion.ConnectMotion(func(x, y float64) { p.pointerX, p.pointerY = x, y })
-	p.marks.AddController(motion)
-
 	scroll := gtk.NewEventControllerScroll(gtk.EventControllerScrollBothAxes)
 	scroll.ConnectScroll(func(dx, dy float64) bool {
 		state := scroll.CurrentEventState()
@@ -314,21 +314,6 @@ func (p *preview) connectGestures() {
 		return true
 	})
 	p.marks.AddController(scroll)
-
-	drag := gtk.NewGestureDrag()
-	drag.SetButton(0)
-	drag.ConnectDragBegin(func(x, y float64) {
-		p.startOX, p.startOY = p.view.OX, p.view.OY
-		p.marks.SetCursorFromName("grabbing")
-	})
-	drag.ConnectDragUpdate(func(dx, dy float64) {
-		p.fit = fitFree
-		p.view.OX, p.view.OY = p.startOX, p.startOY
-		p.view.PanPx(dx, dy)
-		p.changed()
-	})
-	drag.ConnectDragEnd(func(float64, float64) { p.marks.SetCursorFromName("default") })
-	p.marks.AddController(drag)
 
 	zoom := gtk.NewGestureZoom()
 	var startZoom float64
@@ -440,17 +425,9 @@ func (p *preview) drawMarks(_ *gtk.DrawingArea, cr *cairo.Context, width, height
 			cr.Rectangle(x0, yt, x1-x0, yb-yt)
 			cr.Fill()
 		}
-		if i > 0 {
-			cr.SetSourceRGB(cutColour[0], cutColour[1], cutColour[2])
-			cr.SetLineWidth(1.5)
-			cr.SetDash([]float64{8, 5}, 0)
-			cr.MoveTo(x0-14, yt+0.5)
-			cr.LineTo(x1+14, yt+0.5)
-			cr.Stroke()
-			cr.SetDash(nil, 0)
-		}
 		p.drawBadge(cr, page, x0, yt, yb, float64(height))
 	}
+	p.drawCuts(cr, x0, x1, float64(height))
 }
 
 // drawBadge writes the number of a page at the top of its band; the badge

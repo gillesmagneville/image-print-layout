@@ -69,6 +69,24 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
     dessin et non bloc par bloc, car mesurer un élément oblige librsvg à parcourir tout le
     dessin (100 000 éléments : plus de six minutes mesurés un à un, quatre secondes ainsi).
     Un constat le dit à l'utilisateur.
+- **Coupures à la souris et coupures automatiques (jalon M3)** :
+  - `internal/app` : les commandes de la session sur les coupures (ajouter, glisser, saisir une
+    position, pousser d'un pas, supprimer, coupures automatiques). Chacune est une entrée
+    d'historique (un glisser n'en fait qu'une, les pas successifs sur une même coupure non plus),
+    aucune ne lit ni n'écrit l'échelle (tests d'acceptation 6 et 7), et le plan est calculé avant
+    d'accepter un changement. Un glisser s'arrête contre la coupure voisine au lieu d'échouer ;
+    une position saisie qui n'est pas permise est refusée avec son motif, jamais corrigée en
+    silence. Pour chaque coupure : son rang, sa position, le nombre de blocs qu'elle traverse et
+    leurs noms ; les vides entre blocs servent à l'aimantation.
+  - Aperçu : double-clic pour ajouter une coupure, glisser une ligne (poignée, pastille en mm et
+    en unités, aimantation aux vides, Alt pour la désactiver), flèches (1 unité, Maj 10, Ctrl
+    0,1 mm), Suppr, Échap, clic droit (saisir une position précise ou supprimer), clic sur une
+    page pour la sélectionner. Pendant un glisser, seul le calque des coupures est redessiné.
+  - Panneau de droite : boutons « Ajouter une coupure » et « Coupures automatiques » (la
+    proposition remplace les coupures, en une entrée d'historique qu'on peut annuler), liste des
+    coupures avec leurs blocs traversés, sélection partagée entre l'aperçu et les listes.
+  - Tests : commandes de `app` (dont ceux de l'échelle), scénarios de la fenêtre sous Xvfb qui
+    pilotent les gestes (ajout, glisser, aimantation, clavier, menu, sélection) en quatre langues.
 - **Dépendance de construction** : `libfontconfig-dev` (Debian et Ubuntu), `fontconfig-devel`
   (Fedora, RHEL), `mingw-w64-ucrt-x86_64-fontconfig` (MSYS2), ajoutés aux scripts, à la CI et à
   la documentation.

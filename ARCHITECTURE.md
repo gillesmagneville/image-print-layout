@@ -299,7 +299,7 @@ versionnés : `.gitignore`).
   quatre langues pour le paquet portable de Windows.
 - **Ce que les paquets ne font pas encore** : le programme qu'ils installent ouvre un SVG,
   l'analyse, l'affiche avec ses pages et ses réglages (papier, marges, échelle, positionnement)
-  et propose des coupures ; les coupures à la souris, le fond et l'export viennent avec M3 et M4.
+  et propose des coupures, qu'on place, déplace et supprime à la souris (M3) ; le fond et l'export viennent avec M4.
   Rien n'est signé, aucun dépôt de paquets n'existe, et l'architecture arm64 est reconnue
   par les scripts Linux sans avoir été essayée.
 
@@ -543,13 +543,19 @@ Un `GtkOverlay` empile, dans l'ordre : une zone de travail, le dessin (une `GtkP
 | Geste | Effet |
 | --- | --- |
 | Molette | Défilement vertical |
+| Maj + molette | Défilement horizontal |
 | Ctrl + molette | Zoom autour du curseur |
-| Clic milieu ou Espace + glisser | Déplacement de la vue |
-| Double-clic sur le dessin, ou outil « Ajouter une coupure » | Nouvelle coupure à cette position |
-| Glisser une ligne (zone de saisie de 6 pixels) | Déplacement ; infobulle en unités et en mm ; aimantation aux vides |
-| Suppr | Supprime la coupure sélectionnée |
-| Flèches | Déplacent de 1 unité ; Maj : 10 ; Ctrl : 0,1 mm |
-| Clic droit sur une ligne | Supprimer, ou saisir une position précise |
+| Glisser sur le fond (bouton gauche ou milieu) | Déplacement de la vue |
+| Double-clic sur le dessin, ou bouton « Ajouter une coupure » | Nouvelle coupure à cette position (au milieu de la vue avec le bouton), aimantée à un vide proche |
+| Glisser une ligne (zone de saisie de 6 pixels) | Déplacement ; pastille en mm et en unités ; aimantation aux vides (rayon de 8 pixels) ; la ligne s'arrête contre ses voisines |
+| Alt pendant un double-clic ou un glisser | Désactive l'aimantation |
+| Clic sur une page | Sélectionne la page (surbrillance, et ligne de la liste) |
+| Suppr ou Retour arrière | Supprime la coupure sélectionnée |
+| Flèches haut et bas | Déplacent la coupure sélectionnée de 1 unité ; Maj : 10 ; Ctrl : 0,1 mm |
+| Échap | Désélectionne |
+| Clic droit sur une ligne | Fenêtre contextuelle : saisir une position précise (mm depuis le haut du dessin), ou supprimer |
+
+Une ligne qui traverse un bloc du dessin porte un signe d'avertissement et la liste des coupures nomme les premiers blocs traversés. Une position saisie qui n'est pas permise est refusée avec son motif, jamais corrigée en silence ; un glisser, lui, s'arrête contre la ligne voisine.
 
 Pendant un glisser, seul le calque des coupures est redessiné : l'image du dessin reste en place et le plan est recalculé à chaque mouvement, ce qui est peu coûteux puisque `layout` est pur.
 
@@ -557,11 +563,11 @@ Pendant un glisser, seul le calque des coupures est redessiné : l'image du dess
 
 ### Panneau droit : liste des pages
 
-Une `GtkColumnView` avec : numéro, largeur × hauteur (mm), échelle, début et fin (en unités et en mm depuis le haut du document), état, bouton d'aperçu. Sélectionner une ligne la met en surbrillance dans l'aperçu, et inversement.
+En tête : nombre de pages, largeur du contenu en mm et en cm, échelle, puis deux boutons : « Ajouter une coupure » et « Coupures automatiques » (la proposition du moteur de mise en page remplace les coupures, en une seule entrée d'historique qu'on peut annuler ; chaque coupure se déplace ensuite à la main). Au-dessous, une carte par page : numéro, largeur × hauteur du contenu (mm), échelle, début et fin (en unités et en mm depuis le haut du document), état et avertissements. Sélectionner une carte la met en surbrillance dans l'aperçu et l'y amène, et inversement.
 
-En tête : nombre de pages, largeur du contenu en mm et en cm, échelle. En pied : les corrections proposées (§7) quand une page dépasse.
+Puis la liste des coupures (rang, position en mm, nombre de blocs traversés et leurs noms), liée à l'aperçu : sélectionner une ligne sélectionne la coupure, et inversement. En pied : les corrections proposées (§7) quand une page dépasse, chacune sur son bouton.
 
-Le bouton d'aperçu ouvre la page rendue telle qu'elle sera exportée, avec la même fonction de dessin sur une surface image. « Aperçu complet » fait de même pour toutes les pages avant l'export.
+Le bouton d'aperçu de chaque carte (M4) ouvre la page rendue telle qu'elle sera exportée, avec la même fonction de dessin sur une surface image. « Aperçu complet » fait de même pour toutes les pages avant l'export.
 
 ### Annulation et tâches longues
 
@@ -659,7 +665,7 @@ L'analyse se fait en deux passes :
 
 Chaque catégorie est signalée au plus 25 fois ; le reste est compté dans un seul constat (« N autres constats semblables »). Un `foreignObject`, un `flowRoot` et une police web sont des avertissements : librsvg ne les dessine pas ou ne charge pas la police, et rien n'est reconstitué. Un document dont le XML est mal formé (balise non fermée, fin de balise qui ne correspond pas) est refusé par le moteur ; l'analyse le dit avec la raison.
 
-Le rapport s'affiche dans la section « Fichier source », avec un compteur par niveau ; chaque constat est un texte traduit (`diag.svg.<code>`). Chaque constat sur un élément porte sa référence (son identifiant, ou son chemin d'indices) : cliquer une entrée sélectionnera l'élément dans l'aperçu (à venir avec M3, qui mesure et sélectionne les éléments). Le rapport peut être copié en texte brut.
+Le rapport s'affiche dans la section « Fichier source », avec un compteur par niveau ; chaque constat est un texte traduit (`diag.svg.<code>`). Chaque constat sur un élément porte sa référence (son identifiant, ou son chemin d'indices) : cliquer une entrée sélectionnera l'élément dans l'aperçu (pas encore fait). Le rapport peut être copié en texte brut.
 
 Le texte est dessiné avec les polices du système. M0 montre qu'il reste du texte dans le PDF, sélectionnable, avec des sous-ensembles TrueType incorporés. Il montre aussi qu'une police absente est remplacée **sans rien dire** (IBM Plex remplacée par DejaVu, et le PDF incorpore la police de remplacement) : le signalement ci-dessus est donc la seule protection, et il exige une résolution des polices par fontconfig dans `engine`. Elle est faite : `MatchFont` demande à fontconfig la famille que le système donnerait, et `svgdoc.CheckFonts` signale toute liste `font-family` dont la première famille n'est pas installée, avec la famille qui sera réellement dessinée (la suivante de la liste qui est installée, sinon la famille générique ou ce que donne fontconfig) ; une liste qui commence par une famille générique (`sans-serif`, `monospace`) n'est jamais signalée, le document n'ayant rien demandé de précis.
 
@@ -714,7 +720,7 @@ Six jalons, dont M0 est le point de décision : le calcul de pages (M1) ne dépe
 | M4. Fond et export | Détection et remplacement du fond, export PDF, vérifications, aperçu de page | Tests 8 à 13 passés |
 | M5. Projet, paquets, recette | Enregistrement et réouverture dans l'interface, paquet .deb, installateur Windows, recette complète | Les 14 tests réussissent sur chaque système pris en charge : Debian 13 et Ubuntu 24.04 (famille Debian), RHEL 10 ou un clone (famille Red Hat), Windows 10 et Windows 11 |
 
-**État.** Le squelette du dépôt, le paquet `units`, le prototype du moteur (M0a, `docs/M0.md`), les scripts qui construisent les paquets `.deb`, `.rpm` et Windows, le paquet de traduction `i18n` et une première fenêtre GTK4 (trois panneaux, quatre langues, ouverture d'un SVG affiché en entier ; M0b) existent, avec leur CI, qui construit et essaie le paquet sur sept distributions Linux (familles Debian et Red Hat) et sur Windows. M0 n'est pas terminé : la comparaison du plan produit sous Windows et sous Linux reste à faire. **M1 est fait** : `model`, `diag`, `layout` (échelle, feuille, plan, états, corrections, coupures, aimantation, coupures automatiques) et `project` (format `.svgpl`) sont écrits et testés sans cgo, avec des tests de propriétés ; les panneaux de la fenêtre ne les utilisent pas encore. **M2 est fait** : `svgdoc` (analyse, constats, polices, blocs, fond, copie de travail), l'interface `Document` du moteur (chargement par chemin pour les images liées, polices par fontconfig), `app` (session, historique, plan), `viewport` et la fenêtre (panneaux Fichier source, Papier, Marges, Échelle, Positionnement ; liste des pages avec les corrections proposées ; aperçu avec zoom, déplacement, limites et numéros de page, annuler et rétablir) existent et sont essayés sous Xvfb. Les panneaux Fond et Export, les coupures à la souris, la détection du fond et l'export restent à faire (M3 et M4). Le `CHANGELOG.md` tient le détail.
+**État.** Le squelette du dépôt, le paquet `units`, le prototype du moteur (M0a, `docs/M0.md`), les scripts qui construisent les paquets `.deb`, `.rpm` et Windows, le paquet de traduction `i18n` et une première fenêtre GTK4 (trois panneaux, quatre langues, ouverture d'un SVG affiché en entier ; M0b) existent, avec leur CI, qui construit et essaie le paquet sur sept distributions Linux (familles Debian et Red Hat) et sur Windows. M0 n'est pas terminé : la comparaison du plan produit sous Windows et sous Linux reste à faire. **M1 est fait** : `model`, `diag`, `layout` (échelle, feuille, plan, états, corrections, coupures, aimantation, coupures automatiques) et `project` (format `.svgpl`) sont écrits et testés sans cgo, avec des tests de propriétés ; les panneaux de la fenêtre ne les utilisent pas encore. **M2 est fait** : `svgdoc` (analyse, constats, polices, blocs, fond, copie de travail), l'interface `Document` du moteur (chargement par chemin pour les images liées, polices par fontconfig), `app` (session, historique, plan), `viewport` et la fenêtre (panneaux Fichier source, Papier, Marges, Échelle, Positionnement ; liste des pages avec les corrections proposées ; aperçu avec zoom, déplacement, limites et numéros de page, annuler et rétablir) existent et sont essayés sous Xvfb. **M3 est fait** : `app` donne à la session les commandes sur les coupures (ajouter, glisser, déplacer, pousser d'un pas, supprimer, coupures automatiques), chacune une entrée d'historique, et aucune ne touche l'échelle (tests 5, 6 et 7) ; l'aperçu les reçoit par la souris (double-clic, glisser, aimantation aux vides, Alt pour la désactiver, clic droit, clavier) et la liste des pages montre les coupures et leurs blocs traversés, avec une sélection partagée. Les panneaux Fond et Export, la détection du fond et l'export restent à faire (M4). Le `CHANGELOG.md` tient le détail.
 
 Après la v1, le §14 du cahier reste la liste des suites possibles. L'aperçu du PDF réel relu par un moteur PDF indépendant (le cahier demande « un aperçu du PDF final ») est le premier candidat : la v1 s'en tient à l'aperçu produit par la même fonction de dessin, ce qui est fidèle au PDF par construction.
 

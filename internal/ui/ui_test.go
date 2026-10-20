@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/diamondburned/gotk4/pkg/gdk/v4"
 	"github.com/diamondburned/gotk4/pkg/gio/v2"
 	"github.com/diamondburned/gotk4/pkg/glib/v2"
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
@@ -324,12 +325,186 @@ func runScenario() {
 		})
 		add(func() bool { return w.busy == 0 && !w.pv.render.pending() })
 
+		// 2g. The cuts with the mouse and the keyboard (acceptance tests 5, 6 and
+		// 7): the gestures of the preview are driven through the functions the
+		// gesture controllers call.
+		add(func() bool {
+			pv := w.pv
+			cuts := w.session.Cuts()
+			plan := w.session.Plan()
+			if len(cuts) != 1 || len(plan.Pages) != 2 {
+				fail("cuts: %d cuts and %d pages before the gestures, want 1 and 2", len(cuts), len(plan.Pages))
+				return true
+			}
+			scale, width := plan.Scale, plan.ContentWidthMM
+			x0, x1 := pv.sheetX()
+			x := (x0 + x1) / 2
+			screenY := func(y float64) float64 { _, sy := pv.view.ToScreen(0, y); return sy }
+			unchanged := func(what string) {
+				if p := w.session.Plan(); p.Scale != scale || p.ContentWidthMM != width {
+					fail("cuts: %s changed the scale (%v to %v) or the width (%v to %v)", what, scale, p.Scale, width, p.ContentWidthMM)
+				}
+			}
+			checkTexts("cuts (fr)", i18n.French, "cuts.title", "cuts.add", "cuts.auto")
+			if !contains(texts(w.win), "Coupure 1") {
+				fail("cuts: the list does not show the first cut; the window shows %q", texts(w.win))
+			}
+
+			// The pointer over the line selects it for the cursor and the handle.
+			c := cuts[0]
+			pv.hover(x, screenY(c.Position)+2)
+			if pv.hoverCut != c.ID {
+				fail("cuts: the pointer on the line of cut %d hovers %d", c.ID, pv.hoverCut)
+			}
+			pv.hover(x, screenY(c.Position)+40)
+			if pv.hoverCut != 0 {
+				fail("cuts: the pointer 40 pixels from the line hovers cut %d", pv.hoverCut)
+			}
+
+			// A drag moves the cut, by the offset of the pointer, and is one
+			// entry of the history.
+			before := len(w.session.Cuts())
+			history := w.session.UndoLabel()
+			pv.beginDrag(x, screenY(c.Position)+1, 1)
+			if pv.mode != dragCut {
+				fail("cuts: a press on the line does not start a drag of the cut")
+			}
+			for _, dy := range []float64{-10, -20, -30, -40} {
+				pv.updateDrag(0, dy, true)
+			}
+			pv.endDrag(0, -40)
+			want := c.Position - 40/pv.view.Zoom
+			if got := w.session.Cuts()[0].Position; math.Abs(got-want) > 1e-6 {
+				fail("cuts: dragged 40 pixels up, the cut is at %v, want %v", got, want)
+			}
+			unchanged("a drag")
+			if w.session.UndoLabel() != "undo.move_cut" || history == "undo.move_cut" {
+				fail("cuts: the history says %q after a drag (before: %q)", w.session.UndoLabel(), history)
+			}
+			w.undo()
+			if got := w.session.Cuts()[0].Position; got != c.Position {
+				fail("cuts: undo of a drag gives %v, want %v", got, c.Position)
+			}
+
+			// A press away from every line moves the view, not a cut.
+			oy := pv.view.OY
+			pv.beginDrag(x, screenY(c.Position)+80, 1)
+			if pv.mode != dragPan {
+				fail("cuts: a press away from the lines does not move the view")
+			}
+			pv.endDrag(0, 0)
+			if pv.view.OY != oy {
+				fail("cuts: a click moved the view")
+			}
+
+			// A double click adds a cut where it is; a double click on a line does not.
+			y := 0.0
+			for _, cand := range []float64{900, 1800, 2600, 3300, 4200} {
+				if math.Abs(cand-c.Position) > 300 {
+					y = cand
+					break
+				}
+			}
+			pv.doubleClickAt(x, screenY(y), true)
+			cuts = w.session.Cuts()
+			if len(cuts) != before+1 {
+				fail("cuts: a double click gives %d cuts, want %d", len(cuts), before+1)
+			}
+			unchanged("adding a cut")
+			pv.doubleClickAt(x, screenY(cuts[0].Position), true)
+			if len(w.session.Cuts()) != before+1 {
+				fail("cuts: a double click on a line added a cut")
+			}
+			if len(w.pages.cutRows) != before+1 || !contains(texts(w.win), "Coupure 2") {
+				fail("cuts: the list shows %d rows, want %d", len(w.pages.cutRows), before+1)
+			}
+
+			// The keyboard moves and removes the selected cut.
+			var added app.CutView
+			for _, cv := range cuts {
+				if cv.Position != c.Position {
+					added = cv
+				}
+			}
+			w.selectCut(added.ID)
+			pv.marks.QueueDraw()
+			if !pv.keyPressed(gdk.KEY_Down, 0) {
+				fail("cuts: the arrow keys do nothing on a selected cut")
+			}
+			for _, cv := range w.session.Cuts() {
+				if cv.ID == added.ID && math.Abs(cv.Position-(added.Position+1)) > 1e-9 {
+					fail("cuts: an arrow moved the cut from %v to %v, want one unit", added.Position, cv.Position)
+				}
+			}
+			unchanged("a key")
+			if !pv.keyPressed(gdk.KEY_Delete, 0) || len(w.session.Cuts()) != before {
+				fail("cuts: Delete did not remove the selected cut")
+			}
+			if pv.selCut != 0 {
+				fail("cuts: the removed cut is still selected")
+			}
+			w.undo()
+			if len(w.session.Cuts()) != before+1 {
+				fail("cuts: undo of a removal does not bring the cut back")
+			}
+			w.undo() // the move by key
+			w.undo() // the added cut
+			if len(w.session.Cuts()) != before {
+				fail("cuts: %d cuts after undoing the double click, want %d", len(w.session.Cuts()), before)
+			}
+
+			// A click on the drawing selects the page; so does a row of the list.
+			pv.clickAt(x, screenY(c.Position-200))
+			if w.selPage != 1 || w.pages.list.SelectedRow() == nil || w.pages.list.SelectedRow().Index() != 0 {
+				fail("cuts: a click on page 1 selects page %d", w.selPage)
+			}
+			w.pages.list.SelectRow(w.pages.rows[1].row)
+			if w.selPage != 2 || pv.selPage != 2 {
+				fail("cuts: the second row of the list selects page %d (preview: %d)", w.selPage, pv.selPage)
+			}
+			pv.clickAt(x, screenY(c.Position)-3) // on the line: the cut, not the page
+			if w.selCut != c.ID || w.selPage != 0 {
+				fail("cuts: a click on the line selects cut %d and page %d", w.selCut, w.selPage)
+			}
+			w.selectCut(0)
+			return true
+		})
+
+		// 2h. The automatic cuts replace the cuts by a proposal that undoing brings back.
+		add(func() bool {
+			before := w.session.Cuts()
+			w.pv.showAll()
+			w.autoCuts()
+			plan := w.session.Plan()
+			if !plan.AllConforming() {
+				fail("automatic cuts leave a page that does not fit")
+			}
+			if w.session.Plan().ContentWidthMM != 200 {
+				fail("automatic cuts changed the width of the drawing")
+			}
+			for _, cv := range w.session.Cuts() {
+				if cv.Crossed != 0 {
+					fail("automatic cuts: cut %d crosses %d blocks although the document has voids", cv.Number, cv.Crossed)
+				}
+			}
+			if status := plain(w.status.Label()); !strings.Contains(status, "coupures proposées") {
+				fail("automatic cuts: the status says %q", status)
+			}
+			w.undo()
+			if got := w.session.Cuts(); len(got) != len(before) {
+				fail("undo of the automatic cuts gives %d cuts, want %d", len(got), len(before))
+			}
+			return true
+		})
+
 		// 3. The document's texts follow a change of language, with the decimal
 		// notation of the language.
 		add(func() bool {
 			w.setLanguageSetting("en")
 			shown := texts(w.win)
-			for _, want := range []string{"Size: 1280 × 5479 units", "At 100%: 338.7 × 1449.7 mm", "plan.svg: 1280 × 5479 units."} {
+			// The status bar still says what the automatic cuts did, now in English,
+			// with the plural of the language.
+			for _, want := range []string{"Size: 1280 × 5479 units", "At 100%: 338.7 × 1449.7 mm", "3 cuts proposed, for 4 pages (Ctrl+Z to go back)."} {
 				if !contains(shown, want) {
 					fail("document (en): %q is not shown; the window shows %q", want, shown)
 				}
@@ -337,6 +512,9 @@ func runScenario() {
 			w.setLanguageSetting("de")
 			if shown := texts(w.win); !contains(shown, "Bei 100 %: 338,7 × 1449,7 mm") {
 				fail("document (de): the size at 100%% is not shown with a comma; the window shows %q", shown)
+			}
+			if shown := texts(w.win); !contains(shown, "3 Schnitte vorgeschlagen, für 4 Seiten (Strg+Z zum Zurückgehen).") {
+				fail("document (de): the status of the automatic cuts is not in German; the window shows %q", shown)
 			}
 			return true
 		})

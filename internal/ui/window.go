@@ -85,6 +85,12 @@ type window struct {
 	renderGen int
 	busy      int
 
+	// The cuts as the lists and the preview show them, and what is selected: a
+	// cut or a page (0 for none).
+	cuts    []app.CutView
+	selCut  int
+	selPage int
+
 	// Widgets.
 	pv         *preview
 	panel      *settingsPanel
@@ -230,8 +236,17 @@ func (w *window) setStatus(key string, args ...any) {
 // language of the moment: the reason of a refusal follows a change of language.
 type lazyText func(tr *i18n.Translator) string
 
+// plural is the first value of a status text that has a singular and a plural
+// form (key.one, key.other): the count.
+type plural struct{ n int }
+
 // statusText is the status in the current language.
 func (w *window) statusText() string {
+	if len(w.statusArgs) > 0 {
+		if pl, ok := w.statusArgs[0].(plural); ok {
+			return w.texts.tr.N(w.statusKey, pl.n, w.statusArgs[1:]...)
+		}
+	}
 	args := make([]any, len(w.statusArgs))
 	for i, a := range w.statusArgs {
 		if f, ok := a.(lazyText); ok {
@@ -413,6 +428,7 @@ func (w *window) buildCentre() gtk.Widgetter {
 	w.pv = newPreview(&w.texts)
 	w.pv.pageLabel = func(n int) string { return w.texts.tr.T("pages.row.title", "n", n) }
 	w.pv.onNeedRender = func() { w.renderView(false) }
+	w.wireCuts()
 
 	empty := gtk.NewBox(gtk.OrientationVertical, 12)
 	empty.SetVAlign(gtk.AlignCenter)
@@ -462,9 +478,13 @@ func (w *window) refreshAll() {
 	if w.panel == nil || w.pages == nil || w.pv == nil {
 		return
 	}
+	w.cuts = w.session.Cuts()
+	w.pruneSelection()
 	w.panel.sync()
 	w.pages.update()
 	w.pv.setPlan(w.session.Plan())
+	w.pv.setCuts(w.cuts)
+	w.pv.setSelection(w.selCut, w.selPage)
 	w.updateHistory()
 }
 
@@ -615,6 +635,7 @@ func (w *window) adopt(o *app.Opened) {
 		w.engine.do(previous.Close)
 	}
 	d := o.Document
+	w.selCut, w.selPage = 0, 0
 	w.stack.SetVisibleChildName("preview")
 	w.pv.setDocument(d.Size.W, d.Size.H)
 	w.updateTitle()

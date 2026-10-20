@@ -63,6 +63,9 @@ var Registry = map[string]Spec{
 	"svg.more":            {Info, []string{"count"}},
 	"svg.coarse_blocks":   {Info, []string{"count"}},
 
+	// The application.
+	"app.no_document": {Failure, nil},
+
 	// Corrections.
 	"correction.none": {Info, nil},
 

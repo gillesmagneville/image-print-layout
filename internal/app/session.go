@@ -48,6 +48,7 @@ type Session struct {
 	doc     *Document
 	project model.Project
 	plan    *layout.Plan
+	voids   []layout.Interval // of the document, found when first needed
 
 	undo, redo []entry
 	drag       *entry
@@ -128,7 +129,7 @@ func (s *Session) Open(d *Document) error {
 			return err
 		}
 	}
-	s.doc, s.project, s.plan = d, p, plan
+	s.doc, s.project, s.plan, s.voids = d, p, plan, nil
 	s.undo, s.redo, s.drag, s.path = nil, nil, nil, ""
 	s.saved = s.signature()
 	s.generation++

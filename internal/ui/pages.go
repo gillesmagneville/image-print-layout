@@ -7,6 +7,7 @@ package ui
 import (
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 
+	"github.com/gillesmagneville/svg-print-layout/internal/app"
 	"github.com/gillesmagneville/svg-print-layout/internal/i18n"
 	"github.com/gillesmagneville/svg-print-layout/internal/layout"
 	"github.com/gillesmagneville/svg-print-layout/internal/model"
@@ -24,12 +25,37 @@ type pagesPanel struct {
 	scale   *gtk.Label
 
 	list   *gtk.ListBox
+	inner  *gtk.Box // what the scroll holds: the pages, then the cuts
 	scroll *gtk.ScrolledWindow
 	rows   []*pageRow
+
+	// The actions on the cuts, above the list.
+	toolbar *gtk.Box
+
+	// The cuts, under the pages.
+	cutsBox  *gtk.Box
+	cutsNone *gtk.Label
+	cutsList *gtk.ListBox
+	cutRows  []*cutRow
+	cuts     []app.CutView // what the rows show
+
+	// updating is set while the lists are being set from the session: their
+	// selection signals are the program's own then.
+	updating bool
 
 	proposals     *gtk.Box
 	proposalsHead *gtk.Box
 	proposalsList *gtk.Box
+}
+
+// cutRow is the row of one cut.
+type cutRow struct {
+	row     *gtk.ListBoxRow
+	title   *gtk.Label
+	where   *gtk.Label
+	warning *gtk.Label
+	remove  *gtk.Button
+	id      int
 }
 
 // pageRow is the row of one page.
@@ -68,14 +94,31 @@ func (w *window) buildPagesPanel() gtk.Widgetter {
 	p.summary.Append(p.width)
 	p.summary.Append(p.scale)
 
+	p.toolbar = p.buildToolbar()
+
 	p.list = gtk.NewListBox()
-	p.list.SetSelectionMode(gtk.SelectionNone)
+	p.list.SetSelectionMode(gtk.SelectionSingle)
 	p.list.AddCSSClass("boxed-list")
 	p.list.SetVAlign(gtk.AlignStart)
+	p.list.ConnectRowSelected(func(row *gtk.ListBoxRow) {
+		if p.updating {
+			return
+		}
+		n := 0
+		if row != nil {
+			n = row.Index() + 1
+		}
+		w.selectPageFromList(n)
+	})
+
+	p.cutsBox = p.buildCuts()
+	p.inner = gtk.NewBox(gtk.OrientationVertical, 14)
+	p.inner.Append(p.list)
+	p.inner.Append(p.cutsBox)
 	p.scroll = gtk.NewScrolledWindow()
 	p.scroll.SetPolicy(gtk.PolicyNever, gtk.PolicyAutomatic)
 	p.scroll.SetVExpand(true)
-	p.scroll.SetChild(p.list)
+	p.scroll.SetChild(p.inner)
 
 	proposalsTitle := gtk.NewLabel("")
 	proposalsTitle.AddCSSClass("heading")
@@ -93,6 +136,7 @@ func (w *window) buildPagesPanel() gtk.Widgetter {
 	column.Append(title)
 	column.Append(p.none)
 	column.Append(p.summary)
+	column.Append(p.toolbar)
 	column.Append(p.scroll)
 	column.Append(p.proposals)
 	column.SetSizeRequest(300, -1)
@@ -114,6 +158,7 @@ func (p *pagesPanel) update() {
 	has := plan != nil
 	p.none.SetVisible(!has)
 	p.summary.SetVisible(has)
+	p.toolbar.SetVisible(has)
 	p.scroll.SetVisible(has)
 	if !has {
 		p.proposals.SetVisible(false)
@@ -123,6 +168,8 @@ func (p *pagesPanel) update() {
 	p.width.SetLabel(tr.T("pages.width", "mm", p.num(plan.ContentWidthMM, 1), "cm", p.num(plan.ContentWidthMM/10, 2)))
 	p.scale.SetLabel(tr.T("pages.scale", "percent", p.num(plan.Percent, 2)))
 
+	p.updating = true
+	defer func() { p.updating = false }()
 	for len(p.rows) < len(plan.Pages) {
 		r := p.newRow()
 		p.rows = append(p.rows, r)
@@ -136,7 +183,9 @@ func (p *pagesPanel) update() {
 	for i, page := range plan.Pages {
 		p.fill(p.rows[i], plan, page)
 	}
+	p.updateCuts()
 	p.updateProposals(plan)
+	p.selectInLists()
 }
 
 func (p *pagesPanel) num(v float64, d int) string {
@@ -148,7 +197,6 @@ func (p *pagesPanel) newRow() *pageRow {
 		row: gtk.NewListBoxRow(), title: newLabel(), state: newLabel(),
 		size: newLabel(), scale: newLabel(), span: newLabel(), warns: gtk.NewBox(gtk.OrientationVertical, 2),
 	}
-	r.row.SetActivatable(false)
 	r.title.AddCSSClass("heading")
 	r.title.SetHExpand(true)
 	r.state.SetXAlign(1)

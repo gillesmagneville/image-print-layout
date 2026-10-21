@@ -10,19 +10,18 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync/atomic"
 
 	"github.com/diamondburned/gotk4/pkg/gio/v2"
 	"github.com/diamondburned/gotk4/pkg/glib/v2"
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/app"
-	"github.com/gillesmagneville/svg-print-layout/internal/diag"
-	"github.com/gillesmagneville/svg-print-layout/internal/engine"
-	"github.com/gillesmagneville/svg-print-layout/internal/i18n"
-	"github.com/gillesmagneville/svg-print-layout/internal/layout"
-	"github.com/gillesmagneville/svg-print-layout/internal/model"
+	"github.com/gillesmagneville/image-print-layout/internal/app"
+	"github.com/gillesmagneville/image-print-layout/internal/diag"
+	"github.com/gillesmagneville/image-print-layout/internal/engine"
+	"github.com/gillesmagneville/image-print-layout/internal/i18n"
+	"github.com/gillesmagneville/image-print-layout/internal/layout"
+	"github.com/gillesmagneville/image-print-layout/internal/model"
 )
 
 // Available tells whether this build has a graphical interface.
@@ -34,6 +33,7 @@ func Run(opts Options) int {
 	settingsPath, _ := app.SettingsPath()
 	settings := app.DefaultSettings()
 	if settingsPath != "" {
+		app.ImportLegacySettings(settingsPath)
 		// A damaged file gives the defaults: the program starts either way.
 		settings, _ = app.LoadSettings(settingsPath)
 	}
@@ -192,7 +192,7 @@ func newWindow(application *gtk.Application, opts Options, settings app.Settings
 func (w *window) show() {
 	w.win.Present()
 	if w.opts.Open != "" {
-		if strings.EqualFold(filepath.Ext(w.opts.Open), projectExt) {
+		if app.IsProjectPath(w.opts.Open) {
 			w.openProject(w.opts.Open)
 		} else {
 			w.openPath(w.opts.Open)
@@ -331,7 +331,7 @@ func (w *window) showMessage(heading, detail string) {
 	dialog.SetTransientFor(&w.win.Window)
 	dialog.SetModal(true)
 	dialog.SetResizable(false)
-	dialog.SetTitle("SVG Print Layout")
+	dialog.SetTitle("Image Print Layout")
 
 	column := gtk.NewBox(gtk.OrientationVertical, 12)
 	column.SetMarginTop(18)
@@ -568,7 +568,7 @@ func (w *window) showSheets(n int) {
 // ---- state -------------------------------------------------------------------------
 
 func (w *window) updateTitle() {
-	title := "SVG Print Layout"
+	title := "Image Print Layout"
 	if doc := w.session.Document(); doc != nil {
 		name := baseName(doc.Path)
 		if path := w.session.ProjectPath(); path != "" {

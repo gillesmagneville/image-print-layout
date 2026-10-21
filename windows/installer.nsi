@@ -1,6 +1,6 @@
 ﻿; SPDX-License-Identifier: GPL-3.0-only
 ;
-; installer.nsi - Installeur Windows de SVG Print Layout.
+; installer.nsi - Installeur Windows d'Image Print Layout.
 ;
 ; Appelé par build-windows.sh, qui copie ce fichier dans son dossier de travail
 ; avec deux fichiers générés, puis lance makensis dessus :
@@ -27,12 +27,12 @@ Unicode true
 
 !include "build-vars.nsh"
 
-Name "SVG Print Layout"
+Name "Image Print Layout"
 OutFile "${OUTPUT_FILE}"
-InstallDir "$PROGRAMFILES64\SVG Print Layout"
+InstallDir "$PROGRAMFILES64\Image Print Layout"
 RequestExecutionLevel admin
 SetCompressor /SOLID lzma
-BrandingText "SVG Print Layout ${APP_VERSION}"
+BrandingText "Image Print Layout ${APP_VERSION}"
 
 !include "MUI2.nsh"
 !include "FileFunc.nsh"  ; ${GetSize}, pour EstimatedSize
@@ -60,15 +60,15 @@ BrandingText "SVG Print Layout ${APP_VERSION}"
 !insertmacro MUI_LANGUAGE "German"
 
 ; Textes de l'installeur, dans chaque langue.
-LangString MSG_NEEDS_X64 ${LANG_ENGLISH} "SVG Print Layout requires 64-bit Windows (x64)."
-LangString MSG_NEEDS_X64 ${LANG_FRENCH}  "SVG Print Layout nécessite Windows 64 bits (x64)."
-LangString MSG_NEEDS_X64 ${LANG_SPANISH} "SVG Print Layout necesita Windows de 64 bits (x64)."
-LangString MSG_NEEDS_X64 ${LANG_GERMAN}  "SVG Print Layout benötigt 64-Bit-Windows (x64)."
+LangString MSG_NEEDS_X64 ${LANG_ENGLISH} "Image Print Layout requires 64-bit Windows (x64)."
+LangString MSG_NEEDS_X64 ${LANG_FRENCH}  "Image Print Layout nécessite Windows 64 bits (x64)."
+LangString MSG_NEEDS_X64 ${LANG_SPANISH} "Image Print Layout necesita Windows de 64 bits (x64)."
+LangString MSG_NEEDS_X64 ${LANG_GERMAN}  "Image Print Layout benötigt 64-Bit-Windows (x64)."
 
-LangString SEC_MAIN ${LANG_ENGLISH} "SVG Print Layout (required)"
-LangString SEC_MAIN ${LANG_FRENCH}  "SVG Print Layout (obligatoire)"
-LangString SEC_MAIN ${LANG_SPANISH} "SVG Print Layout (obligatorio)"
-LangString SEC_MAIN ${LANG_GERMAN}  "SVG Print Layout (erforderlich)"
+LangString SEC_MAIN ${LANG_ENGLISH} "Image Print Layout (required)"
+LangString SEC_MAIN ${LANG_FRENCH}  "Image Print Layout (obligatoire)"
+LangString SEC_MAIN ${LANG_SPANISH} "Image Print Layout (obligatorio)"
+LangString SEC_MAIN ${LANG_GERMAN}  "Image Print Layout (erforderlich)"
 
 LangString SEC_START_MENU ${LANG_ENGLISH} "Start Menu shortcut"
 LangString SEC_START_MENU ${LANG_FRENCH}  "Raccourci du menu Démarrer"
@@ -87,20 +87,23 @@ LangString LNK_UNINSTALL ${LANG_GERMAN}  "Deinstallieren"
 
 VIProductVersion "${APP_VERSION_NUMERIC}"
 !macro VersionKeys LANG DESCRIPTION
-    VIAddVersionKey /LANG=${LANG} "ProductName" "SVG Print Layout"
+    VIAddVersionKey /LANG=${LANG} "ProductName" "Image Print Layout"
     VIAddVersionKey /LANG=${LANG} "ProductVersion" "${APP_VERSION}"
     VIAddVersionKey /LANG=${LANG} "CompanyName" "Gilles MAGNEVILLE"
     VIAddVersionKey /LANG=${LANG} "LegalCopyright" "Gilles MAGNEVILLE - GNU GPL v3"
     VIAddVersionKey /LANG=${LANG} "FileDescription" "${DESCRIPTION}"
     VIAddVersionKey /LANG=${LANG} "FileVersion" "${APP_VERSION}"
 !macroend
-!insertmacro VersionKeys ${LANG_ENGLISH} "SVG Print Layout installer"
-!insertmacro VersionKeys ${LANG_FRENCH}  "Installeur de SVG Print Layout"
-!insertmacro VersionKeys ${LANG_SPANISH} "Instalador de SVG Print Layout"
-!insertmacro VersionKeys ${LANG_GERMAN}  "Installationsprogramm für SVG Print Layout"
+!insertmacro VersionKeys ${LANG_ENGLISH} "Image Print Layout installer"
+!insertmacro VersionKeys ${LANG_FRENCH}  "Installeur d'Image Print Layout"
+!insertmacro VersionKeys ${LANG_SPANISH} "Instalador de Image Print Layout"
+!insertmacro VersionKeys ${LANG_GERMAN}  "Installationsprogramm für Image Print Layout"
 
-!define UNINSTALL_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\SVGPrintLayout"
-!define APP_KEY "Software\SVGPrintLayout"
+!define UNINSTALL_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\ImagePrintLayout"
+!define APP_KEY "Software\ImagePrintLayout"
+; Le programme s'appelait « SVG Print Layout » jusqu'à la version 1.0.x : ses
+; clés de registre, que l'installeur retire (voir SecMain).
+!define OLD_APP_KEY "Software\SVGPrintLayout"
 
 Function .onInit
     ${IfNot} ${RunningX64}
@@ -114,7 +117,7 @@ Function .onInit
 
     ; Mise à jour : on propose le dossier de l'installation précédente, sauf si
     ; l'utilisateur a donné le sien (/D=...), qui est alors déjà dans $INSTDIR.
-    StrCmp $INSTDIR "$PROGRAMFILES64\SVG Print Layout" 0 instdir_done
+    StrCmp $INSTDIR "$PROGRAMFILES64\Image Print Layout" 0 instdir_done
     ReadRegStr $0 HKLM "${APP_KEY}" "InstallDir"
     StrCmp $0 "" instdir_done 0
     StrCpy $INSTDIR $0
@@ -129,6 +132,18 @@ FunctionEnd
 Section "$(SEC_MAIN)" SecMain
     SectionIn RO
 
+    ; Renommage : une installation de « SVG Print Layout » (jusqu'à la version
+    ; 1.0.x) est désinstallée par son propre désinstalleur, qui retire ses
+    ; fichiers, ses raccourcis et ses clés. Les réglages et les projets de
+    ; l'utilisateur ne sont pas dans son dossier : ils restent.
+    ReadRegStr $0 HKLM "${OLD_APP_KEY}" "InstallDir"
+    StrCmp $0 "" old_done 0
+    IfFileExists "$0\Uninstall.exe" 0 old_done
+        ExecWait '"$0\Uninstall.exe" /S _?=$0'
+        Delete "$0\Uninstall.exe"
+        RMDir "$0"
+    old_done:
+
     ; Mise à jour : on retire d'abord la version installée, pour qu'il ne reste
     ; aucun fichier de l'ancienne (une DLL périmée, par exemple).
     IfFileExists "$INSTDIR\Uninstall.exe" 0 fresh
@@ -140,11 +155,11 @@ Section "$(SEC_MAIN)" SecMain
     File /r "${STAGE_DIR}\*.*"
 
     WriteRegStr HKLM "${APP_KEY}" "InstallDir" "$INSTDIR"
-    WriteRegStr HKLM "${UNINSTALL_KEY}" "DisplayName" "SVG Print Layout"
+    WriteRegStr HKLM "${UNINSTALL_KEY}" "DisplayName" "Image Print Layout"
     WriteRegStr HKLM "${UNINSTALL_KEY}" "DisplayVersion" "${APP_VERSION}"
     WriteRegStr HKLM "${UNINSTALL_KEY}" "Publisher" "Gilles MAGNEVILLE"
-    WriteRegStr HKLM "${UNINSTALL_KEY}" "URLInfoAbout" "https://github.com/gillesmagneville/svg-print-layout"
-    WriteRegStr HKLM "${UNINSTALL_KEY}" "DisplayIcon" "$INSTDIR\bin\svgprintlayout.exe"
+    WriteRegStr HKLM "${UNINSTALL_KEY}" "URLInfoAbout" "https://github.com/gillesmagneville/image-print-layout"
+    WriteRegStr HKLM "${UNINSTALL_KEY}" "DisplayIcon" "$INSTDIR\bin\imageprintlayout.exe"
     WriteRegStr HKLM "${UNINSTALL_KEY}" "InstallLocation" "$INSTDIR"
     WriteRegStr HKLM "${UNINSTALL_KEY}" "UninstallString" '"$INSTDIR\Uninstall.exe"'
     WriteRegStr HKLM "${UNINSTALL_KEY}" "QuietUninstallString" '"$INSTDIR\Uninstall.exe" /S'
@@ -162,13 +177,13 @@ Section "$(SEC_MAIN)" SecMain
 SectionEnd
 
 Section "$(SEC_START_MENU)" SecStartMenu
-    CreateDirectory "$SMPROGRAMS\SVG Print Layout"
-    CreateShortCut "$SMPROGRAMS\SVG Print Layout\SVG Print Layout.lnk" "$INSTDIR\bin\svgprintlayout.exe"
-    CreateShortCut "$SMPROGRAMS\SVG Print Layout\$(LNK_UNINSTALL).lnk" "$INSTDIR\Uninstall.exe"
+    CreateDirectory "$SMPROGRAMS\Image Print Layout"
+    CreateShortCut "$SMPROGRAMS\Image Print Layout\Image Print Layout.lnk" "$INSTDIR\bin\imageprintlayout.exe"
+    CreateShortCut "$SMPROGRAMS\Image Print Layout\$(LNK_UNINSTALL).lnk" "$INSTDIR\Uninstall.exe"
 SectionEnd
 
 Section /o "$(SEC_DESKTOP)" SecDesktop
-    CreateShortCut "$DESKTOP\SVG Print Layout.lnk" "$INSTDIR\bin\svgprintlayout.exe"
+    CreateShortCut "$DESKTOP\Image Print Layout.lnk" "$INSTDIR\bin\imageprintlayout.exe"
 SectionEnd
 
 Section "Uninstall"
@@ -176,15 +191,15 @@ Section "Uninstall"
     Delete "$INSTDIR\Uninstall.exe"
     RMDir "$INSTDIR"
 
-    Delete "$SMPROGRAMS\SVG Print Layout\SVG Print Layout.lnk"
+    Delete "$SMPROGRAMS\Image Print Layout\Image Print Layout.lnk"
     ; Le raccourci du désinstalleur porte le nom de la langue de l'installation,
     ; peut-être pas celle de Windows aujourd'hui : on supprime les quatre.
-    Delete "$SMPROGRAMS\SVG Print Layout\Uninstall.lnk"
-    Delete "$SMPROGRAMS\SVG Print Layout\Désinstaller.lnk"
-    Delete "$SMPROGRAMS\SVG Print Layout\Desinstalar.lnk"
-    Delete "$SMPROGRAMS\SVG Print Layout\Deinstallieren.lnk"
-    RMDir "$SMPROGRAMS\SVG Print Layout"
-    Delete "$DESKTOP\SVG Print Layout.lnk"
+    Delete "$SMPROGRAMS\Image Print Layout\Uninstall.lnk"
+    Delete "$SMPROGRAMS\Image Print Layout\Désinstaller.lnk"
+    Delete "$SMPROGRAMS\Image Print Layout\Desinstalar.lnk"
+    Delete "$SMPROGRAMS\Image Print Layout\Deinstallieren.lnk"
+    RMDir "$SMPROGRAMS\Image Print Layout"
+    Delete "$DESKTOP\Image Print Layout.lnk"
 
     DeleteRegKey HKLM "${UNINSTALL_KEY}"
     DeleteRegKey HKLM "${APP_KEY}"

@@ -25,8 +25,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/testsvg"
-	"github.com/gillesmagneville/svg-print-layout/internal/units"
+	"github.com/gillesmagneville/image-print-layout/internal/testsvg"
+	"github.com/gillesmagneville/image-print-layout/internal/units"
 )
 
 // The acceptance scenario of the specification: A4 portrait, margins

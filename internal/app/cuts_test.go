@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/layout"
-	"github.com/gillesmagneville/svg-print-layout/internal/model"
-	"github.com/gillesmagneville/svg-print-layout/internal/testsvg"
+	"github.com/gillesmagneville/image-print-layout/internal/layout"
+	"github.com/gillesmagneville/image-print-layout/internal/model"
+	"github.com/gillesmagneville/image-print-layout/internal/testsvg"
 )
 
 // blockSession is a session on a document with blocks: with the fake engine,

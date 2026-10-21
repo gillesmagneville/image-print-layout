@@ -93,10 +93,10 @@ jobs:
             poppler-utils fonts-ibm-plex adwaita-icon-theme xvfb xauth imagemagick
       - run: go vet ./...
       - name: Tests of the window and of the program, on a virtual screen
-        run: xvfb-run -a -s "-screen 0 1300x820x24" go test -count=1 -v ./internal/ui ./cmd/svgprintlayout
+        run: xvfb-run -a -s "-screen 0 1300x820x24" go test -count=1 -v ./internal/ui ./cmd/imageprintlayout
       - name: Build, then open the window in each language
         run: |
-          go build -o "$RUNNER_TEMP/svgprintlayout" ./cmd/svgprintlayout
+          go build -o "$RUNNER_TEMP/imageprintlayout" ./cmd/imageprintlayout
           mkdir screenshots
           cat > "$RUNNER_TEMP/sample.svg" <<'SVG'
           <?xml version="1.0" encoding="UTF-8"?>
@@ -110,8 +110,8 @@ jobs:
           </svg>
           SVG
           for lang in fr en es de; do
-            .github/scripts/screenshot.sh "$RUNNER_TEMP/svgprintlayout" "$lang" "screenshots/$lang-empty.png"
-            .github/scripts/screenshot.sh "$RUNNER_TEMP/svgprintlayout" "$lang" "screenshots/$lang-document.png" "$RUNNER_TEMP/sample.svg"
+            .github/scripts/screenshot.sh "$RUNNER_TEMP/imageprintlayout" "$lang" "screenshots/$lang-empty.png"
+            .github/scripts/screenshot.sh "$RUNNER_TEMP/imageprintlayout" "$lang" "screenshots/$lang-document.png" "$RUNNER_TEMP/sample.svg"
           done
       - uses: actions/upload-artifact@v4
         with:
@@ -148,20 +148,20 @@ jobs:
       - name: Install the .deb, run it, remove it
         run: |
           sudo apt-get install -y ./*.deb
-          svgprintlayout -version
-          svgprintlayout -selftest
-          man -w svgprintlayout
-          for lang in fr es de; do test -f "/usr/share/man/$lang/man1/svgprintlayout.1.gz"; done
-          .github/scripts/screenshot.sh /usr/bin/svgprintlayout en "$RUNNER_TEMP/installed.png"
-          sudo apt-get remove -y svgprintlayout
-          test ! -e /usr/bin/svgprintlayout
+          imageprintlayout -version
+          imageprintlayout -selftest
+          man -w imageprintlayout
+          for lang in fr es de; do test -f "/usr/share/man/$lang/man1/imageprintlayout.1.gz"; done
+          .github/scripts/screenshot.sh /usr/bin/imageprintlayout en "$RUNNER_TEMP/installed.png"
+          sudo apt-get remove -y imageprintlayout
+          test ! -e /usr/bin/imageprintlayout
       - name: Run the program from the .rpm
         run: |
           rpm -qpi ./*.rpm
           rpm -qpl ./*.rpm
           mkdir "$RUNNER_TEMP/rpm"
           rpm2cpio ./*.rpm | (cd "$RUNNER_TEMP/rpm" && cpio -idm)
-          "$RUNNER_TEMP/rpm/usr/bin/svgprintlayout" -selftest
+          "$RUNNER_TEMP/rpm/usr/bin/imageprintlayout" -selftest
       - name: Check that building twice gives the same files
         run: |
           sha256sum ./*.deb ./*.rpm > "$RUNNER_TEMP/first.sha"

@@ -1,15 +1,15 @@
 .\" SPDX-License-Identifier: GPL-3.0-only
-.TH SVGPRINTLAYOUT 1 "2026-10-21" "svg-print-layout 1.0.0" "Benutzerbefehle"
+.TH IMAGEPRINTLAYOUT 1 "2026-10-21" "imageprintlayout 1.1.0" "Benutzerbefehle"
 .SH NAME
-svgprintlayout \- verteilt eine SVG\-Zeichnung auf mehrere Blätter und exportiert sie als PDF
+imageprintlayout \- verteilt eine SVG\-Zeichnung auf mehrere Blätter und exportiert sie als PDF
 .SH SYNOPSE
-.B svgprintlayout
-[\fB\-lang\fR \fISprache\fR] [\fIDatei.svg\fR | \fIProjekt.svgpl\fR]
+.B imageprintlayout
+[\fB\-lang\fR \fISprache\fR] [\fIDatei.svg\fR | \fIProjekt.imgpl\fR]
 .br
-.B svgprintlayout
+.B imageprintlayout
 [\fB\-version\fR | \fB\-selftest\fR]
 .SH BESCHREIBUNG
-.B svgprintlayout
+.B imageprintlayout
 bereitet ein SVG\-Vektordokument beliebiger Größe für den Druck auf mehreren
 Blättern Standardpapier vor: Man wählt Format, Ränder und Breite der
 Zeichnung, setzt die Schnitte mit der Maus und exportiert ein einziges
@@ -20,7 +20,7 @@ Das Fenster hat drei Bereiche: die Einstellungen links, die interaktive
 Vorschau in der Mitte und die Seitenliste rechts. Die Schnitte werden mit der
 Maus gesetzt, verschoben und gelöscht; der Hintergrund des Dokuments und der
 Seite wird mit sofortiger Vorschau gewählt; jedes Blatt lässt sich so ansehen,
-wie es exportiert wird. Ein Layout wird in einer Projektdatei (\fI.svgpl\fR)
+wie es exportiert wird. Ein Layout wird in einer Projektdatei (\fI.imgpl\fR)
 gespeichert und später wieder geöffnet: Sie merkt sich Papier, Ränder, Maßstab,
 Hintergrund und Schnitte, und die ursprüngliche SVG\-Datei wird nie verändert.
 Der Export liest das geschriebene PDF wieder ein, bevor er es dort ablegt, wo
@@ -53,15 +53,15 @@ Legt diese Datei an, sobald das Fenster angezeigt und das Dokument gezeichnet
 ist. Für Tests und Dokumentation gedacht.
 .SH DATEIEN
 .TP
-.I Projekt.svgpl
+.I Projekt.imgpl
 Ein Layout-Projekt: die Einstellungen und der Ort des SVG\-Dokuments, nicht das Dokument selbst.
 .TP
-.I ~/.config/svgprintlayout/settings.json
+.I ~/.config/imageprintlayout/settings.json
 Die Einstellungen der Benutzerin oder des Benutzers (die Sprache der
 Oberfläche). Unter Windows:
-.IR %AppData%\esvgprintlayout\esettings.json .
+.IR %AppData%\eimageprintlayout\esettings.json .
 .SH SIEHE AUCH
-https://github.com/gillesmagneville/svg-print-layout
+https://github.com/gillesmagneville/image-print-layout
 .SH AUTOR
 Entwickelt von Gilles MAGNEVILLE, entworfen mit Hilfe von claude.ai.
 Verbreitet unter der GNU GPL Version 3.

@@ -1,4 +1,4 @@
-module github.com/gillesmagneville/svg-print-layout
+module github.com/gillesmagneville/image-print-layout
 
 go 1.24
 

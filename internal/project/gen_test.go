@@ -7,13 +7,13 @@ import (
 	"testing"
 )
 
-// TestWriteReference regenerates testdata/reference.svgpl when UPDATE_REFERENCE
+// TestWriteReference regenerates testdata/reference.imgpl when UPDATE_REFERENCE
 // is set. It is how the file is made; the test above compares against it.
 func TestWriteReference(t *testing.T) {
 	if os.Getenv("UPDATE_REFERENCE") == "" {
-		t.Skip("set UPDATE_REFERENCE=1 to rewrite testdata/reference.svgpl")
+		t.Skip("set UPDATE_REFERENCE=1 to rewrite testdata/reference.imgpl")
 	}
-	if err := os.WriteFile("testdata/reference.svgpl", mustEncode(t, referenceProject()), 0o644); err != nil {
+	if err := os.WriteFile("testdata/reference.imgpl", mustEncode(t, referenceProject()), 0o644); err != nil {
 		t.Fatal(err)
 	}
 }

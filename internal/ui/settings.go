@@ -11,11 +11,11 @@ import (
 
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/app"
-	"github.com/gillesmagneville/svg-print-layout/internal/i18n"
-	"github.com/gillesmagneville/svg-print-layout/internal/layout"
-	"github.com/gillesmagneville/svg-print-layout/internal/model"
-	"github.com/gillesmagneville/svg-print-layout/internal/units"
+	"github.com/gillesmagneville/image-print-layout/internal/app"
+	"github.com/gillesmagneville/image-print-layout/internal/i18n"
+	"github.com/gillesmagneville/image-print-layout/internal/layout"
+	"github.com/gillesmagneville/image-print-layout/internal/model"
+	"github.com/gillesmagneville/image-print-layout/internal/units"
 )
 
 // settingsPanel is the left panel: one folding section after another, in the

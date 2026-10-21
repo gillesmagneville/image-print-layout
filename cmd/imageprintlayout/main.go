@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
-// Command svgprintlayout is the entry point of SVG Print Layout.
+// Command imageprintlayout is the entry point of Image Print Layout.
 //
 // Without a mode flag it opens the window (internal/ui). -version reports the
 // version and -selftest checks the rendering engine; both write to the
@@ -13,13 +13,13 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/i18n"
-	"github.com/gillesmagneville/svg-print-layout/internal/ui"
+	"github.com/gillesmagneville/image-print-layout/internal/i18n"
+	"github.com/gillesmagneville/image-print-layout/internal/ui"
 )
 
 // version is overridden at build time:
 //
-//	go build -ldflags "-X main.version=v0.1.0" ./cmd/svgprintlayout
+//	go build -ldflags "-X main.version=v0.1.0" ./cmd/imageprintlayout
 var version = "dev"
 
 func main() {
@@ -73,7 +73,7 @@ func main() {
 // the version, the platform and, when the engine is built in, the versions of
 // the libraries it runs with.
 func versionLine() string {
-	line := fmt.Sprintf("svg-print-layout %s (%s/%s)", version, runtime.GOOS, runtime.GOARCH)
+	line := fmt.Sprintf("imageprintlayout %s (%s/%s)", version, runtime.GOOS, runtime.GOARCH)
 	if libs := libraries(); libs != "" {
 		line += ", " + libs
 	}

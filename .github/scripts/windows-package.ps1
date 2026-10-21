@@ -31,7 +31,7 @@ $ErrorActionPreference = "Continue"
 
 $log = Join-Path $env:RUNNER_TEMP "$Step.log"
 $cleanPath = "$env:SystemRoot\System32;$env:SystemRoot"
-$uninstallKey = "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\SVGPrintLayout"
+$uninstallKey = "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\ImagePrintLayout"
 
 function Assert-Success([string]$What) {
     if ($LASTEXITCODE -ne 0) { throw "$What a échoué (code $LASTEXITCODE)" }
@@ -79,8 +79,8 @@ function Invoke-Build {
     Write-Host "ok  VERSION : $before -> $expected"
 
     Write-Host "--- paquets"
-    Get-ChildItem -File -Filter "svgprintlayout_*" | ForEach-Object { Write-Host ("{0,12:N0} octets  {1}" -f $_.Length, $_.Name) }
-    foreach ($name in "svgprintlayout_${expected}_windows-portable.zip", "svgprintlayout_${expected}_windows-setup.exe") {
+    Get-ChildItem -File -Filter "imageprintlayout_*" | ForEach-Object { Write-Host ("{0,12:N0} octets  {1}" -f $_.Length, $_.Name) }
+    foreach ($name in "imageprintlayout_${expected}_windows-portable.zip", "imageprintlayout_${expected}_windows-setup.exe") {
         if (-not (Test-Path $name)) { throw "$name manque à la racine du dépôt" }
     }
 }
@@ -158,15 +158,15 @@ function Test-Window([string]$Exe, [string]$Lang, [string]$Name) {
 function Test-Clean {
     .\build-windows.ps1 -Clean
     Assert-Success "build-windows.ps1 -Clean"
-    $left = @(Get-ChildItem -File -Filter "svgprintlayout_*_windows-*")
+    $left = @(Get-ChildItem -File -Filter "imageprintlayout_*_windows-*")
     if ($left.Count -gt 0) { throw "-Clean a laissé : $($left.Name -join ', ')" }
-    if (Test-Path "$env:LOCALAPPDATA\svgprintlayout-build") { throw "-Clean a laissé le dossier de travail" }
+    if (Test-Path "$env:LOCALAPPDATA\imageprintlayout-build") { throw "-Clean a laissé le dossier de travail" }
 }
 
 function Test-Portable {
     $version = Get-Version
     $dest = Join-Path $env:RUNNER_TEMP "portable"
-    Expand-Archive "svgprintlayout_${version}_windows-portable.zip" -DestinationPath $dest
+    Expand-Archive "imageprintlayout_${version}_windows-portable.zip" -DestinationPath $dest
     $root = (Get-ChildItem $dest -Directory | Select-Object -First 1).FullName
     Write-Host "--- contenu de $root"
     Get-ChildItem $root | ForEach-Object { Write-Host $_.Name }
@@ -175,23 +175,23 @@ function Test-Portable {
     Get-Content "$root\lib\gdk-pixbuf-2.0\2.10.0\loaders.cache" -ErrorAction SilentlyContinue | Select-Object -First 12 | ForEach-Object { Write-Host $_ }
     Write-Host "--- COMPOSANTS.txt"
     Get-Content "$root\share\licenses\COMPOSANTS.txt" | Select-Object -First 40 | ForEach-Object { Write-Host $_ }
-    foreach ($file in "bin\svgprintlayout.exe", "bin\svgprintlayout-console.exe", "share\glib-2.0\schemas\gschemas.compiled", "share\icons\Adwaita\index.theme", "share\icons\hicolor\index.theme") {
+    foreach ($file in "bin\imageprintlayout.exe", "bin\imageprintlayout-console.exe", "share\glib-2.0\schemas\gschemas.compiled", "share\icons\Adwaita\index.theme", "share\icons\hicolor\index.theme") {
         if (-not (Test-Path "$root\$file")) { throw "$file manque dans la version portable" }
     }
     Write-Host ("--- traductions de GTK : {0}" -f ((Get-ChildItem "$root\share\locale" -Recurse -Filter *.mo | ForEach-Object { $_.FullName.Substring($root.Length + 1) }) -join ", "))
     $env:Path = $cleanPath
-    $versionLine = (& "$root\bin\svgprintlayout-console.exe" -version) -join " "
-    Assert-Success "svgprintlayout-console.exe -version"
+    $versionLine = (& "$root\bin\imageprintlayout-console.exe" -version) -join " "
+    Assert-Success "imageprintlayout-console.exe -version"
     Write-Host $versionLine
     # Les versions des bibliothèques doivent ressembler à des versions (la lecture
     # de celle de librsvg a donné des nombres absurdes sous Windows).
     if ($versionLine -notmatch 'librsvg [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}, cairo [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$') {
         throw "la ligne de version est invalide : $versionLine"
     }
-    & "$root\bin\svgprintlayout-console.exe" -selftest
-    Assert-Success "svgprintlayout-console.exe -selftest"
+    & "$root\bin\imageprintlayout-console.exe" -selftest
+    Assert-Success "imageprintlayout-console.exe -selftest"
     foreach ($lang in "fr", "en", "es", "de") {
-        Test-Window "$root\bin\svgprintlayout.exe" $lang "portable-$lang"
+        Test-Window "$root\bin\imageprintlayout.exe" $lang "portable-$lang"
     }
 }
 
@@ -212,18 +212,18 @@ function Test-Acceptance {
 }
 
 function Test-Installer {
-    $setup = Join-Path (Get-Location) "svgprintlayout_$(Get-Version)_windows-setup.exe"
+    $setup = Join-Path (Get-Location) "imageprintlayout_$(Get-Version)_windows-setup.exe"
     $target = Join-Path $env:RUNNER_TEMP "installed"
     Start-Process -FilePath $setup -ArgumentList "/S", "/D=$target" -Wait
-    if (-not (Test-Path "$target\bin\svgprintlayout.exe")) { throw "l'installeur n'a pas installé le programme" }
+    if (-not (Test-Path "$target\bin\imageprintlayout.exe")) { throw "l'installeur n'a pas installé le programme" }
     if (-not (Test-Path $uninstallKey)) { throw "l'entrée de désinstallation manque" }
-    if (-not (Test-Path "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\SVG Print Layout\SVG Print Layout.lnk")) {
+    if (-not (Test-Path "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Image Print Layout\Image Print Layout.lnk")) {
         throw "le raccourci du menu Démarrer manque"
     }
     $env:Path = $cleanPath
-    & "$target\bin\svgprintlayout-console.exe" -selftest
-    Assert-Success "svgprintlayout-console.exe -selftest (programme installé)"
-    Test-Window "$target\bin\svgprintlayout.exe" "en" "installed-en"
+    & "$target\bin\imageprintlayout-console.exe" -selftest
+    Assert-Success "imageprintlayout-console.exe -selftest (programme installé)"
+    Test-Window "$target\bin\imageprintlayout.exe" "en" "installed-en"
     # _?= fait tourner le désinstalleur sur place et attendre, au lieu de se
     # copier dans un dossier temporaire et de rendre la main aussitôt.
     Start-Process -FilePath "$target\Uninstall.exe" -ArgumentList "/S", "_?=$target" -Wait
@@ -238,8 +238,8 @@ function Invoke-Release {
     Assert-Success "build-windows.ps1 -NoVersionChange -Oui"
     $after = Get-Version
     if ($after -ne $version) { throw "VERSION vaut « $after » après -NoVersionChange, attendu « $version »" }
-    Get-ChildItem -File -Filter "svgprintlayout_*" | ForEach-Object { Write-Host ("{0,12:N0} octets  {1}" -f $_.Length, $_.Name) }
-    foreach ($name in "svgprintlayout_${version}_windows-portable.zip", "svgprintlayout_${version}_windows-setup.exe") {
+    Get-ChildItem -File -Filter "imageprintlayout_*" | ForEach-Object { Write-Host ("{0,12:N0} octets  {1}" -f $_.Length, $_.Name) }
+    foreach ($name in "imageprintlayout_${version}_windows-portable.zip", "imageprintlayout_${version}_windows-setup.exe") {
         if (-not (Test-Path $name)) { throw "$name manque à la racine du dépôt" }
     }
 }

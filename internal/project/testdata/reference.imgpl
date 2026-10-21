@@ -1,0 +1,62 @@
+{
+  "format": "imageprintlayout-project",
+  "version": 1,
+  "source": {
+    "path": "schemas/mini-cad.svg",
+    "absolutePath": "/home/lea/schemas/mini-cad.svg",
+    "sha256": "abababababababababababababababababababababababababababababababab",
+    "width": 1280,
+    "height": 5479
+  },
+  "paper": {
+    "format": "A4",
+    "orientation": "portrait",
+    "customMm": null
+  },
+  "marginsMm": {
+    "top": 10,
+    "bottom": 10,
+    "left": 5,
+    "right": 5
+  },
+  "scale": {
+    "mode": "width",
+    "widthMm": 200,
+    "percent": 0,
+    "portionUnits": 0
+  },
+  "placement": {
+    "horizontal": "center",
+    "vertical": "top",
+    "offsetXMm": 0,
+    "offsetYMm": 0
+  },
+  "background": {
+    "document": "whiten",
+    "element": "rect4521",
+    "page": "white"
+  },
+  "cuts": [
+    {
+      "axis": "y",
+      "position": 1380.5
+    },
+    {
+      "axis": "y",
+      "position": 2760
+    },
+    {
+      "axis": "y",
+      "position": 4120.25
+    }
+  ],
+  "pageOverrides": [
+    {
+      "page": 2,
+      "vertical": "center"
+    }
+  ],
+  "export": {
+    "outputPath": "mini-cad.pdf"
+  }
+}

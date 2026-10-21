@@ -6,7 +6,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/model"
+	"github.com/gillesmagneville/image-print-layout/internal/model"
 )
 
 // On the Mini-CAD equivalent, the proposal makes the fewest pages the usable

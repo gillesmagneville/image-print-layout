@@ -18,7 +18,7 @@ var otherLanguages = []string{"fr", "es", "de"}
 // The menu entry (.desktop): each translatable key has a line per language.
 func TestDesktopEntryIsTranslated(t *testing.T) {
 	root := repoRoot(t)
-	desktop := read(t, filepath.Join(root, "metainfo", "io.github.gillesmagneville.svgprintlayout.desktop"))
+	desktop := read(t, filepath.Join(root, "metainfo", "io.github.gillesmagneville.imageprintlayout.desktop"))
 	for _, key := range []string{"GenericName", "Comment", "Keywords"} {
 		if !strings.Contains(desktop, "\n"+key+"=") {
 			t.Errorf("the .desktop file has no %s in English (the fallback)", key)
@@ -36,7 +36,7 @@ func TestDesktopEntryIsTranslated(t *testing.T) {
 // each language as in English.
 func TestAppStreamIsTranslated(t *testing.T) {
 	root := repoRoot(t)
-	xml := read(t, filepath.Join(root, "metainfo", "io.github.gillesmagneville.svgprintlayout.metainfo.xml"))
+	xml := read(t, filepath.Join(root, "metainfo", "io.github.gillesmagneville.imageprintlayout.metainfo.xml"))
 
 	count := func(element, lang string) int {
 		var re *regexp.Regexp
@@ -63,11 +63,11 @@ func TestAppStreamIsTranslated(t *testing.T) {
 // Every language has its manual page, and it is not the English one copied.
 func TestManualPagesExistInEveryLanguage(t *testing.T) {
 	root := repoRoot(t)
-	english := read(t, filepath.Join(root, "docs", "svgprintlayout.1"))
+	english := read(t, filepath.Join(root, "docs", "imageprintlayout.1"))
 	for _, lang := range otherLanguages {
-		page := read(t, filepath.Join(root, "docs", lang, "svgprintlayout.1"))
+		page := read(t, filepath.Join(root, "docs", lang, "imageprintlayout.1"))
 		if page == english {
-			t.Errorf("docs/%s/svgprintlayout.1 is the English page", lang)
+			t.Errorf("docs/%s/imageprintlayout.1 is the English page", lang)
 		}
 	}
 }

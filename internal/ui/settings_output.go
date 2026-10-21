@@ -7,9 +7,9 @@ package ui
 import (
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/export"
-	"github.com/gillesmagneville/svg-print-layout/internal/i18n"
-	"github.com/gillesmagneville/svg-print-layout/internal/model"
+	"github.com/gillesmagneville/image-print-layout/internal/export"
+	"github.com/gillesmagneville/image-print-layout/internal/i18n"
+	"github.com/gillesmagneville/image-print-layout/internal/model"
 )
 
 // ---- background ---------------------------------------------------------------------

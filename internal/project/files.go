@@ -13,8 +13,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/diag"
-	"github.com/gillesmagneville/svg-print-layout/internal/model"
+	"github.com/gillesmagneville/image-print-layout/internal/diag"
+	"github.com/gillesmagneville/image-print-layout/internal/model"
 )
 
 // HashFile is the SHA-256 of a file, in hexadecimal. The file is only read.
@@ -86,7 +86,7 @@ func Save(path string, p model.Project) error {
 		return err
 	}
 	dir := filepath.Dir(path)
-	tmp, err := os.CreateTemp(dir, ".svgpl-*.tmp")
+	tmp, err := os.CreateTemp(dir, ".imgpl-*.tmp")
 	if err != nil {
 		return fmt.Errorf("project: cannot write %s: %w", path, err)
 	}

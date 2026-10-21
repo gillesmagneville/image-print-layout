@@ -15,13 +15,13 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/app"
-	"github.com/gillesmagneville/svg-print-layout/internal/engine"
-	"github.com/gillesmagneville/svg-print-layout/internal/export"
-	"github.com/gillesmagneville/svg-print-layout/internal/layout"
-	"github.com/gillesmagneville/svg-print-layout/internal/model"
-	"github.com/gillesmagneville/svg-print-layout/internal/testsvg"
-	"github.com/gillesmagneville/svg-print-layout/internal/units"
+	"github.com/gillesmagneville/image-print-layout/internal/app"
+	"github.com/gillesmagneville/image-print-layout/internal/engine"
+	"github.com/gillesmagneville/image-print-layout/internal/export"
+	"github.com/gillesmagneville/image-print-layout/internal/layout"
+	"github.com/gillesmagneville/image-print-layout/internal/model"
+	"github.com/gillesmagneville/image-print-layout/internal/testsvg"
+	"github.com/gillesmagneville/image-print-layout/internal/units"
 )
 
 // The acceptance scenario: the Mini-CAD, A4 portrait, a drawing 200 mm wide,

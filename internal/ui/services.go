@@ -5,8 +5,8 @@
 package ui
 
 import (
-	"github.com/gillesmagneville/svg-print-layout/internal/app"
-	"github.com/gillesmagneville/svg-print-layout/internal/engine"
+	"github.com/gillesmagneville/image-print-layout/internal/app"
+	"github.com/gillesmagneville/image-print-layout/internal/engine"
 )
 
 // defaultServices are the rendering engine of the program and the font system

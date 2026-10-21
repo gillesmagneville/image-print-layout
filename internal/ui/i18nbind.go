@@ -2,7 +2,7 @@
 
 package ui
 
-import "github.com/gillesmagneville/svg-print-layout/internal/i18n"
+import "github.com/gillesmagneville/image-print-layout/internal/i18n"
 
 // translations is the list of the texts of the window. Each widget that shows
 // a text registers a function that sets it; changing the language runs them

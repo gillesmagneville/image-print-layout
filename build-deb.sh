@@ -2,18 +2,18 @@
 # SPDX-License-Identifier: GPL-3.0-only
 set -euo pipefail
 
-# Construit le paquet Debian (.deb) de SVG Print Layout, pour Debian, Ubuntu et
+# Construit le paquet Debian (.deb) d'Image Print Layout, pour Debian, Ubuntu et
 # leurs dérivés. Mêmes options et même gestion du fichier VERSION que le
 # build-deb.sh de Planche-Contact. Le programme est compilé en Go (cgo,
 # librsvg, cairo) et empaqueté avec dpkg-deb : ni fpm, ni environnement
 # Python embarqué.
 
 # ====================== CONFIGURATION ======================
-PACKAGE_NAME="svgprintlayout"
-APP_ID="io.github.gillesmagneville.svgprintlayout"
+PACKAGE_NAME="imageprintlayout"
+APP_ID="io.github.gillesmagneville.imageprintlayout"
 MAINTAINER="Gilles MAGNEVILLE <gilles@magneville.fr>"
 DESCRIPTION="Met en page un dessin SVG sur plusieurs feuilles et l'exporte en PDF"
-URL="https://github.com/gillesmagneville/svg-print-layout"
+URL="https://github.com/gillesmagneville/image-print-layout"
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORK_DIR="$HOME/deb-build"
 BUILD_DIR="$WORK_DIR/build"
@@ -24,7 +24,7 @@ show_help() {
     cat << EOF
 Usage: ./build-deb.sh [options]
 
-Script de construction du paquet Debian pour SVG Print Layout.
+Script de construction du paquet Debian pour Image Print Layout.
 
 OPTIONS :
   --major               Incrémente le numéro majeur   (ex: 1.2.3 → 2.0.0)
@@ -40,7 +40,7 @@ Le fichier VERSION n'est mis à jour qu'une fois le paquet construit. Une
 version d'avant-publication (0.1.0-dev) est publiée par --minor ou --patch
 (→ 0.1.0) ; --major donne 1.0.0.
 
-Le paquet est créé à la racine du dépôt : svgprintlayout_<version>_<arch>.deb
+Le paquet est créé à la racine du dépôt : imageprintlayout_<version>_<arch>.deb
 
 Prérequis (Debian, Ubuntu) :
   sudo apt install golang-go build-essential pkg-config librsvg2-dev libfontconfig-dev libgtk-4-dev libgirepository1.0-dev dpkg-dev
@@ -180,7 +180,7 @@ fi
 # Numéro de version Debian. Une version d'avant-publication (0.1.0-dev) doit se
 # classer avant la version finale (0.1.0) : c'est le rôle du « ~ ». Pas de
 # révision Debian (« -1 ») : comme chez Planche-Contact et LinuxDoctor, le nom
-# du fichier est svgprintlayout_<version>_<arch>.deb ; le « -1 » reste celui du
+# du fichier est imageprintlayout_<version>_<arch>.deb ; le « -1 » reste celui du
 # .rpm (release).
 VERSION_BASE="${NEW_VERSION%%-*}"
 PRERELEASE=""
@@ -236,7 +236,7 @@ mkdir -p "$BUILD_DIR"
 # VCS rendent le binaire indépendant du dossier et de l'heure de la
 # construction ; -buildmode=pie permet à Linux de placer le programme à une
 # adresse aléatoire (durcissement). Le numéro de version du paquet est inscrit
-# dans le programme (svgprintlayout -version), même si le fichier VERSION du
+# dans le programme (imageprintlayout -version), même si le fichier VERSION du
 # projet n'est mis à jour qu'après un build réussi (voir plus bas).
 # gotk4 (la liaison de GTK pour Go) déclare « free » autrement que <stdlib.h> :
 # gcc le signale trois fois à chaque compilation (-Wbuiltin-declaration-mismatch).
@@ -248,7 +248,7 @@ echo "    La première compilation de GTK (gotk4) dure plusieurs minutes et n'af
 echo "    les suivantes sont presque instantanées (cache de Go)."
 BINARY="$WORK_DIR/$PACKAGE_NAME"
 ( cd "$PROJECT_DIR" && CGO_ENABLED=1 CGO_CFLAGS="${CGO_CFLAGS:--O2 -g} -Wno-builtin-declaration-mismatch" go build -trimpath -buildvcs=false -buildmode=pie \
-    -ldflags "-s -w -buildid= -X main.version=$NEW_VERSION" -o "$BINARY" ./cmd/svgprintlayout )
+    -ldflags "-s -w -buildid= -X main.version=$NEW_VERSION" -o "$BINARY" ./cmd/imageprintlayout )
 
 echo ">>> Création de l'arborescence..."
 install -D -m 0755 "$BINARY" "$BUILD_DIR/usr/bin/$PACKAGE_NAME"
@@ -256,15 +256,15 @@ install -D -m 0644 "$PROJECT_DIR/metainfo/$APP_ID.desktop" "$BUILD_DIR/usr/share
 # Métadonnées AppStream : elles permettent aux logithèques (GNOME Logiciels,
 # App Center) d'afficher le paquet avec sa description complète.
 install -D -m 0644 "$PROJECT_DIR/metainfo/$APP_ID.metainfo.xml" "$BUILD_DIR/usr/share/metainfo/$APP_ID.metainfo.xml"
-install -D -m 0644 "$PROJECT_DIR/icons/svgprintlayout.svg" "$BUILD_DIR/usr/share/icons/hicolor/scalable/apps/svgprintlayout.svg"
-install -D -m 0644 "$PROJECT_DIR/icons/svgprintlayout-256.png" "$BUILD_DIR/usr/share/icons/hicolor/256x256/apps/svgprintlayout.png"
+install -D -m 0644 "$PROJECT_DIR/icons/imageprintlayout.svg" "$BUILD_DIR/usr/share/icons/hicolor/scalable/apps/imageprintlayout.svg"
+install -D -m 0644 "$PROJECT_DIR/icons/imageprintlayout-256.png" "$BUILD_DIR/usr/share/icons/hicolor/256x256/apps/imageprintlayout.png"
 # Page de manuel : en anglais dans man1 (langue de repli), traduite dans le
 # dossier de chaque langue (man-db choisit selon la langue de l'utilisateur).
 install -d -m 0755 "$BUILD_DIR/usr/share/man/man1"
-gzip -9n -c "$PROJECT_DIR/docs/svgprintlayout.1" > "$BUILD_DIR/usr/share/man/man1/$PACKAGE_NAME.1.gz"
+gzip -9n -c "$PROJECT_DIR/docs/imageprintlayout.1" > "$BUILD_DIR/usr/share/man/man1/$PACKAGE_NAME.1.gz"
 for LANGUE in fr es de; do
     install -d -m 0755 "$BUILD_DIR/usr/share/man/$LANGUE/man1"
-    gzip -9n -c "$PROJECT_DIR/docs/$LANGUE/svgprintlayout.1" > "$BUILD_DIR/usr/share/man/$LANGUE/man1/$PACKAGE_NAME.1.gz"
+    gzip -9n -c "$PROJECT_DIR/docs/$LANGUE/imageprintlayout.1" > "$BUILD_DIR/usr/share/man/$LANGUE/man1/$PACKAGE_NAME.1.gz"
 done
 
 DOC_DIR="$BUILD_DIR/usr/share/doc/$PACKAGE_NAME"
@@ -322,9 +322,11 @@ Architecture: $DEB_ARCH
 Maintainer: $MAINTAINER
 Installed-Size: $INSTALLED_SIZE
 Depends: $DEPENDS
+Conflicts: svgprintlayout (<< 1.1.0)
+Replaces: svgprintlayout (<< 1.1.0)
 Homepage: $URL
 Description: $DESCRIPTION
- SVG Print Layout prépare l'impression d'un document vectoriel SVG de
+ Image Print Layout prépare l'impression d'un document vectoriel SVG de
  dimensions quelconques sur plusieurs feuilles de papier standard : on choisit
  le format, les marges et la largeur du dessin, on place les coupures à la
  souris, puis on exporte un seul PDF multipage vectoriel.

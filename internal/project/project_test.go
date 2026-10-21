@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/diag"
-	"github.com/gillesmagneville/svg-print-layout/internal/model"
+	"github.com/gillesmagneville/image-print-layout/internal/diag"
+	"github.com/gillesmagneville/image-print-layout/internal/model"
 )
 
 // referenceProject is the project of the acceptance scenario: A4 portrait,
@@ -43,13 +43,55 @@ func TestEncodeMatchesTheReferenceFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want, err := os.ReadFile(filepath.Join("testdata", "reference.svgpl"))
+	want, err := os.ReadFile(filepath.Join("testdata", "reference.imgpl"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	want = bytes.ReplaceAll(want, []byte("\r\n"), []byte("\n"))
 	if !bytes.Equal(got, want) {
-		t.Errorf("the bytes differ from testdata/reference.svgpl:\n%s", got)
+		t.Errorf("the bytes differ from testdata/reference.imgpl:\n%s", got)
+	}
+}
+
+// A file written by version 1.0 of the program, under its first name (format
+// "svgprintlayout-project", extension .svgpl), still opens and gives the same
+// project as its current form.
+func TestLegacyFileStillOpens(t *testing.T) {
+	read := func(name string) []byte {
+		data, err := os.ReadFile(filepath.Join("testdata", name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return data
+	}
+	legacy, err := Decode(read("legacy-1.0.svgpl"))
+	if err != nil {
+		t.Fatalf("the legacy file does not open: %v", err)
+	}
+	current, err := Decode(read("reference.imgpl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(legacy, current) {
+		t.Errorf("the legacy file gives another project:\n%+v\n%+v", legacy, current)
+	}
+	again, err := Encode(legacy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(again, []byte(`"format": "`+Format+`"`)) {
+		t.Errorf("a legacy project is not written back in the current format:\n%s", again)
+	}
+}
+
+func TestIsProjectPath(t *testing.T) {
+	for path, want := range map[string]bool{
+		"plan.imgpl": true, "PLAN.IMGPL": true, "plan.svgpl": true, "dir.d/plan.SVGPL": true,
+		"plan.svg": false, "plan": false, "plan.imgpl.bak": false,
+	} {
+		if got := IsProjectPath(path); got != want {
+			t.Errorf("IsProjectPath(%q) = %v, want %v", path, got, want)
+		}
 	}
 }
 
@@ -191,18 +233,18 @@ func TestDecodeRefusesWhatIsNotAProject(t *testing.T) {
 }
 
 func TestDecodeVersions(t *testing.T) {
-	if got := decodeError(t, `{"format":"svgprintlayout-project","version":2}`); got != "project.too_new:2" && !strings.HasPrefix(got, "project.too_new") {
+	if got := decodeError(t, `{"format":"imageprintlayout-project","version":2}`); got != "project.too_new:2" && !strings.HasPrefix(got, "project.too_new") {
 		t.Errorf("a newer version: %s", got)
 	}
-	_, err := Decode([]byte(`{"format":"svgprintlayout-project","version":99}`))
+	_, err := Decode([]byte(`{"format":"imageprintlayout-project","version":99}`))
 	e, _ := diag.As(err)
 	if e == nil || e.Code != "project.too_new" || e.Args[1] != 99 || e.Args[3] != Version {
 		t.Errorf("a newer version: %v", err)
 	}
 	for _, text := range []string{
-		`{"format":"svgprintlayout-project"}`,
-		`{"format":"svgprintlayout-project","version":0}`,
-		`{"format":"svgprintlayout-project","version":-3}`,
+		`{"format":"imageprintlayout-project"}`,
+		`{"format":"imageprintlayout-project","version":0}`,
+		`{"format":"imageprintlayout-project","version":-3}`,
 	} {
 		if got := decodeError(t, text); !strings.HasPrefix(got, "project.bad_version") {
 			t.Errorf("%s: %s", text, got)
@@ -244,7 +286,7 @@ func TestDecodeChecksTheValues(t *testing.T) {
 		t.Errorf("custom without a size: %s", got)
 	}
 	// A project written by hand may leave out what has a default.
-	minimal := `{"format":"svgprintlayout-project","version":1,"paper":{"format":"A4"},"marginsMm":{"top":1,"bottom":1,"left":1,"right":1},"scale":{"mode":"fit-width"}}`
+	minimal := `{"format":"imageprintlayout-project","version":1,"paper":{"format":"A4"},"marginsMm":{"top":1,"bottom":1,"left":1,"right":1},"scale":{"mode":"fit-width"}}`
 	p, err := Decode([]byte(minimal))
 	if err != nil {
 		t.Fatal(err)
@@ -284,7 +326,7 @@ func TestMigrations(t *testing.T) {
 			return nil
 		},
 	}
-	old := `{"format":"svgprintlayout-project","version":1,"paper":{"format":"A3","orientation":"landscape"},
+	old := `{"format":"imageprintlayout-project","version":1,"paper":{"format":"A3","orientation":"landscape"},
 	  "margins":{"top":8,"bottom":9,"left":6,"right":7},"scale":{"mode":"fit"}}`
 	p, err := decode([]byte(old), 3, table)
 	if err != nil {

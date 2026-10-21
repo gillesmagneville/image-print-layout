@@ -5,8 +5,8 @@ package layout
 import (
 	"testing"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/model"
-	"github.com/gillesmagneville/svg-print-layout/internal/units"
+	"github.com/gillesmagneville/image-print-layout/internal/model"
+	"github.com/gillesmagneville/image-print-layout/internal/units"
 )
 
 // Acceptance tests 2, 3 and 4, at the level of the logic.

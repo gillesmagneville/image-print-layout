@@ -192,6 +192,31 @@ func (s *settingsPanel) buildExport() gtk.Widgetter {
 	box.Append(preview)
 	box.Append(s.exportBar)
 	box.Append(s.note("export.notes"))
+
+	// The page HTML: the picture in one file for a browser, whole or cut at the
+	// cuts.
+	box.Append(gtk.NewSeparator(gtk.OrientationHorizontal))
+	htmlTitle := newLabel()
+	htmlTitle.AddCSSClass("heading")
+	s.htmlButton = gtk.NewButton()
+	s.htmlButton.SetActionName("win.export-html")
+	s.htmlCut = gtk.NewCheckButton()
+	s.htmlCut.SetActive(w.htmlCut)
+	s.htmlCut.ConnectToggled(func() {
+		if !s.updating {
+			w.htmlCut = s.htmlCut.Active()
+		}
+	})
+	w.texts.bind(func(tr *i18n.Translator) {
+		htmlTitle.SetLabel(tr.T("export.html.title"))
+		s.htmlButton.SetLabel(tr.T("action.export_html"))
+		s.htmlButton.SetTooltipText(tr.T("action.export_html.tooltip"))
+		s.htmlCut.SetLabel(tr.T("export.html.cut"))
+	})
+	box.Append(htmlTitle)
+	box.Append(s.htmlCut)
+	box.Append(s.htmlButton)
+	box.Append(s.note("export.html.notes"))
 	return box
 }
 
@@ -203,6 +228,7 @@ func (s *settingsPanel) syncExport() {
 	s.exportSummary.SetVisible(has)
 	s.exportState.SetVisible(has)
 	s.exportButton.SetSensitive(has && !s.w.exporting)
+	s.htmlButton.SetSensitive(has && !s.w.exporting)
 	if !has {
 		return
 	}

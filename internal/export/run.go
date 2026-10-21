@@ -40,13 +40,19 @@ type Result struct {
 // nothing was put at the destination.
 type VerifyError struct {
 	Items []diag.Item
+	// Kind is the kind of file: "" for the PDF, "HTML" for a page.
+	Kind string
 }
 
 func (e *VerifyError) Error() string {
-	if len(e.Items) == 0 {
-		return "export: the PDF written does not match the plan"
+	kind := e.Kind
+	if kind == "" {
+		kind = "PDF"
 	}
-	return fmt.Sprintf("export: the PDF written does not match the plan (%s)", e.Items[0])
+	if len(e.Items) == 0 {
+		return "export: the " + kind + " written does not match the plan"
+	}
+	return fmt.Sprintf("export: the %s written does not match the plan (%s)", kind, e.Items[0])
 }
 
 // Run writes the PDF. The file is written beside its destination under a

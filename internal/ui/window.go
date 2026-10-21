@@ -109,7 +109,9 @@ type window struct {
 	exporting     bool
 	cancelExport  atomic.Bool
 	lastExportDir string
-	lastReport    *gtk.Window
+	// htmlCut is the choice of the page HTML: cut at the cuts, or the picture whole.
+	htmlCut    bool
+	lastReport *gtk.Window
 
 	// A drawing is asked for after every movement of the view; an older answer
 	// is dropped (renderGen) when a newer one is on its way, and the program
@@ -138,6 +140,7 @@ type window struct {
 	undoAction *gio.SimpleAction
 	redoAction *gio.SimpleAction
 	exportAct  *gio.SimpleAction
+	exportHTML *gio.SimpleAction
 	saveAct    *gio.SimpleAction
 	saveAsAct  *gio.SimpleAction
 	projectBtn *gtk.MenuButton
@@ -164,6 +167,7 @@ func newWindow(application *gtk.Application, opts Options, settings app.Settings
 		engine:       newWorker(),
 		services:     defaultServices(),
 		session:      app.NewSession(),
+		htmlCut:      true,
 	}
 	w.win = gtk.NewApplicationWindow(application)
 	w.win.SetDefaultSize(1280, 800)
@@ -398,6 +402,8 @@ func (w *window) buildActions() {
 	w.saveAsAct.SetEnabled(false)
 	w.exportAct = add("export", w.exportPDF)
 	w.exportAct.SetEnabled(false)
+	w.exportHTML = add("export-html", w.exportHTMLPage)
+	w.exportHTML.SetEnabled(false)
 	add("about", w.showAbout)
 	add("quit", w.win.Close)
 	w.undoAction = add("undo", w.undo)
@@ -420,6 +426,7 @@ func (w *window) buildActions() {
 	w.app.SetAccelsForAction("win.save-project", []string{"<Control>s"})
 	w.app.SetAccelsForAction("win.save-project-as", []string{"<Control><Shift>s"})
 	w.app.SetAccelsForAction("win.export", []string{"<Control>e"})
+	w.app.SetAccelsForAction("win.export-html", []string{"<Control><Shift>e"})
 	w.app.SetAccelsForAction("win.quit", []string{"<Control>q"})
 	w.app.SetAccelsForAction("win.undo", []string{"<Control>z"})
 	w.app.SetAccelsForAction("win.redo", []string{"<Control><Shift>z", "<Control>y"})
@@ -622,6 +629,7 @@ func (w *window) refreshExportState() {
 		return
 	}
 	w.exportAct.SetEnabled(w.session.Document() != nil && !w.exporting)
+	w.exportHTML.SetEnabled(w.session.Document() != nil && !w.exporting)
 	w.panel.syncExport()
 }
 

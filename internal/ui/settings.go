@@ -80,6 +80,8 @@ type settingsPanel struct {
 	exportBar      *gtk.Box
 	exportLabel    *gtk.Label
 	exportButton   *gtk.Button
+	htmlButton     *gtk.Button
+	htmlCut        *gtk.CheckButton
 
 	// Placement.
 	hDrop   *gtk.DropDown

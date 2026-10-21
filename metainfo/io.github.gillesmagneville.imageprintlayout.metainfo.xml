@@ -87,6 +87,14 @@
   </categories>
 
   <releases>
+    <release version="1.3.0" date="2026-10-21">
+      <description>
+        <p>New: export as a single HTML page (Ctrl+Shift+E), the whole picture or cut at the cuts, one piece for each page. One file that a browser opens with nothing to download; the page is read back and checked against the preview, like the PDF.</p>
+        <p xml:lang="fr">Nouveauté : l'export en page HTML unique (Ctrl+Maj+E), l'image entière ou découpée aux coupures, un morceau par page. Un seul fichier qu'un navigateur ouvre sans rien télécharger ; la page est relue et comparée à l'aperçu, comme le PDF.</p>
+        <p xml:lang="es">Novedad: la exportación como una única página HTML (Ctrl+Mayús+E), la imagen entera o cortada por los cortes, un trozo por página. Un solo archivo que un navegador abre sin descargar nada; la página se vuelve a leer y se compara con la vista previa, como el PDF.</p>
+        <p xml:lang="de">Neu: der Export als einzelne HTML-Seite (Strg+Umschalt+E), das Bild als Ganzes oder an den Schnitten zerteilt, ein Stück je Seite. Eine einzige Datei, die ein Browser ohne Nachladen öffnet; die Seite wird wieder eingelesen und wie das PDF mit der Vorschau verglichen.</p>
+      </description>
+    </release>
     <release version="1.2.0" date="2026-10-21">
       <description>
         <p>Images open like SVG documents: JPEG, PNG, TIFF, WebP, BMP and GIF. The same single scale, cuts, preview and multi-page PDF; a JPEG goes into the PDF as it is, without recompression. The size on paper comes from the resolution of the file (96 dots per inch when it gives none). Automatic cuts fall between the blocks of an image with a plain background, and are evenly spaced for a photograph.</p>

@@ -16,7 +16,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/testsvg"
+	"github.com/gillesmagneville/pageslice/internal/testsvg"
 )
 
 func near(a, b, tol float64) bool { return math.Abs(a-b) <= tol }

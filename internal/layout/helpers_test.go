@@ -6,9 +6,9 @@ import (
 	"math"
 	"testing"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/diag"
-	"github.com/gillesmagneville/svg-print-layout/internal/model"
-	"github.com/gillesmagneville/svg-print-layout/internal/testsvg"
+	"github.com/gillesmagneville/pageslice/internal/diag"
+	"github.com/gillesmagneville/pageslice/internal/model"
+	"github.com/gillesmagneville/pageslice/internal/testsvg"
 )
 
 // miniCAD is the size of the Mini-CAD schema of the acceptance tests.

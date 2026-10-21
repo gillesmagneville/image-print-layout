@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
-// Package project reads and writes the layout project file (.svgpl): a
+// Package project reads and writes the layout project file (.pageslice): a
 // readable, versioned JSON document that stores the choices of the user and
 // never the drawing. The source SVG stays in its own file, untouched; of the
 // results (number of pages, states, sizes) nothing is stored, all is computed
@@ -18,15 +18,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"path/filepath"
 	"strings"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/diag"
-	"github.com/gillesmagneville/svg-print-layout/internal/model"
-	"github.com/gillesmagneville/svg-print-layout/internal/units"
+	"github.com/gillesmagneville/pageslice/internal/diag"
+	"github.com/gillesmagneville/pageslice/internal/model"
+	"github.com/gillesmagneville/pageslice/internal/units"
 )
 
 // Format is the value of the "format" key of every project file.
-const Format = "svgprintlayout-project"
+const Format = "pageslice-project"
 
 // Version is the version of the format this program writes and reads without
 // conversion. Each change of the format adds a conversion from the previous
@@ -34,7 +35,23 @@ const Format = "svgprintlayout-project"
 const Version = 1
 
 // Extension is the extension of a project file.
-const Extension = ".svgpl"
+const Extension = ".pageslice"
+
+// LegacyFormat and LegacyExtension are those of the project files written by
+// the program under its first name (SVG Print Layout, up to version 1.0.x).
+// They are still read, as any file of the format of version 1; the program
+// writes only Format and Extension.
+const (
+	LegacyFormat    = "svgprintlayout-project"
+	LegacyExtension = ".svgpl"
+)
+
+// IsProjectPath tells whether a file name has the extension of a project file,
+// the current one or the legacy one, whatever the case.
+func IsProjectPath(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	return ext == Extension || ext == LegacyExtension
+}
 
 // The file is described by its own types, apart from model: the format is a
 // contract with files on disk and must not change when an internal type does.
@@ -195,7 +212,7 @@ func decode(data []byte, current int, table map[int]migration) (model.Project, e
 		Format  string `json:"format"`
 		Version *int   `json:"version"`
 	}
-	if err := json.Unmarshal(data, &head); err != nil || head.Format != Format {
+	if err := json.Unmarshal(data, &head); err != nil || (head.Format != Format && head.Format != LegacyFormat) {
 		return model.Project{}, diag.Fail("project.not_a_project")
 	}
 	if head.Version == nil || *head.Version < 1 {

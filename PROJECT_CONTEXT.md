@@ -2,9 +2,9 @@
 
 # PROJECT_CONTEXT.md
 
-# SVG Print Layout
+# Pageslice
 
-**SVG Print Layout** est une application de bureau, écrite en **Go**, qui prépare un
+**Pageslice** est une application de bureau, écrite en **Go**, qui prépare un
 document vectoriel SVG de dimensions quelconques pour l'impression sur plusieurs feuilles
 de papier standard : on choisit le papier et la largeur du dessin, on place les coupures
 entre les pages sur un aperçu, puis on exporte **un seul PDF multipage vectoriel**.
@@ -12,7 +12,7 @@ entre les pages sur un aperçu, puis on exporte **un seul PDF multipage vectorie
 Elle s'adresse à toute personne qui doit imprimer un grand dessin (un schéma, par exemple)
 sans connaître les coordonnées SVG, la programmation ou la géométrie.
 
-> **Auteur :** SVG Print Layout est développé par Gilles MAGNEVILLE, et conçu avec l'aide de claude.ai.
+> **Auteur :** Pageslice est développé par Gilles MAGNEVILLE, et conçu avec l'aide de claude.ai.
 
 > **Note sur ce document :** PROJECT_CONTEXT.md dit *pourquoi* le projet existe et *ce qu'il
 > valorise*. Il ne répète ni les formules, ni les interfaces, ni les formats de fichier :
@@ -28,7 +28,7 @@ Imprimer un grand dessin sur plusieurs feuilles pose toujours la même question 
 
 > **« Où couper, à quelle largeur, et le résultat sera-t-il exactement ce que je vois ? »**
 
-SVG Print Layout répond à cette question avec un aperçu interactif : le dessin entier, les
+Pageslice répond à cette question avec un aperçu interactif : le dessin entier, les
 limites de chaque page, des lignes de coupure que l'on déplace à la souris, et pour chaque
 page ses dimensions, son échelle et son état. Le PDF exporté est celui que l'aperçu montrait.
 
@@ -39,7 +39,7 @@ choisie et des positions des coupures. Il n'est jamais imposé.
 
 # Principes du projet
 
-SVG Print Layout suit cinq principes.
+Pageslice suit cinq principes.
 
 ## 1. Jamais de déformation silencieuse
 
@@ -109,7 +109,7 @@ service en ligne et n'envoie aucune donnée.
 
 # Périmètre
 
-SVG Print Layout couvre, pour la version 1.0 :
+Pageslice couvre, pour la version 1.0 :
 
 * l'import de SVG 1.1 et de SVG compatibles Inkscape ;
 * les formats A0 à A5, Letter, Legal, Tabloid et un format personnalisé, en portrait ou en
@@ -122,7 +122,7 @@ SVG Print Layout couvre, pour la version 1.0 :
 * l'export en un seul PDF multipage, avec vérifications avant et après ;
 * l'enregistrement et la réouverture d'un projet de mise en page.
 
-SVG Print Layout **n'est pas**, dans la version 1.0 :
+Pageslice **n'est pas**, dans la version 1.0 :
 
 * un éditeur de dessin : la seule modification du contenu est le réglage du fond ;
 * un outil d'impression en mosaïque avec chevauchement, ni de marques de raccord ;
@@ -190,7 +190,7 @@ Aucune n'est nécessaire pour que la version 1.0 soit utile.
 
 # Valeurs
 
-SVG Print Layout valorise :
+Pageslice valorise :
 
 * la fidélité à l'aperçu
 * la clarté

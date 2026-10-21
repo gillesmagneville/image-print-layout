@@ -36,7 +36,7 @@ printf '%s\n' "$section" | sed -e '/./,$!d' | sed -e ':a' -e '/^\n*$/{$d;N;ba' -
 echo
 echo "## Fichiers"
 echo
-for path in "$files"/svgprintlayout*; do
+for path in "$files"/pageslice*; do
     [ -f "$path" ] || continue
     name="$(basename "$path")"
     # Les empreintes sont dites avec le paquet qu'elles vérifient.

@@ -8,8 +8,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/model"
-	"github.com/gillesmagneville/svg-print-layout/internal/units"
+	"github.com/gillesmagneville/pageslice/internal/model"
+	"github.com/gillesmagneville/pageslice/internal/units"
 )
 
 // edit replaces the bytes [start, end) of the source by text.

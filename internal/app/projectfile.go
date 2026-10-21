@@ -5,16 +5,27 @@ package app
 import (
 	"path/filepath"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/diag"
-	"github.com/gillesmagneville/svg-print-layout/internal/layout"
-	"github.com/gillesmagneville/svg-print-layout/internal/model"
-	"github.com/gillesmagneville/svg-print-layout/internal/project"
+	"github.com/gillesmagneville/pageslice/internal/diag"
+	"github.com/gillesmagneville/pageslice/internal/layout"
+	"github.com/gillesmagneville/pageslice/internal/model"
+	"github.com/gillesmagneville/pageslice/internal/project"
 )
 
 // The project file in the session (ARCHITECTURE §10): saving writes the
 // settings with a description of the document, opening reads them back over a
 // document that is found, or located by the user when it has moved. The SVG is
 // only ever read.
+
+// The extensions of a project file: the current one, written by the program,
+// and the one of its first name, still read (see package project).
+const (
+	ProjectExtension       = project.Extension
+	LegacyProjectExtension = project.LegacyExtension
+)
+
+// IsProjectPath tells whether a file name is that of a project file (either
+// extension, whatever the case) rather than of a document.
+func IsProjectPath(path string) bool { return project.IsProjectPath(path) }
 
 // ProjectFile is a project file that has been read, and the place where its
 // document was looked for.

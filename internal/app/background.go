@@ -3,9 +3,9 @@
 package app
 
 import (
-	"github.com/gillesmagneville/svg-print-layout/internal/diag"
-	"github.com/gillesmagneville/svg-print-layout/internal/export"
-	"github.com/gillesmagneville/svg-print-layout/internal/model"
+	"github.com/gillesmagneville/pageslice/internal/diag"
+	"github.com/gillesmagneville/pageslice/internal/export"
+	"github.com/gillesmagneville/pageslice/internal/model"
 )
 
 // BackgroundInfo describes the rectangle the analysis took for the background

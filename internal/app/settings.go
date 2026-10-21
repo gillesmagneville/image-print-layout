@@ -10,7 +10,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/i18n"
+	"github.com/gillesmagneville/pageslice/internal/i18n"
 )
 
 // Settings are the preferences of the user. They belong to the person, not to
@@ -33,7 +33,34 @@ func SettingsPath() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("app: no configuration directory: %w", err)
 	}
-	return filepath.Join(dir, "svgprintlayout", "settings.json"), nil
+	return filepath.Join(dir, "pageslice", "settings.json"), nil
+}
+
+// legacySettingsPath is where the program, under its first name (SVG Print
+// Layout, up to version 1.0.x), kept the settings.
+func legacySettingsPath(path string) string {
+	return filepath.Join(filepath.Dir(filepath.Dir(path)), "svgprintlayout", "settings.json")
+}
+
+// ImportLegacySettings gives the settings of the first name of the program to
+// the current one: when path does not exist yet and the old file does, the old
+// settings are read and written at path. The old file stays where it is (a
+// downgrade finds its settings). It returns whether something was imported;
+// any failure leaves things as they were, and the program starts with its
+// defaults.
+func ImportLegacySettings(path string) bool {
+	if _, err := os.Stat(path); err == nil || !errors.Is(err, fs.ErrNotExist) {
+		return false
+	}
+	old := legacySettingsPath(path)
+	if _, err := os.Stat(old); err != nil {
+		return false
+	}
+	s, err := LoadSettings(old)
+	if err != nil {
+		return false
+	}
+	return s.Save(path) == nil
 }
 
 // LoadSettings reads the settings. A file that does not exist is not an error

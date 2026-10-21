@@ -1,12 +1,14 @@
 <!-- SPDX-License-Identifier: GPL-3.0-only -->
 
-# svg-print-layout
+# Pageslice
 
 Application de bureau (Linux — Debian, Ubuntu, Red Hat et leurs dérivés —, Windows 10 et 11, écrite en Go) pour **mettre en page, découper et imprimer un document vectoriel SVG sur plusieurs feuilles de papier standard**, puis l'exporter en **PDF multipage vectoriel**.
 
 Développé par Gilles MAGNEVILLE, conçu avec l'aide de [claude.ai](https://claude.ai).
 
-> **État : version 1.0.0, toutes les fonctions du cahier des charges sont là (jalons M1 à M5), et la recette a été faite à la main sous Ubuntu et sous Windows.** La fenêtre GTK4, en **français, anglais, espagnol et allemand**, ouvre un SVG, l'analyse (fonctions non prises en charge, polices absentes, images introuvables), calcule ses pages avec les réglages de papier, de marges, d'échelle et de positionnement, et montre l'aperçu avec les limites et les numéros de page, la liste des pages et les corrections proposées quand une page dépasse. On y ajoute, déplace et supprime les coupures à la souris (double-clic, glisser, aimantation aux vides, clavier) ou on demande des coupures automatiques, sans jamais changer l'échelle. On y choisit le fond du document (le garder, le remplacer par du blanc, le supprimer, avec l'aperçu immédiat) et celui de la page (blanc opaque ou transparent), on voit chaque feuille telle qu'elle sera imprimée, puis on exporte un PDF multipage que le programme relit et vérifie avant de le livrer. On enregistre le projet (réglages, coupures, fond, positions) et on le rouvre plus tard : le SVG d'origine n'est jamais modifié, un document déplacé se localise, et une astérisque dans le titre signale les changements non enregistrés. Les 14 tests d'acceptation du cahier des charges sont automatisés (`internal/acceptance`). Le dépôt contient aussi le prototype du moteur (librsvg + cairo : rendu d'une fenêtre et export PDF multipage, validé sur le Mini-CAD, voir [`docs/M0.md`](docs/M0.md)), les scripts qui construisent les paquets `.deb`, `.rpm` et Windows (voir [Paquets](#paquets)) et la CI.
+> **Pageslice s'appelait « SVG Print Layout » jusqu'à la version 1.0.x.** Le nom change parce que le programme prendra bientôt aussi des images (JPEG, PNG, TIFF…). Les projets `.svgpl` de la 1.0.x s'ouvrent toujours, la langue choisie est reprise et installer un paquet remplace l'ancien (voir le [CHANGELOG](CHANGELOG.md)).
+
+> **État : version 1.1.0, toutes les fonctions du cahier des charges sont là (jalons M1 à M5), et la recette a été faite à la main sous Ubuntu et sous Windows.** La fenêtre GTK4, en **français, anglais, espagnol et allemand**, ouvre un SVG, l'analyse (fonctions non prises en charge, polices absentes, images introuvables), calcule ses pages avec les réglages de papier, de marges, d'échelle et de positionnement, et montre l'aperçu avec les limites et les numéros de page, la liste des pages et les corrections proposées quand une page dépasse. On y ajoute, déplace et supprime les coupures à la souris (double-clic, glisser, aimantation aux vides, clavier) ou on demande des coupures automatiques, sans jamais changer l'échelle. On y choisit le fond du document (le garder, le remplacer par du blanc, le supprimer, avec l'aperçu immédiat) et celui de la page (blanc opaque ou transparent), on voit chaque feuille telle qu'elle sera imprimée, puis on exporte un PDF multipage que le programme relit et vérifie avant de le livrer. On enregistre le projet (réglages, coupures, fond, positions) et on le rouvre plus tard : le SVG d'origine n'est jamais modifié, un document déplacé se localise, et une astérisque dans le titre signale les changements non enregistrés. Les 14 tests d'acceptation du cahier des charges sont automatisés (`internal/acceptance`). Le dépôt contient aussi le prototype du moteur (librsvg + cairo : rendu d'une fenêtre et export PDF multipage, validé sur le Mini-CAD, voir [`docs/M0.md`](docs/M0.md)), les scripts qui construisent les paquets `.deb`, `.rpm` et Windows (voir [Paquets](#paquets)) et la CI.
 
 ## Principe
 
@@ -26,14 +28,14 @@ Règles fondamentales, reprises du cahier des charges :
 ## Organisation du code
 
 ```
-cmd/svgprintlayout/   point d'entrée : la fenêtre, ou -version, -selftest, -lang
+cmd/pageslice/   point d'entrée : la fenêtre, ou -version, -selftest, -lang
 build-deb.sh, build-rpm.sh, build-windows.ps1   construisent les paquets (voir Paquets)
-debian/, metainfo/, icons/, windows/   fichiers qu'ils empaquettent ; docs/svgprintlayout.1 (+ fr/, es/, de/) : pages de manuel
+debian/, metainfo/, icons/, windows/   fichiers qu'ils empaquettent ; docs/pageslice.1 (+ fr/, es/, de/) : pages de manuel
 internal/
   units/     conversions SVG / px / pt / mm, formats papier, marges      (Go pur, testé)
   model/     types de données partagés                                    (Go pur)
   layout/    calcul des pages, bandes, états, coupures automatiques       (Go pur)
-  project/   fichier projet .svgpl (JSON versionné, écriture déterministe) (Go pur)
+  project/   fichier projet .pageslice (JSON versionné, écriture déterministe) (Go pur)
   svgdoc/    lecture du SVG : constats, polices, blocs, fond, copie de travail   (Go pur)
   engine/    moteur de rendu : interface Document, librsvg + cairo + fontconfig par cgo
   export/    export PDF multipage : contrôles avant, relecture et vérification du PDF écrit   (Go pur)
@@ -67,7 +69,7 @@ Prérequis : Go 1.24 ou plus récent.
 gofmt -l .          # ne doit rien afficher
 go vet ./...
 go test ./...
-go run ./cmd/svgprintlayout -version
+go run ./cmd/pageslice -version
 ```
 
 La CI (GitHub Actions) exécute ces commandes sous Ubuntu et Windows, avec `CGO_ENABLED=0`.
@@ -85,14 +87,14 @@ La fenêtre (`internal/ui`) demande en plus GTK 4.14 ou plus récent (gotk4 v0.3
 
 ```sh
 sudo apt-get install librsvg2-dev libfontconfig-dev libgtk-4-dev libgirepository1.0-dev poppler-utils fonts-ibm-plex
-go run ./cmd/svgprintlayout                       # la fenêtre
-go run ./cmd/svgprintlayout -lang de plan.svg     # dans une langue, avec un document
+go run ./cmd/pageslice                       # la fenêtre
+go run ./cmd/pageslice -lang de plan.svg     # dans une langue, avec un document
 ```
 
 Les tests de la fenêtre ouvrent de vraies fenêtres : sans écran (terminal, CI), ils se lancent sur un écran virtuel, avec `sudo apt-get install xvfb xauth` :
 
 ```sh
-xvfb-run -a go test ./internal/ui ./cmd/svgprintlayout
+xvfb-run -a go test ./internal/ui ./cmd/pageslice
 ```
 
 La première compilation de gotk4 dure plusieurs minutes ; les suivantes utilisent le cache de Go. À chaque compilation de gotk4, gcc affiche des avertissements sur `free` (`-Wbuiltin-declaration-mismatch`) : ils viennent de la bibliothèque, et les scripts de paquets les masquent. Pour les masquer aussi en développement : `export CGO_CFLAGS="-O2 -g -Wno-builtin-declaration-mismatch"`. Pour Windows (MSYS2 UCRT64), voir [`windows/README.md`](windows/README.md).
@@ -117,15 +119,15 @@ en charge »).
 Trois scripts, à la racine, construisent les paquets (comme dans Planche-Contact) :
 
 ```sh
-./build-deb.sh              # Debian, Ubuntu et dérivés : svgprintlayout_<version>_amd64.deb
-./build-rpm.sh              # Fedora, RHEL et dérivés : svgprintlayout-<version>-<release>.x86_64.rpm
+./build-deb.sh              # Debian, Ubuntu et dérivés : pageslice_<version>_amd64.deb
+./build-rpm.sh              # Fedora, RHEL et dérivés : pageslice-<version>-<release>.x86_64.rpm
 ```
 
 ```powershell
 .\build-windows.ps1         # Windows 10 et 11 : un .zip portable et un installeur .exe
 ```
 
-Les paquets de chaque version sont aussi joints à sa [release GitHub](https://github.com/gillesmagneville/svg-print-layout/releases) (`.deb`, `.rpm`, installeur et version portable Windows, avec leurs empreintes SHA-256).
+Les paquets de chaque version sont aussi joints à sa [release GitHub](https://github.com/gillesmagneville/pageslice/releases) (`.deb`, `.rpm`, installeur et version portable Windows, avec leurs empreintes SHA-256).
 
 Les paquets sont écrits à la racine du dépôt (non versionnés). Les trois scripts ont les
 mêmes options et gèrent le fichier `VERSION` de la même façon :
@@ -185,13 +187,13 @@ construction reproductible, dépendances) est décrite dans `ARCHITECTURE.md`, �
 la construction Windows (MSYS2, NSIS, SmartScreen, dépannage) dans
 [`windows/README.md`](windows/README.md).
 
-Le programme installé sait s'auto-vérifier : `svgprintlayout -selftest` contrôle le
+Le programme installé sait s'auto-vérifier : `pageslice -selftest` contrôle le
 moteur de rendu (bibliothèques, polices, images incorporées, export PDF) sur la machine
 où il tourne. C'est la première commande à lancer en cas de problème.
 
 ## Auteur
 
-SVG Print Layout est développé par **Gilles MAGNEVILLE**, et conçu avec l'aide de [claude.ai](https://claude.ai). La fenêtre « À propos » du programme (menu principal) le dit aussi, dans la langue de l'interface, de même que la section AUTEUR de la page de manuel.
+Pageslice est développé par **Gilles MAGNEVILLE**, et conçu avec l'aide de [claude.ai](https://claude.ai). La fenêtre « À propos » du programme (menu principal) le dit aussi, dans la langue de l'interface, de même que la section AUTEUR de la page de manuel.
 
 ## Licence
 

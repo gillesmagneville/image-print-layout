@@ -8,11 +8,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/diag"
-	"github.com/gillesmagneville/svg-print-layout/internal/engine"
-	"github.com/gillesmagneville/svg-print-layout/internal/model"
-	"github.com/gillesmagneville/svg-print-layout/internal/project"
-	"github.com/gillesmagneville/svg-print-layout/internal/testsvg"
+	"github.com/gillesmagneville/pageslice/internal/diag"
+	"github.com/gillesmagneville/pageslice/internal/engine"
+	"github.com/gillesmagneville/pageslice/internal/model"
+	"github.com/gillesmagneville/pageslice/internal/project"
+	"github.com/gillesmagneville/pageslice/internal/testsvg"
 )
 
 // savedWork opens the synthetic Mini-CAD from a folder, lays it out the way a
@@ -52,7 +52,7 @@ func savedWork(t *testing.T) (dir, svgPath, projectPath string, s *Session) {
 	if err := s.SetPageBackground(model.TransparentPage); err != nil {
 		t.Fatal(err)
 	}
-	projectPath = filepath.Join(dir, "mini-cad.svgpl")
+	projectPath = filepath.Join(dir, "mini-cad.pageslice")
 	return dir, svgPath, projectPath, s
 }
 
@@ -144,6 +144,54 @@ func TestAProjectIsSavedAndOpenedAgainWithEverySetting(t *testing.T) {
 	}
 }
 
+// A project of the program's first name (SVG Print Layout 1.0.x: extension
+// .svgpl, format "svgprintlayout-project") opens with every setting, is never
+// modified, and is saved back under the current extension and format.
+func TestAProjectOfTheFirstNameOpensAndIsSavedUnderTheNewOne(t *testing.T) {
+	dir, _, projectPath, s := savedWork(t)
+	if err := s.SaveProject(projectPath); err != nil {
+		t.Fatal(err)
+	}
+	current, err := os.ReadFile(projectPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacy := bytes.Replace(current, []byte(`"`+project.Format+`"`), []byte(`"`+project.LegacyFormat+`"`), 1)
+	if bytes.Equal(legacy, current) {
+		t.Fatal("the test file was not turned into a legacy one")
+	}
+	legacyPath := filepath.Join(dir, "mini-cad"+LegacyProjectExtension)
+	if err := os.WriteFile(legacyPath, legacy, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if !IsProjectPath(legacyPath) || !IsProjectPath(projectPath) || IsProjectPath(filepath.Join(dir, "mini-cad.svg")) {
+		t.Error("IsProjectPath does not tell a project from a document")
+	}
+
+	svc, _ := fakeServices()
+	r, pf, items, err := reopen(t, svc, legacyPath)
+	if err != nil {
+		t.Fatalf("the legacy project does not open: %v", err)
+	}
+	if len(items) != 0 || pf.SourcePath == "" {
+		t.Errorf("legacy project: items %v, document at %q", items, pf.SourcePath)
+	}
+	if !bytes.Equal(encoded(t, r.Project()), encoded(t, s.Project())) {
+		t.Error("the settings of the legacy project are not those that were saved")
+	}
+	// Saving goes to the current name; the legacy file is left as it was.
+	if err := r.SaveProject(projectPath); err != nil {
+		t.Fatal(err)
+	}
+	again, _ := os.ReadFile(projectPath)
+	if !bytes.Contains(again, []byte(`"`+project.Format+`"`)) || bytes.Contains(again, []byte(project.LegacyFormat)) {
+		t.Errorf("a project opened from the legacy file is not written in the current format:\n%s", again)
+	}
+	if after, _ := os.ReadFile(legacyPath); !bytes.Equal(after, legacy) {
+		t.Error("the legacy file was modified")
+	}
+}
+
 func TestChangesAfterTheOpeningAreUnsavedChanges(t *testing.T) {
 	_, _, projectPath, s := savedWork(t)
 	if err := s.SaveProject(projectPath); err != nil {
@@ -162,7 +210,7 @@ func TestChangesAfterTheOpeningAreUnsavedChanges(t *testing.T) {
 }
 
 func TestSavingNeedsADocument(t *testing.T) {
-	err := NewSession().SaveProject(filepath.Join(t.TempDir(), "x.svgpl"))
+	err := NewSession().SaveProject(filepath.Join(t.TempDir(), "x.pageslice"))
 	if e, ok := diag.As(err); !ok || e.Code != "app.no_document" {
 		t.Errorf("err = %v", err)
 	}
@@ -179,7 +227,7 @@ func TestAProjectFindsItsDocumentWhereverBothWent(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(moved)
-	pf, err := ReadProject(filepath.Join(moved, "mini-cad.svgpl"))
+	pf, err := ReadProject(filepath.Join(moved, "mini-cad.pageslice"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -190,7 +238,7 @@ func TestAProjectFindsItsDocumentWhereverBothWent(t *testing.T) {
 	if err := os.Remove(filepath.Join(moved, "mini-cad.svg")); err != nil {
 		t.Fatal(err)
 	}
-	pf, err = ReadProject(filepath.Join(moved, "mini-cad.svgpl"))
+	pf, err = ReadProject(filepath.Join(moved, "mini-cad.pageslice"))
 	if err != nil {
 		t.Fatal(err)
 	}

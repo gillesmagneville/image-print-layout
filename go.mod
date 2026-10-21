@@ -1,4 +1,4 @@
-module github.com/gillesmagneville/svg-print-layout
+module github.com/gillesmagneville/pageslice
 
 go 1.24
 

@@ -5,7 +5,7 @@ package ui
 import (
 	"testing"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/i18n"
+	"github.com/gillesmagneville/pageslice/internal/i18n"
 )
 
 // Every function that sets a text runs once when it is registered, and again

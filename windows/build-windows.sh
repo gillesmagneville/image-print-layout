@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 set -euo pipefail
 
-# Construit le paquet Windows de SVG Print Layout : une version portable (.zip)
+# Construit le paquet Windows de Pageslice : une version portable (.zip)
 # et, si NSIS est installé, un installeur (.exe), à la racine du dépôt.
 #
 # Ce script s'exécute dans un terminal MSYS2 UCRT64 (c'est là que se trouvent
@@ -13,7 +13,7 @@ set -euo pipefail
 # jamais le fichier VERSION.
 
 # ====================== CONFIGURATION ======================
-PACKAGE_NAME="svgprintlayout"
+PACKAGE_NAME="pageslice"
 WINDOWS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$WINDOWS_DIR")"
 # Dossier de travail : celui que build-windows.ps1 choisit (variable
@@ -53,8 +53,8 @@ MSYS_PACKAGES=(
     git
 )
 
-# Deux exécutables : svgprintlayout.exe, celui de la fenêtre (sous-système
-# Windows : pas de console qui s'ouvre derrière), et svgprintlayout-console.exe,
+# Deux exécutables : pageslice.exe, celui de la fenêtre (sous-système
+# Windows : pas de console qui s'ouvre derrière), et pageslice-console.exe,
 # le même programme en sous-système console, pour -version, -selftest et les
 # messages d'erreur dans un terminal (un programme fenêtré n'écrit nulle part
 # dans un terminal).
@@ -74,8 +74,8 @@ show_help() {
 Usage : windows/build-windows.sh [options]
 
 Construit, à la racine du dépôt :
-  svgprintlayout_<version>_windows-portable.zip   version portable
-  svgprintlayout_<version>_windows-setup.exe      installeur (si NSIS est là)
+  pageslice_<version>_windows-portable.zip   version portable
+  pageslice_<version>_windows-setup.exe      installeur (si NSIS est là)
 
 OPTIONS :
   --version X.Y.Z   Numéro de version à construire (par défaut : le contenu du
@@ -89,7 +89,7 @@ OPTIONS :
 -Major, -Minor, -Patch et -NoVersionChange, comme build-deb.sh.
 
 Le dossier de travail est la variable d'environnement SVGPL_BUILD_DIR
-(par défaut ~/svgprintlayout-build).
+(par défaut ~/pageslice-build).
 EOF2
 }
 
@@ -156,7 +156,7 @@ check_go_prerequisites() {
 # « windows » (la fenêtre) ou « console ». -trimpath, un identifiant de
 # construction vide et l'absence d'informations VCS rendent le binaire
 # indépendant du dossier et de l'heure de la construction. Le numéro de
-# version est inscrit dans le programme (svgprintlayout -version).
+# version est inscrit dans le programme (pageslice -version).
 build_binary() {
     local destination="$1" subsystem="$2" flags="-s -w -buildid= -X main.version=$VERSION" expected
     if [ "$subsystem" = "windows" ]; then
@@ -175,7 +175,7 @@ build_binary() {
     # compilation. Ce n'est pas un défaut de ce dépôt ; on masque cet
     # avertissement seulement, et on garde les options par défaut de cgo.
     ( cd "$PROJECT_DIR" && CGO_ENABLED=1 CGO_CFLAGS="${CGO_CFLAGS:--O2 -g} -Wno-builtin-declaration-mismatch" go build -trimpath -buildvcs=false \
-        -buildmode=exe -ldflags "$flags" -o "$destination" ./cmd/svgprintlayout )
+        -buildmode=exe -ldflags "$flags" -o "$destination" ./cmd/pageslice )
     # Un exécutable fenêtré lancé depuis un terminal n'écrit nulle part, un
     # exécutable console ouvre une fenêtre noire derrière la fenêtre : on
     # vérifie que chacun a le sous-système voulu.
@@ -214,9 +214,9 @@ make_resources() {
     local rc_dir="$WORK/resources"
     local file_version="${VERSION_BASE//./,},0"
     mkdir -p "$rc_dir"
-    cp "$WINDOWS_DIR/svgprintlayout.ico" "$rc_dir/"
-    cat > "$rc_dir/svgprintlayout.rc" << EOF2
-1 ICON "svgprintlayout.ico"
+    cp "$WINDOWS_DIR/pageslice.ico" "$rc_dir/"
+    cat > "$rc_dir/pageslice.rc" << EOF2
+1 ICON "pageslice.ico"
 1 VERSIONINFO
 FILEVERSION $file_version
 PRODUCTVERSION $file_version
@@ -227,13 +227,13 @@ BEGIN
   BEGIN
     BLOCK "040904b0"
     BEGIN
-      VALUE "ProductName", "SVG Print Layout"
+      VALUE "ProductName", "Pageslice"
       VALUE "FileDescription", "Layout and printing of SVG drawings"
       VALUE "FileVersion", "$VERSION"
       VALUE "ProductVersion", "$VERSION"
       VALUE "CompanyName", "Gilles MAGNEVILLE"
       VALUE "LegalCopyright", "Gilles MAGNEVILLE - GNU GPL v3"
-      VALUE "OriginalFilename", "svgprintlayout.exe"
+      VALUE "OriginalFilename", "pageslice.exe"
     END
   END
   BLOCK "VarFileInfo"
@@ -243,7 +243,7 @@ BEGIN
 END
 EOF2
     SYSO="$cmd_dir/rsrc_windows_amd64.syso"
-    ( cd "$rc_dir" && windres -O coff -i svgprintlayout.rc -o "$SYSO" )
+    ( cd "$rc_dir" && windres -O coff -i pageslice.rc -o "$SYSO" )
     trap 'rm -f "$SYSO"' EXIT
 }
 
@@ -371,7 +371,7 @@ write_licenses() {
         # La marque d'ordre des octets (BOM) permet à tous les outils de Windows
         # (Bloc-notes ancien, PowerShell 5.1) de lire les accents.
         printf '\xef\xbb\xbf'
-        echo "Bibliothèques libres livrées avec SVG Print Layout"
+        echo "Bibliothèques libres livrées avec Pageslice"
         echo "=================================================="
         echo ""
         echo "Chaque bibliothèque reste soumise à sa propre licence, dont le texte est"
@@ -407,7 +407,7 @@ write_installer_includes() {
         echo "!define APP_VERSION_NUMERIC \"$VERSION_BASE.0\""
         echo "!define STAGE_DIR \"$win_root\""
         echo "!define OUTPUT_FILE \"$(cygpath -w "$output")\""
-        echo "!define APP_ICON \"$(cygpath -w "$WINDOWS_DIR/svgprintlayout.ico")\""
+        echo "!define APP_ICON \"$(cygpath -w "$WINDOWS_DIR/pageslice.ico")\""
     } > "$dir/build-vars.nsh"
     {
         ( cd "$root" && find . -type f | LC_ALL=C sort ) | while IFS= read -r rel; do
@@ -453,7 +453,7 @@ main() {
     [ "${MSYSTEM:-}" = "UCRT64" ] || die "ce script doit s'exécuter dans un terminal MSYS2 UCRT64 (MSYSTEM vaut « ${MSYSTEM:-vide} »).
 Lancez plutôt .\\build-windows.ps1 depuis PowerShell, à la racine du dépôt."
     [ "$(uname -m)" = "x86_64" ] || die "seul Windows 64 bits (x64) est pris en charge."
-    WORK="$(cygpath -u "${SVGPL_BUILD_DIR:-$HOME/svgprintlayout-build}")"
+    WORK="$(cygpath -u "${SVGPL_BUILD_DIR:-$HOME/pageslice-build}")"
 
     ensure_packages
     [ "$CHECK_DEPS" = true ] && exit 0

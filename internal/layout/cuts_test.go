@@ -5,7 +5,7 @@ package layout
 import (
 	"testing"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/model"
+	"github.com/gillesmagneville/pageslice/internal/model"
 )
 
 func positions(p model.Project) []float64 {

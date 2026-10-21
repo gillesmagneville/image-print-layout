@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/diag"
-	"github.com/gillesmagneville/svg-print-layout/internal/model"
+	"github.com/gillesmagneville/pageslice/internal/diag"
+	"github.com/gillesmagneville/pageslice/internal/model"
 )
 
 func writeSVG(t *testing.T, dir, name string) string {
@@ -102,7 +102,7 @@ func TestSaveAndLoad(t *testing.T) {
 
 func TestSaveReplacesAnExistingFile(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "a.svgpl")
+	path := filepath.Join(dir, "a.pageslice")
 	if err := os.WriteFile(path, []byte("old"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +115,7 @@ func TestSaveReplacesAnExistingFile(t *testing.T) {
 }
 
 func TestSaveInAMissingFolderFails(t *testing.T) {
-	err := Save(filepath.Join(t.TempDir(), "nope", "a.svgpl"), referenceProject())
+	err := Save(filepath.Join(t.TempDir(), "nope", "a.pageslice"), referenceProject())
 	if err == nil {
 		t.Fatal("no error")
 	}
@@ -125,10 +125,10 @@ func TestSaveInAMissingFolderFails(t *testing.T) {
 }
 
 func TestLoadErrors(t *testing.T) {
-	if _, err := Load(filepath.Join(t.TempDir(), "missing.svgpl")); err == nil || !strings.Contains(err.Error(), "cannot read") {
+	if _, err := Load(filepath.Join(t.TempDir(), "missing.pageslice")); err == nil || !strings.Contains(err.Error(), "cannot read") {
 		t.Errorf("missing file: %v", err)
 	}
-	path := filepath.Join(t.TempDir(), "a.svgpl")
+	path := filepath.Join(t.TempDir(), "a.pageslice")
 	_ = os.WriteFile(path, []byte("hello"), 0o644)
 	if _, err := Load(path); diag.CodeOf(err) != "project.not_a_project" {
 		t.Errorf("not a project: %v", err)
@@ -138,7 +138,7 @@ func TestLoadErrors(t *testing.T) {
 func TestResolveSource(t *testing.T) {
 	dir := t.TempDir()
 	svg := writeSVG(t, dir, "schemas/mini-cad.svg")
-	projectPath := filepath.Join(dir, "projets", "a.svgpl")
+	projectPath := filepath.Join(dir, "projets", "a.pageslice")
 
 	// By the relative path, when the absolute one is gone (the folder moved).
 	src := model.Source{Path: "../schemas/mini-cad.svg", AbsolutePath: "/no/such/place/mini-cad.svg"}

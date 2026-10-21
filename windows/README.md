@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-only -->
 
-# SVG Print Layout : paquet Windows
+# Pageslice : paquet Windows
 
 Ce dossier contient ce qu'il faut pour construire le paquet Windows : une **version
 portable** (`.zip`) et un **installeur** (`.exe`), à partir du code du dépôt.
@@ -45,12 +45,12 @@ version, utilisez `-NoVersionChange`, pour ne pas l'incrémenter une seconde foi
 Le script vérifie ses prérequis et propose d'installer ce qui manque (voir ci-dessous).
 À la fin, la racine du dépôt contient :
 
-- `svgprintlayout_X.Y.Z_windows-portable.zip` : un dossier autonome, à décompresser
+- `pageslice_X.Y.Z_windows-portable.zip` : un dossier autonome, à décompresser
   n'importe où et à lancer sans installation ;
-- `svgprintlayout_X.Y.Z_windows-setup.exe` : l'installeur (menu Démarrer, désinstalleur),
+- `pageslice_X.Y.Z_windows-setup.exe` : l'installeur (menu Démarrer, désinstalleur),
   si NSIS est disponible.
 
-Le dossier de travail est `%LOCALAPPDATA%\svgprintlayout-build`, hors du dépôt ; `-Clean`
+Le dossier de travail est `%LOCALAPPDATA%\pageslice-build`, hors du dépôt ; `-Clean`
 le supprime.
 
 ## Avertissement SmartScreen à l'installation
@@ -95,10 +95,10 @@ pacman -Syu
 Le dossier livré est organisé comme un préfixe, ce que les bibliothèques attendent :
 
 ```
-svgprintlayout-X.Y.Z-windows-x64/
+pageslice-X.Y.Z-windows-x64/
 ├── bin/
-│   ├── svgprintlayout.exe          la fenêtre (sous-système Windows : pas de console derrière)
-│   ├── svgprintlayout-console.exe  le même programme en console : -version, -selftest, messages d'erreur
+│   ├── pageslice.exe          la fenêtre (sous-système Windows : pas de console derrière)
+│   ├── pageslice-console.exe  le même programme en console : -version, -selftest, messages d'erreur
 │   └── *.dll                       GTK 4, cairo, librsvg, pango, glib, fontconfig...
 ├── etc/fonts/                      configuration de fontconfig
 ├── lib/gdk-pixbuf-2.0/2.10.0/      chargeurs d'images (PNG, JPEG, GIF, BMP, WebP, SVG) et leur cache
@@ -119,15 +119,15 @@ soient trouvées, ou remplacées, de la même façon partout.
 
 Il y a deux exécutables parce qu'un programme Windows à fenêtre n'écrit nulle part dans
 un terminal, et qu'un programme console ouvre une fenêtre noire derrière ses fenêtres.
-`svgprintlayout.exe` est celui des raccourcis ; dans un terminal, utilisez
-`svgprintlayout-console.exe -version` pour joindre la version à un signalement de problème.
+`pageslice.exe` est celui des raccourcis ; dans un terminal, utilisez
+`pageslice-console.exe -version` pour joindre la version à un signalement de problème.
 
 Les paquets pèsent plusieurs dizaines de Mo (GTK 4 et ses dépendances) ; la CI donne la
 taille exacte de chaque construction.
 
 **Langues.** La fenêtre suit la langue de Windows (français, anglais, espagnol ou
 allemand, l'anglais sinon) ; le menu de la fenêtre ou `-lang` en choisit une autre, et
-le choix est enregistré dans `%AppData%\svgprintlayout\settings.json`. L'installeur
+le choix est enregistré dans `%AppData%\pageslice\settings.json`. L'installeur
 suit lui aussi la langue de Windows.
 
 Les polices viennent de Windows (`C:\Windows\Fonts`, et les polices installées par
@@ -160,13 +160,13 @@ L'installeur (`installer.nsi`) copie ce même dossier dans `C:\Program Files\SVG
 Layout`, ajoute l'entrée de *Paramètres > Applications* et les raccourcis, et se
 désinstalle en supprimant exactement les fichiers qu'il a installés : aucun dossier
 n'est effacé en bloc, au cas où l'utilisateur aurait choisi un dossier qui contient
-autre chose. Une mise à jour retire d'abord la version installée.
+autre chose. Une mise à jour retire d'abord la version installée. Une installation de « SVG Print Layout » (le nom du programme jusqu'à la 1.0.x) est retirée de la même façon par l'installeur de Pageslice, avec son propre désinstalleur ; les réglages et les projets restent.
 
 Installation silencieuse, pour un déploiement :
 
 ```powershell
-.\svgprintlayout_X.Y.Z_windows-setup.exe /S /D=C:\Outils\SVGPrintLayout   # /D= en dernier, sans guillemets
-C:\Outils\SVGPrintLayout\Uninstall.exe /S
+.\pageslice_X.Y.Z_windows-setup.exe /S /D=C:\Outils\Pageslice   # /D= en dernier, sans guillemets
+C:\Outils\Pageslice\Uninstall.exe /S
 ```
 
 ## Fichiers de ce dossier
@@ -176,7 +176,7 @@ C:\Outils\SVGPrintLayout\Uninstall.exe /S
 | `build-windows.ps1` | Options et version, prérequis (MSYS2, NSIS, en proposant de les installer), lance la construction |
 | `build-windows.sh` | La construction, dans un terminal MSYS2 UCRT64 |
 | `installer.nsi` | Le script NSIS de l'installeur |
-| `svgprintlayout.ico` | L'icône du programme et de l'installeur |
+| `pageslice.ico` | L'icône du programme et de l'installeur |
 
 Les deux fichiers `.ps1` et `installer.nsi` sont en **UTF-8 avec marque d'ordre des
 octets (BOM)** : Windows PowerShell 5.1 et NSIS en ont besoin pour lire les accents.
@@ -187,7 +187,7 @@ Ne les enregistrez pas sans BOM.
 La CI (job `windows-package`, sur `windows-2022` et `windows-latest`) fait exactement ce que
 fait un utilisateur : elle exécute `.\build-windows.ps1 -Patch -Oui` dans Windows PowerShell 5.1 (et vérifie que
 `VERSION` est mis à jour après la construction), puis
-décompresse le `.zip`, lance `svgprintlayout-console.exe -selftest` avec le seul PATH de
+décompresse le `.zip`, lance `pageslice-console.exe -selftest` avec le seul PATH de
 Windows, puis **ouvre la fenêtre** dans les quatre langues (le programme crée un fichier
 avec `-ready-file` quand la fenêtre est affichée et le document dessiné) et en enregistre
 une capture d'écran, déposée en artefact `windows-screenshots-<système>` ; elle installe ensuite en
@@ -226,8 +226,8 @@ un terminal UCRT64, ou qu'un paquet est à moitié installé (`pacman -S --neede
 répare).
 
 **La fenêtre ne s'ouvre pas, ou une ligne de commande n'affiche rien**
-`svgprintlayout.exe` est le programme à fenêtre : lancé depuis un terminal il n'écrit rien.
-Utilisez `svgprintlayout-console.exe` pour voir les messages (`-version`, `-selftest`, ou
+`pageslice.exe` est le programme à fenêtre : lancé depuis un terminal il n'écrit rien.
+Utilisez `pageslice-console.exe` pour voir les messages (`-version`, `-selftest`, ou
 le message d'une erreur de démarrage).
 
 **« l'auto-test du programme échoue hors de MSYS2 »**

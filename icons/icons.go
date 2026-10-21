@@ -11,5 +11,5 @@ import _ "embed"
 
 // PNG is the icon at 256 × 256 pixels.
 //
-//go:embed svgprintlayout-256.png
+//go:embed pageslice-256.png
 var PNG []byte

@@ -5,7 +5,7 @@ package main
 import (
 	"strings"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/i18n"
+	"github.com/gillesmagneville/pageslice/internal/i18n"
 )
 
 // requestedLanguage finds the value of -lang in the arguments before the flag

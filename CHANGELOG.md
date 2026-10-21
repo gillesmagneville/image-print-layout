@@ -9,11 +9,39 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+## [1.1.0] - 2026-10-21
+
+Le programme change de nom : **Pageslice** remplace « SVG Print Layout ». Le programme va
+bientôt prendre aussi des images (JPEG, PNG, TIFF…) : « SVG » dans son nom ne dirait plus ce
+qu'il fait. Cette version ne change que le nom et la façon de reprendre l'existant ; le
+fonctionnement est celui de la 1.0.0. Les entrées plus bas gardent le nom qu'avait le
+programme à leur date.
+
 ### Modifié
 
+- **Nouveau nom : Pageslice.** La commande est `pageslice`, les paquets s'appellent
+  `pageslice` (`pageslice_1.1.0_amd64.deb`, `pageslice-1.1.0-1.x86_64.rpm`,
+  `pageslice_1.1.0_windows-setup.exe`…), le dossier d'installation Windows est `Pageslice`,
+  l'identifiant d'application est `io.github.gillesmagneville.pageslice`, la page de manuel
+  est `man pageslice`, et le module Go est `github.com/gillesmagneville/pageslice`. L'icône, la
+  fenêtre « À propos », les textes en quatre langues et les documents disent Pageslice.
+- **Les projets s'enregistrent en `.pageslice`** (format `pageslice-project`, toujours en
+  version 1 : seul le nom change).
 - **Release : un fichier `.sha256` par paquet**, joint à côté de lui, au lieu d'un seul
   `SHA256SUMS`. `sha256sum -c paquet.sha256` le vérifie quand les deux sont dans le même dossier.
   Le texte de la release dit quel fichier vérifie quel paquet.
+
+### Ajouté
+
+- **Reprise de l'existant**, pour que le changement de nom ne coûte rien à personne :
+  - les projets `.svgpl` de la 1.0.x s'ouvrent (le sélecteur de fichiers les propose) et
+    s'enregistrent ensuite en `.pageslice`, sans toucher au fichier d'origine ;
+  - la langue choisie est reprise depuis les réglages de la 1.0.x (`~/.config/svgprintlayout`,
+    `%AppData%\svgprintlayout`), une seule fois, sans les effacer ;
+  - installer le `.deb` ou le `.rpm` retire l'ancien paquet `svgprintlayout`
+    (`Conflicts`/`Replaces` pour Debian, `Obsoletes` pour RPM) ;
+  - l'installeur Windows désinstalle d'abord une installation de « SVG Print Layout » (fichiers,
+    raccourcis, clés de registre), avec son propre désinstalleur.
 
 ## [1.0.0] - 2026-10-21
 

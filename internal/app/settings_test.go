@@ -19,7 +19,7 @@ func TestFirstStartGivesTheDefaultSettings(t *testing.T) {
 }
 
 func TestSettingsAreSavedAndReadBack(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "config", "svgprintlayout", "settings.json")
+	path := filepath.Join(t.TempDir(), "config", "pageslice", "settings.json")
 	if err := (Settings{Language: "de"}).Save(path); err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +87,58 @@ func TestSettingsPathIsInTheConfigDirectory(t *testing.T) {
 	if err != nil {
 		t.Skipf("no configuration directory here: %v", err)
 	}
-	if filepath.Base(got) != "settings.json" || filepath.Base(filepath.Dir(got)) != "svgprintlayout" {
+	if filepath.Base(got) != "settings.json" || filepath.Base(filepath.Dir(got)) != "pageslice" {
 		t.Errorf("SettingsPath() = %s", got)
+	}
+}
+
+// The settings of the program under its first name are taken over once, and
+// never over settings that exist.
+func TestLegacySettingsAreImportedOnce(t *testing.T) {
+	config := t.TempDir()
+	old := filepath.Join(config, "svgprintlayout", "settings.json")
+	path := filepath.Join(config, "pageslice", "settings.json")
+	if err := (Settings{Language: "es"}).Save(old); err != nil {
+		t.Fatal(err)
+	}
+	if !ImportLegacySettings(path) {
+		t.Fatal("the old settings were not imported")
+	}
+	if got, err := LoadSettings(path); err != nil || got.Language != "es" {
+		t.Errorf("after the import: %+v, %v; want es", got, err)
+	}
+	if _, err := os.Stat(old); err != nil {
+		t.Errorf("the old settings must stay where they are: %v", err)
+	}
+	// The user then changes the language: the old file does not come back.
+	if err := (Settings{Language: "de"}).Save(path); err != nil {
+		t.Fatal(err)
+	}
+	if ImportLegacySettings(path) {
+		t.Error("settings that exist were imported over")
+	}
+	if got, _ := LoadSettings(path); got.Language != "de" {
+		t.Errorf("the settings were overwritten: %+v", got)
+	}
+}
+
+func TestNoLegacySettingsImportsNothing(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "pageslice", "settings.json")
+	if ImportLegacySettings(path) {
+		t.Error("imported settings from nothing")
+	}
+	if _, err := os.Stat(path); err == nil {
+		t.Error("a settings file was created from nothing")
+	}
+	// A damaged old file is not imported either.
+	old := filepath.Join(filepath.Dir(filepath.Dir(path)), "svgprintlayout", "settings.json")
+	if err := os.MkdirAll(filepath.Dir(old), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(old, []byte("{not json"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if ImportLegacySettings(path) {
+		t.Error("imported a damaged file")
 	}
 }

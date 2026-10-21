@@ -12,7 +12,7 @@ import (
 var (
 	changelogRelease = regexp.MustCompile(`(?m)^## \[(\d[^\]]*)\] - (\d{4}-\d{2}-\d{2})$`)
 	appstreamRelease = regexp.MustCompile(`<release version="([^"]+)" date="([^"]+)"`)
-	manPageHeader    = regexp.MustCompile(`(?m)^\.TH SVGPRINTLAYOUT 1 "([^"]*)" "svg-print-layout ([^"]*)"`)
+	manPageHeader    = regexp.MustCompile(`(?m)^\.TH PAGESLICE 1 "([^"]*)" "pageslice ([^"]*)"`)
 )
 
 // Every file that carries the version number says the same one, the one of
@@ -39,7 +39,7 @@ func TestVersionIsInEveryFileThatNamesIt(t *testing.T) {
 	date := releases[0][2]
 
 	// AppStream: the first <release> is the current version, with the same date.
-	appstream := appstreamRelease.FindStringSubmatch(read(t, filepath.Join(root, "metainfo", "io.github.gillesmagneville.svgprintlayout.metainfo.xml")))
+	appstream := appstreamRelease.FindStringSubmatch(read(t, filepath.Join(root, "metainfo", "io.github.gillesmagneville.pageslice.metainfo.xml")))
 	switch {
 	case appstream == nil:
 		t.Error("the AppStream file has no <release version=... date=...>")
@@ -50,12 +50,12 @@ func TestVersionIsInEveryFileThatNamesIt(t *testing.T) {
 	}
 
 	// Manual pages, one per language of the program: .TH NAME SECTION "date"
-	// "svg-print-layout X.Y.Z".
+	// "pageslice X.Y.Z".
 	for _, page := range manualPages {
 		man := manPageHeader.FindStringSubmatch(read(t, filepath.Join(root, filepath.FromSlash(page))))
 		switch {
 		case man == nil:
-			t.Errorf(`%s has no .TH header of the form: .TH SVGPRINTLAYOUT 1 "date" "svg-print-layout X.Y.Z" ...`, page)
+			t.Errorf(`%s has no .TH header of the form: .TH PAGESLICE 1 "date" "pageslice X.Y.Z" ...`, page)
 		case man[2] != version:
 			t.Errorf("VERSION is %s but %s says %s", version, page, man[2])
 		case man[1] != date:
@@ -67,8 +67,8 @@ func TestVersionIsInEveryFileThatNamesIt(t *testing.T) {
 // manualPages are the manual pages of the program: the English one, which is
 // the fallback, then one per other language.
 var manualPages = []string{
-	"docs/svgprintlayout.1",
-	"docs/fr/svgprintlayout.1",
-	"docs/es/svgprintlayout.1",
-	"docs/de/svgprintlayout.1",
+	"docs/pageslice.1",
+	"docs/fr/pageslice.1",
+	"docs/es/pageslice.1",
+	"docs/de/pageslice.1",
 }

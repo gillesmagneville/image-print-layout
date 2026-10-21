@@ -13,9 +13,9 @@ import (
 	"github.com/diamondburned/gotk4/pkg/glib/v2"
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/app"
-	"github.com/gillesmagneville/svg-print-layout/internal/diag"
-	"github.com/gillesmagneville/svg-print-layout/internal/i18n"
+	"github.com/gillesmagneville/pageslice/internal/app"
+	"github.com/gillesmagneville/pageslice/internal/diag"
+	"github.com/gillesmagneville/pageslice/internal/i18n"
 )
 
 // The project file in the window (ARCHITECTURE §9 and §10): open and save, the
@@ -24,7 +24,7 @@ import (
 // would be lost.
 
 // projectExt is the extension of a project file.
-const projectExt = ".svgpl"
+const projectExt = app.ProjectExtension
 
 // buildProjectMenu is the menu of the Project button.
 func (w *window) buildProjectMenu(tr *i18n.Translator) *gio.Menu {
@@ -48,8 +48,12 @@ func (w *window) refreshProjectState() {
 func projectFilter(tr *i18n.Translator) *gio.ListStore {
 	filter := gtk.NewFileFilter()
 	filter.SetName(tr.T("dialog.filter.project"))
-	filter.AddPattern("*" + projectExt)
-	filter.AddPattern("*" + strings.ToUpper(projectExt))
+	// The files of the program's first name (.svgpl) open too; they are always
+	// written back under the current extension.
+	for _, ext := range []string{app.ProjectExtension, app.LegacyProjectExtension} {
+		filter.AddPattern("*" + ext)
+		filter.AddPattern("*" + strings.ToUpper(ext))
+	}
 	filters := gio.NewListStore(gtk.GTypeFileFilter)
 	filters.Append(filter.Object)
 	return filters

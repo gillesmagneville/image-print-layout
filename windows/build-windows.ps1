@@ -2,7 +2,7 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Construit le paquet Windows de SVG Print Layout : une version portable
+    Construit le paquet Windows de Pageslice : une version portable
     (.zip) et, si NSIS est disponible, un installeur (.exe).
 
 .DESCRIPTION
@@ -48,7 +48,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 # ====================== CONFIGURATION ======================
-$PackageName = "svgprintlayout"
+$PackageName = "pageslice"
 
 # Localisation du script : $MyInvocation.MyCommand.Path (avec repli sur
 # $PSCommandPath) plutôt que $PSScriptRoot, ce dernier s'étant avéré peu
@@ -61,7 +61,7 @@ if (-not $ScriptPath) { $ScriptPath = $PSCommandPath }
 $WindowsDir  = Split-Path -Parent $ScriptPath
 $ProjectDir  = Split-Path -Parent $WindowsDir
 
-$BuildRoot   = "$env:LOCALAPPDATA\svgprintlayout-build"
+$BuildRoot   = "$env:LOCALAPPDATA\pageslice-build"
 $VersionFile = "$ProjectDir\VERSION"
 $BuildScript = "./windows/build-windows.sh"
 # =============================================================
@@ -70,7 +70,7 @@ function Show-Help {
     @'
 Usage : .\build-windows.ps1 [options]
 
-Script de construction du paquet Windows pour SVG Print Layout.
+Script de construction du paquet Windows pour Pageslice.
 
 OPTIONS :
   -Major              Incrémente le numéro majeur   (ex: 1.2.3 -> 2.0.0)
@@ -88,8 +88,8 @@ version d'avant-publication (0.1.0-dev) est publiée par -Minor ou -Patch
 (-> 0.1.0) ; -Major donne 1.0.0.
 
 Les paquets sont créés à la racine du dépôt :
-  svgprintlayout_<version>_windows-portable.zip   version portable
-  svgprintlayout_<version>_windows-setup.exe      installeur (si NSIS est là)
+  pageslice_<version>_windows-portable.zip   version portable
+  pageslice_<version>_windows-setup.exe      installeur (si NSIS est là)
 
 Prérequis vérifiés automatiquement (avec proposition d'installation si absents) :
   - Windows 10 ou 11, 64 bits

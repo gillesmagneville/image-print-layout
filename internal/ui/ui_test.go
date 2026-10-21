@@ -21,14 +21,14 @@ import (
 	"github.com/diamondburned/gotk4/pkg/glib/v2"
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/app"
-	"github.com/gillesmagneville/svg-print-layout/internal/engine"
-	"github.com/gillesmagneville/svg-print-layout/internal/export"
-	"github.com/gillesmagneville/svg-print-layout/internal/i18n"
-	"github.com/gillesmagneville/svg-print-layout/internal/layout"
-	"github.com/gillesmagneville/svg-print-layout/internal/model"
-	"github.com/gillesmagneville/svg-print-layout/internal/project"
-	"github.com/gillesmagneville/svg-print-layout/internal/testsvg"
+	"github.com/gillesmagneville/pageslice/internal/app"
+	"github.com/gillesmagneville/pageslice/internal/engine"
+	"github.com/gillesmagneville/pageslice/internal/export"
+	"github.com/gillesmagneville/pageslice/internal/i18n"
+	"github.com/gillesmagneville/pageslice/internal/layout"
+	"github.com/gillesmagneville/pageslice/internal/model"
+	"github.com/gillesmagneville/pageslice/internal/project"
+	"github.com/gillesmagneville/pageslice/internal/testsvg"
 )
 
 // GTK may be driven from one thread only: the one that starts it. The test
@@ -215,7 +215,7 @@ func runScenario() {
 			if doc.Size.W != 1280 || doc.Size.H != 5479 {
 				fail("the document is %v x %v, want 1280 x 5479", doc.Size.W, doc.Size.H)
 			}
-			if got := w.win.Title(); got != "plan.svg — SVG Print Layout" {
+			if got := w.win.Title(); got != "plan.svg — Pageslice" {
 				fail("the title is %q", got)
 			}
 			checkTexts("document (fr)", i18n.French)
@@ -962,11 +962,11 @@ func runScenario() {
 		})
 
 		// 8. The project: saved, opened again, and the questions that go with it.
-		projectPath := filepath.Join(dir, "plan.svgpl")
-		missingProject := filepath.Join(dir, "missing", "plan.svgpl")
-		changedProject := filepath.Join(dir, "changed", "plan.svgpl")
-		outsideProject := filepath.Join(dir, "outside", "plan.svgpl")
-		brokenProject := filepath.Join(dir, "broken.svgpl")
+		projectPath := filepath.Join(dir, "plan.pageslice")
+		missingProject := filepath.Join(dir, "missing", "plan.pageslice")
+		changedProject := filepath.Join(dir, "changed", "plan.pageslice")
+		outsideProject := filepath.Join(dir, "outside", "plan.pageslice")
+		brokenProject := filepath.Join(dir, "broken.pageslice")
 		var savedCuts []float64
 		cutPositions := func() []float64 {
 			var out []float64
@@ -1017,7 +1017,7 @@ func runScenario() {
 				return false
 			}
 			tr := i18n.New(i18n.French)
-			if got, want := w.win.Title(), "*plan.svg — SVG Print Layout"; got != want {
+			if got, want := w.win.Title(), "*plan.svg — Pageslice"; got != want {
 				fail("project: the title with unsaved changes is %q, want %q", got, want)
 			}
 			if !w.saveAct.Enabled() || !w.saveAsAct.Enabled() {
@@ -1041,10 +1041,10 @@ func runScenario() {
 				fail("project: the project was not written")
 				return true
 			}
-			if got, want := w.win.Title(), "plan.svgpl — SVG Print Layout"; got != want {
+			if got, want := w.win.Title(), "plan.pageslice — Pageslice"; got != want {
 				fail("project: the title after saving is %q, want %q", got, want)
 			}
-			if status := plain(w.status.Label()); status != "Projet enregistré : plan.svgpl." {
+			if status := plain(w.status.Label()); status != "Projet enregistré : plan.pageslice." {
 				fail("project: the status after saving says %q", status)
 			}
 			if w.closeRequested() {
@@ -1055,11 +1055,11 @@ func runScenario() {
 				fail("project: %v", err)
 			}
 			w.refreshAll()
-			if got := w.win.Title(); got != "*plan.svgpl — SVG Print Layout" {
+			if got := w.win.Title(); got != "*plan.pageslice — Pageslice" {
 				fail("project: the title after a change is %q", got)
 			}
 			w.saveProject()
-			if got := w.win.Title(); got != "plan.svgpl — SVG Print Layout" || w.session.Dirty() {
+			if got := w.win.Title(); got != "plan.pageslice — Pageslice" || w.session.Dirty() {
 				fail("project: the title after saving again is %q", got)
 			}
 			if dialogs := takeDialogs(); len(dialogs) != 0 {
@@ -1077,7 +1077,7 @@ func runScenario() {
 			if w.busy > 0 {
 				return false
 			}
-			if len(w.session.Cuts()) != 0 || w.session.ProjectPath() != "" || w.win.Title() != "plan.svg — SVG Print Layout" {
+			if len(w.session.Cuts()) != 0 || w.session.ProjectPath() != "" || w.win.Title() != "plan.svg — Pageslice" {
 				fail("project: opening an SVG kept the project: %d cuts, path %q, title %q", len(w.session.Cuts()), w.session.ProjectPath(), w.win.Title())
 			}
 			w.openProject(projectPath)
@@ -1097,10 +1097,10 @@ func runScenario() {
 			if p.Paper.Format != "A4" || w.session.Plan().ContentWidthMM != 200 || len(w.session.Plan().Pages) != len(savedCuts)+1 {
 				fail("project: after opening: paper %q, width %v, %d pages", p.Paper.Format, w.session.Plan().ContentWidthMM, len(w.session.Plan().Pages))
 			}
-			if w.win.Title() != "plan.svgpl — SVG Print Layout" {
+			if w.win.Title() != "plan.pageslice — Pageslice" {
 				fail("project: the title after opening is %q", w.win.Title())
 			}
-			if status := plain(w.status.Label()); status != "Projet ouvert : plan.svgpl." {
+			if status := plain(w.status.Label()); status != "Projet ouvert : plan.pageslice." {
 				fail("project: the status after opening says %q", status)
 			}
 			if dialogs := takeDialogs(); len(dialogs) != 0 {
@@ -1119,7 +1119,7 @@ func runScenario() {
 			} else {
 				wantTexts("the request to locate the document", dialogs[0], tr,
 					"dialog.locate.title", "dialog.locate.go", "dialog.cancel")
-				if !contains(dialogs[0], tr.T("dialog.locate.detail", "project", "plan.svgpl", "svg", "plan.svg")) {
+				if !contains(dialogs[0], tr.T("dialog.locate.detail", "project", "plan.pageslice", "svg", "plan.svg")) {
 					fail("project: the request does not name the project and the document: %q", dialogs[0])
 				}
 			}
@@ -1295,7 +1295,7 @@ func runScenario() {
 				shown := texts(about)
 				wantTexts("the About box ("+string(lang)+")", shown, tr, "app.tagline", "about.designed", "about.license")
 				for _, want := range []string{
-					"SVG Print Layout",
+					"Pageslice",
 					tr.T("about.developed", "name", "Gilles MAGNEVILLE"),
 					tr.T("about.version", "version", "test"),
 				} {

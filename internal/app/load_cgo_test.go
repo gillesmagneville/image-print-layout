@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/engine"
-	"github.com/gillesmagneville/svg-print-layout/internal/model"
-	"github.com/gillesmagneville/svg-print-layout/internal/testsvg"
+	"github.com/gillesmagneville/pageslice/internal/engine"
+	"github.com/gillesmagneville/pageslice/internal/model"
+	"github.com/gillesmagneville/pageslice/internal/testsvg"
 )
 
 // TestHeavyDocument opens a document of 100 000 elements with the real engine

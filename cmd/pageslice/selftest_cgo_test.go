@@ -22,7 +22,7 @@ func TestSelfTestPasses(t *testing.T) {
 
 func TestVersionLineNamesTheLibraries(t *testing.T) {
 	line := versionLine()
-	for _, want := range []string{"svg-print-layout", "librsvg", "cairo"} {
+	for _, want := range []string{"pageslice", "librsvg", "cairo"} {
 		if !strings.Contains(line, want) {
 			t.Errorf("%q lacks %q", line, want)
 		}

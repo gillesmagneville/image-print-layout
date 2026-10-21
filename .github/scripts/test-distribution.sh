@@ -67,8 +67,8 @@ install_debian() {
 
 build_install_debian() {
     echo o | ./build-deb.sh --no-version-change
-    note "Depends : $(dpkg-deb -f ./svgprintlayout_*.deb Depends)"
-    apt-get install -y ./svgprintlayout_*.deb
+    note "Depends : $(dpkg-deb -f ./pageslice_*.deb Depends)"
+    apt-get install -y ./pageslice_*.deb
 }
 
 install_redhat() {
@@ -93,8 +93,8 @@ install_redhat() {
 
 build_install_redhat() {
     echo o | ./build-rpm.sh --no-version-change
-    note "Requires : $(rpm -qpR ./svgprintlayout-*.rpm | grep -v 'GLIBC\|^rpmlib\|^rtld\|^/bin/sh' | sed 's/()(64bit)//' | sort -u | tr '\n' ' ')"
-    dnf -y install ./svgprintlayout-*.rpm
+    note "Requires : $(rpm -qpR ./pageslice-*.rpm | grep -v 'GLIBC\|^rpmlib\|^rtld\|^/bin/sh' | sed 's/()(64bit)//' | sort -u | tr '\n' ' ')"
+    dnf -y install ./pageslice-*.rpm
 }
 
 # Les lignes du résumé, relues à la fin pour que l'annotation les montre.
@@ -129,13 +129,13 @@ expect_refusal() {
 # Le programme installé, comme le lancerait une personne.
 run_installed() {
     echo "--- programme installé"
-    svgprintlayout -version
-    svgprintlayout -selftest
+    pageslice -version
+    pageslice -selftest
     note "-selftest : réussi"
     if command -v xvfb-run > /dev/null || command -v wlheadless-run > /dev/null; then
         mkdir -p "$screenshots"
         for lang in en fr es de; do
-            .github/scripts/screenshot.sh /usr/bin/svgprintlayout "$lang" "$screenshots/$lang.png"
+            .github/scripts/screenshot.sh /usr/bin/pageslice "$lang" "$screenshots/$lang.png"
         done
         if command -v xvfb-run > /dev/null; then
             note "fenêtre : ouverte dans les quatre langues, sur Xvfb ($(command -v import > /dev/null && echo "avec captures" || echo "sans capture : ImageMagick absent"))"

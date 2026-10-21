@@ -10,7 +10,7 @@ import (
 	"github.com/diamondburned/gotk4/pkg/glib/v2"
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/i18n"
+	"github.com/gillesmagneville/pageslice/internal/i18n"
 )
 
 // buildToolbar makes the two actions on the cuts that need no position: add one

@@ -7,8 +7,8 @@ import (
 	"image"
 	"math"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/engine"
-	"github.com/gillesmagneville/svg-print-layout/internal/layout"
+	"github.com/gillesmagneville/pageslice/internal/engine"
+	"github.com/gillesmagneville/pageslice/internal/layout"
 )
 
 // MaxExactBlocks is how many blocks the engine measures one by one. Measuring

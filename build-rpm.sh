@@ -2,17 +2,17 @@
 # SPDX-License-Identifier: GPL-3.0-only
 set -euo pipefail
 
-# Construit le paquet RPM de SVG Print Layout, pour Fedora, RHEL et leurs
+# Construit le paquet RPM de Pageslice, pour Fedora, RHEL et leurs
 # dérivés. Mêmes options et même gestion du fichier VERSION que build-deb.sh.
 # rpmbuild empaquète un dossier préparé par le script ; il ne compile rien
 # lui-même.
 
 # ====================== CONFIGURATION ======================
-PACKAGE_NAME="svgprintlayout"
-APP_ID="io.github.gillesmagneville.svgprintlayout"
+PACKAGE_NAME="pageslice"
+APP_ID="io.github.gillesmagneville.pageslice"
 MAINTAINER="Gilles MAGNEVILLE <gilles@magneville.fr>"
 DESCRIPTION="Met en page un dessin SVG sur plusieurs feuilles et l'exporte en PDF"
-URL="https://github.com/gillesmagneville/svg-print-layout"
+URL="https://github.com/gillesmagneville/pageslice"
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORK_DIR="$HOME/rpm-build"
 BUILD_DIR="$WORK_DIR/build"
@@ -23,7 +23,7 @@ show_help() {
     cat << EOF
 Usage: ./build-rpm.sh [options]
 
-Script de construction du paquet RPM pour SVG Print Layout.
+Script de construction du paquet RPM pour Pageslice.
 
 OPTIONS :
   --major               Incrémente le numéro majeur   (ex: 1.2.3 → 2.0.0)
@@ -40,7 +40,7 @@ version d'avant-publication (0.1.0-dev) est publiée par --minor ou --patch
 (→ 0.1.0) ; --major donne 1.0.0.
 
 Le paquet est créé à la racine du dépôt :
-svgprintlayout-<version>-<release>.<arch>.rpm. Une version d'avant-publication
+pageslice-<version>-<release>.<arch>.rpm. Une version d'avant-publication
 (0.1.0-dev) devient la release « 0.1.dev » et se classe avant la 0.1.0.
 
 Prérequis :
@@ -243,7 +243,7 @@ mkdir -p "$BUILD_DIR"
 # VCS rendent le binaire indépendant du dossier et de l'heure de la
 # construction ; -buildmode=pie permet à Linux de placer le programme à une
 # adresse aléatoire (durcissement). Le numéro de version du paquet est inscrit
-# dans le programme (svgprintlayout -version), même si le fichier VERSION du
+# dans le programme (pageslice -version), même si le fichier VERSION du
 # projet n'est mis à jour qu'après un build réussi (voir plus bas).
 # gotk4 (la liaison de GTK pour Go) déclare « free » autrement que <stdlib.h> :
 # gcc le signale trois fois à chaque compilation (-Wbuiltin-declaration-mismatch).
@@ -255,7 +255,7 @@ echo "    La première compilation de GTK (gotk4) dure plusieurs minutes et n'af
 echo "    les suivantes sont presque instantanées (cache de Go)."
 BINARY="$WORK_DIR/$PACKAGE_NAME"
 ( cd "$PROJECT_DIR" && CGO_ENABLED=1 CGO_CFLAGS="${CGO_CFLAGS:--O2 -g} -Wno-builtin-declaration-mismatch" go build -trimpath -buildvcs=false -buildmode=pie \
-    -ldflags "-s -w -buildid= -X main.version=$NEW_VERSION" -o "$BINARY" ./cmd/svgprintlayout )
+    -ldflags "-s -w -buildid= -X main.version=$NEW_VERSION" -o "$BINARY" ./cmd/pageslice )
 
 echo ">>> Création de l'arborescence..."
 install -D -m 0755 "$BINARY" "$BUILD_DIR/usr/bin/$PACKAGE_NAME"
@@ -263,15 +263,15 @@ install -D -m 0644 "$PROJECT_DIR/metainfo/$APP_ID.desktop" "$BUILD_DIR/usr/share
 # Métadonnées AppStream : elles permettent aux logithèques (GNOME Logiciels,
 # KDE Discover) d'afficher le paquet avec sa description complète.
 install -D -m 0644 "$PROJECT_DIR/metainfo/$APP_ID.metainfo.xml" "$BUILD_DIR/usr/share/metainfo/$APP_ID.metainfo.xml"
-install -D -m 0644 "$PROJECT_DIR/icons/svgprintlayout.svg" "$BUILD_DIR/usr/share/icons/hicolor/scalable/apps/svgprintlayout.svg"
-install -D -m 0644 "$PROJECT_DIR/icons/svgprintlayout-256.png" "$BUILD_DIR/usr/share/icons/hicolor/256x256/apps/svgprintlayout.png"
+install -D -m 0644 "$PROJECT_DIR/icons/pageslice.svg" "$BUILD_DIR/usr/share/icons/hicolor/scalable/apps/pageslice.svg"
+install -D -m 0644 "$PROJECT_DIR/icons/pageslice-256.png" "$BUILD_DIR/usr/share/icons/hicolor/256x256/apps/pageslice.png"
 # Page de manuel : en anglais dans man1 (langue de repli), traduite dans le
 # dossier de chaque langue (man-db choisit selon la langue de l'utilisateur).
 install -d -m 0755 "$BUILD_DIR/usr/share/man/man1"
-gzip -9n -c "$PROJECT_DIR/docs/svgprintlayout.1" > "$BUILD_DIR/usr/share/man/man1/$PACKAGE_NAME.1.gz"
+gzip -9n -c "$PROJECT_DIR/docs/pageslice.1" > "$BUILD_DIR/usr/share/man/man1/$PACKAGE_NAME.1.gz"
 for LANGUE in fr es de; do
     install -d -m 0755 "$BUILD_DIR/usr/share/man/$LANGUE/man1"
-    gzip -9n -c "$PROJECT_DIR/docs/$LANGUE/svgprintlayout.1" > "$BUILD_DIR/usr/share/man/$LANGUE/man1/$PACKAGE_NAME.1.gz"
+    gzip -9n -c "$PROJECT_DIR/docs/$LANGUE/pageslice.1" > "$BUILD_DIR/usr/share/man/$LANGUE/man1/$PACKAGE_NAME.1.gz"
 done
 chmod 0644 "$BUILD_DIR"/usr/share/man/man1/*.gz "$BUILD_DIR"/usr/share/man/*/man1/*.gz
 install -D -m 0644 "$PROJECT_DIR/README.md" "$BUILD_DIR/usr/share/doc/$PACKAGE_NAME/README.md"
@@ -310,9 +310,12 @@ Summary:        $DESCRIPTION
 License:        GPL-3.0-only
 URL:            $URL
 Packager:       $MAINTAINER
+# Le programme s'appelait « svgprintlayout » jusqu'à la version 1.0.x : installer
+# celui-ci retire l'ancien paquet.
+Obsoletes:      svgprintlayout < 1.1.0
 
 %description
-SVG Print Layout prépare l'impression d'un document vectoriel SVG de
+Pageslice prépare l'impression d'un document vectoriel SVG de
 dimensions quelconques sur plusieurs feuilles de papier standard : on choisit
 le format, les marges et la largeur du dessin, on place les coupures à la
 souris, puis on exporte un seul PDF multipage vectoriel.

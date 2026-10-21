@@ -12,7 +12,7 @@ func TestVersionLineStartsWithVersionAndPlatform(t *testing.T) {
 	old := version
 	version = "1.2.3"
 	defer func() { version = old }()
-	want := "svg-print-layout 1.2.3 (" + runtime.GOOS + "/" + runtime.GOARCH + ")"
+	want := "pageslice 1.2.3 (" + runtime.GOOS + "/" + runtime.GOARCH + ")"
 	if got := versionLine(); !strings.HasPrefix(got, want) {
 		t.Errorf("versionLine() = %q, want a line starting with %q", got, want)
 	}

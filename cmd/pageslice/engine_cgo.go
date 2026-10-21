@@ -13,8 +13,8 @@ import (
 	"math"
 	"os"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/engine"
-	"github.com/gillesmagneville/svg-print-layout/internal/units"
+	"github.com/gillesmagneville/pageslice/internal/engine"
+	"github.com/gillesmagneville/pageslice/internal/units"
 )
 
 // prepareRuntime must run first: it points the engine's libraries at the data

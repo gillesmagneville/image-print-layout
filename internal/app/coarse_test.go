@@ -8,7 +8,7 @@ import (
 	"io"
 	"testing"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/engine"
+	"github.com/gillesmagneville/pageslice/internal/engine"
 )
 
 func TestBlocksOfRows(t *testing.T) {

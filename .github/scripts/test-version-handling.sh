@@ -62,7 +62,7 @@ expected="$(next_version "$before" patch)"
 echo o | ./build-deb.sh --patch > /dev/null
 [ "$(cat VERSION)" = "$expected" ] || fail "VERSION vaut « $(cat VERSION) » après --patch, attendu « $expected »"
 [ "$(wc -l < VERSION)" -eq 1 ] || fail "VERSION doit tenir sur une ligne"
-ls ./svgprintlayout_"$expected"_*.deb > /dev/null || fail "paquet .deb de la version $expected introuvable"
+ls ./pageslice_"$expected"_*.deb > /dev/null || fail "paquet .deb de la version $expected introuvable"
 echo "ok  --patch (deb) : $before -> $expected"
 
 # --- 4. Menu interactif : choix 2 (minor) puis confirmation ---------------
@@ -70,7 +70,7 @@ after_deb="$expected"
 expected="$(next_version "$after_deb" minor)"
 printf '2\no\n' | ./build-rpm.sh > /dev/null
 [ "$(cat VERSION)" = "$expected" ] || fail "VERSION vaut « $(cat VERSION) » après le choix 2, attendu « $expected »"
-ls ./svgprintlayout-"${expected%%-*}"-*.rpm > /dev/null || fail "paquet .rpm de la version $expected introuvable"
+ls ./pageslice-"${expected%%-*}"-*.rpm > /dev/null || fail "paquet .rpm de la version $expected introuvable"
 echo "ok  menu interactif (rpm) : $after_deb -> $expected"
 
 # --- 5. --no-version-change : VERSION inchangée ---------------------------

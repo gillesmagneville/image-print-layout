@@ -9,6 +9,33 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+## [1.0.0] - 2026-10-21
+
+Première version stable. Le programme fait tout ce que demande le cahier des charges (jalons M1
+à M5), les 14 tests d'acceptation sont automatisés et s'exécutent dans la CI sur sept
+distributions Linux et sous Windows, et la recette a été faite à la main sous Ubuntu et sous
+Windows, avec le Mini-CAD. Le code du programme est celui de la 0.3.1 : cette version ne change
+que le numéro, la documentation et la façon de publier.
+
+### Ajouté
+
+- **Les paquets sont joints à la release GitHub** : le `.deb` (Ubuntu 24.04 et suivants, Debian
+  13), le `.rpm` (RHEL 10 et ses clones, Fedora), l'installeur et la version portable Windows
+  (10 et 11, 64 bits), avec leurs empreintes SHA-256.
+- **Workflow de release** (`.github/workflows/release.yml`) : un tag `vX.Y.Z` sur main construit
+  ces paquets sans changer `VERSION`, les essaie comme la CI (installation, programme installé,
+  14 tests d'acceptation sous Linux ; version portable, installeur et désinstallation sous
+  Windows), puis crée la release avec cette section du CHANGELOG pour texte. Il refuse un tag qui
+  n'est pas celui de `VERSION` ou qui n'est pas sur main, et il se lance, sans rien publier,
+  quand on le modifie dans une pull request.
+
+### Modifié
+
+- Le README, `ARCHITECTURE.md`, `windows/README.md` et la CI ne disent plus que la recette sur
+  une machine Windows réelle reste à faire.
+- Reste ouvert, sans empêcher la 1.0.0 : la construction des paquets Windows par un utilisateur
+  avec ses propres installations de MSYS2 (la CI la fait sur un MSYS2 neuf).
+
 ## [0.3.1] - 2026-10-20
 
 Corrections sur le fond du document, la saisie des nombres et la fenêtre « À propos », et mention

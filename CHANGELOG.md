@@ -9,6 +9,72 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+## [1.2.0] - 2026-10-21
+
+Le programme ouvre des **images** : JPEG, PNG, TIFF, WebP, BMP et GIF. Une image se découpe et
+s'imprime comme un SVG : même échelle unique, mêmes coupures à la souris ou automatiques, même
+aperçu, même PDF multipage relu et vérifié. C'est la suite annoncée par le changement de nom de
+la 1.1.0 ; rien n'est changé pour les SVG.
+
+### Ajouté
+
+- **Ouvrir une image comme un document.** Ouvrir (Ctrl+O, ou un fichier donné au programme sur
+  la ligne de commande) accepte les SVG et les images ; le sélecteur de fichiers propose « Images et documents SVG », les SVG seuls et les images seules, avec les
+  seuls formats que cette installation sait lire. Le type est reconnu au **contenu** du
+  fichier, jamais à son nom : un `.png` qui est un JPEG s'ouvre comme un JPEG. Un fichier qui
+  n'est ni une image connue ni un SVG est refusé, avec la raison.
+- **Taille sur le papier d'après la résolution du fichier** : les pixels divisés par les points
+  par pouce que le fichier indique (JFIF ou EXIF pour un JPEG, `pHYs` pour un PNG, étiquettes
+  de résolution pour un TIFF), sur chaque axe. Sans résolution valable, 96 points par pouce, et
+  la section Fichier source le dit (une photo de 3 000 pixels à 300 points par pouce fait 254 mm
+  à 100 %). L'échelle reste unique, et l'image ne se déforme jamais.
+- **Orientation** : l'étiquette d'orientation d'un JPEG (EXIF) ou d'un TIFF est appliquée, aux
+  huit valeurs, à l'aperçu comme au PDF.
+- **JPEG incorporé tel quel dans le PDF** quand le PDF sait le lire (JPEG de base ou progressif,
+  8 bits, gris ou YCbCr) : pas de recompression, pas de perte, et le fichier n'est pas plus gros
+  que la photo. Une image n'est écrite **qu'une fois** dans le PDF, chaque page la référence :
+  le fichier ne grossit pas avec le nombre de pages.
+- **Transparence** : un PNG, un TIFF, un WebP ou un GIF transparent reste transparent ; le fond
+  de page (blanc opaque ou transparent) se voit à travers.
+- **Coupures automatiques pour une image** : le programme lit les pixels pour trouver les blocs
+  d'une image à fond uni (une capture, un schéma, une page numérisée) : le fond est la couleur
+  qui borde la moitié de l'image, et une suite de lignes qui en diffèrent est un bloc. Les
+  coupures tombent entre eux, et le bruit d'un JPEG ou la poussière d'un scan n'y change rien.
+  Une photographie, sans fond uni, n'a pas de blocs : les coupures se répartissent également et
+  aucune n'est dite traverser quelque chose.
+- **Garde-fous, dits à l'utilisateur** : plus de 100 millions de pixels (refusé **avant** de
+  décoder, la taille étant lue à l'en-tête, si bien qu'une image énorme ne fait pas de mémoire) ;
+  fichier PNG ou JPEG dont la fin manque (ouvert tel qu'on a pu le lire, avec un avertissement) ;
+  TIFF de plusieurs pages et GIF animé (seule la première image est lue, avec un avertissement) ;
+  image illisible ou format sans décodeur sur cette installation (le WebP sans son chargeur, sous
+  Linux), avec un message qui dit lequel.
+- **Projets sur une image** : un projet `.imgpl` décrit une image comme un SVG (chemin relatif,
+  empreinte, taille) et se rouvre de la même façon, avec les mêmes avertissements si le fichier a
+  changé. Le format du projet n'a pas changé (version 1) : les projets des versions précédentes
+  s'ouvrent comme avant.
+- **Vérification de l'export** : `export.Verify` relit aussi, dans le PDF, la matrice qui place
+  l'image et la compare au plan, comme il le fait pour le clip de chaque page.
+- **`-selftest`** lit un JPEG, un PNG et un TIFF intégrés et compare leurs pixels, en plus du SVG ;
+  le paquet Windows embarque le chargeur TIFF de gdk-pixbuf.
+- **Jeu d'essai** : le paquet `internal/testimg` fabrique des images de référence déterministes
+  (PNG, TIFF, JPEG, avec résolution et orientation), et les 14 tests d'acceptation passent aussi
+  sur une image, pour chaque format et chacune des huit orientations.
+
+### Modifié
+
+- Le bouton de la barre de titre s'appelle **Ouvrir…** (il s'appelait « Ouvrir un SVG »), et les
+  messages disent « le fichier d'origine » là où ils disaient « le SVG d'origine ».
+- **Fond du document** : pour une image, la section Fond explique qu'elle n'a pas de fond à part
+  (ses pixels sont imprimés tels quels) au lieu de proposer des choix grisés ; seul le fond de
+  page agit.
+- **Paquets** : le moteur lit les images avec gdk-pixbuf, que GTK 4 exige déjà (aucune
+  dépendance de plus à l'installation). Les paquets `.deb` et `.rpm` recommandent
+  `webp-pixbuf-loader` pour le WebP, et l'entrée de menu annonce les types MIME des images, pour
+  « Ouvrir avec » dans le gestionnaire de fichiers. Les scripts de construction vérifient la
+  présence des bibliothèques de développement de gdk-pixbuf.
+- La description du paquet, les fiches AppStream, l'entrée de menu et les quatre pages de manuel
+  parlent de documents SVG **et d'images**.
+
 ## [1.1.0] - 2026-10-21
 
 Le programme change de nom : **Image Print Layout** remplace « SVG Print Layout ». Le programme va

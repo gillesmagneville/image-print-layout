@@ -43,6 +43,7 @@ MSYS_PACKAGES=(
     mingw-w64-ucrt-x86_64-gcc
     mingw-w64-ucrt-x86_64-pkgconf
     mingw-w64-ucrt-x86_64-librsvg
+    mingw-w64-ucrt-x86_64-gdk-pixbuf2
     mingw-w64-ucrt-x86_64-cairo
     mingw-w64-ucrt-x86_64-fontconfig
     mingw-w64-ucrt-x86_64-gtk4
@@ -66,8 +67,12 @@ CONSOLE_EXE="$PACKAGE_NAME-console.exe"
 GTK_LOCALES=(fr es de)
 
 # Formats d'image que les chargeurs gdk-pixbuf livrés savent lire : ceux des
-# images incorporées aux SVG (Inkscape produit surtout du PNG et du JPEG).
-PIXBUF_LOADERS=(png jpeg gif bmp webp svg)
+# images que le programme ouvre (JPEG, PNG, TIFF, BMP, GIF, WebP) et ceux des
+# images incorporées aux SVG. Les cinq premiers sont indispensables : sans l'un
+# d'eux, le programme ne tiendrait pas ce qu'il annonce, et la construction
+# s'arrête. Le WebP (paquet MSYS2 à part) et le SVG sont livrés s'ils sont là.
+PIXBUF_REQUIRED=(png jpeg tiff gif bmp)
+PIXBUF_OPTIONAL=(webp svg)
 
 show_help() {
     cat << EOF2
@@ -148,7 +153,7 @@ check_go_prerequisites() {
     require_tool go "Installez le paquet MSYS2 mingw-w64-ucrt-x86_64-go."
     require_tool gcc "Installez le paquet MSYS2 mingw-w64-ucrt-x86_64-gcc."
     require_tool pkg-config "Installez le paquet MSYS2 mingw-w64-ucrt-x86_64-pkgconf."
-    pkg-config --exists librsvg-2.0 cairo fontconfig || die "les bibliothèques de développement de librsvg, de cairo et de fontconfig sont absentes (paquets MSYS2 mingw-w64-ucrt-x86_64-librsvg, -cairo et -fontconfig)."
+    pkg-config --exists librsvg-2.0 gdk-pixbuf-2.0 cairo fontconfig || die "les bibliothèques de développement de librsvg, de gdk-pixbuf, de cairo et de fontconfig sont absentes (paquets MSYS2 mingw-w64-ucrt-x86_64-librsvg, -gdk-pixbuf2, -cairo et -fontconfig)."
     pkg-config --exists gtk4 gobject-introspection-1.0 || die "les bibliothèques de développement de GTK 4 sont absentes (paquets MSYS2 mingw-w64-ucrt-x86_64-gtk4 et -gobject-introspection)."
 }
 
@@ -165,7 +170,7 @@ build_binary() {
     else
         expected="Windows CUI"
     fi
-    step "Compilation de $(basename "$destination") $VERSION (cgo, GTK4, librsvg, cairo ; sous-système $subsystem)..."
+    step "Compilation de $(basename "$destination") $VERSION (cgo, GTK4, librsvg, gdk-pixbuf, cairo ; sous-système $subsystem)..."
     if [ "$subsystem" = "windows" ]; then
         echo "    La première compilation de GTK (gotk4) dure plusieurs minutes et n'affiche rien ;"
         echo "    les suivantes sont presque instantanées (cache de Go)."
@@ -295,12 +300,14 @@ stage_windows() {
     step "Chargeurs d'images (gdk-pixbuf)..."
     local loader_src="$MINGW_PREFIX/lib/gdk-pixbuf-2.0/2.10.0/loaders"
     local loader_dst="$root/lib/gdk-pixbuf-2.0/2.10.0/loaders"
-    for name in "${PIXBUF_LOADERS[@]}"; do
+    for name in "${PIXBUF_REQUIRED[@]}" "${PIXBUF_OPTIONAL[@]}"; do
         if [ -f "$loader_src/libpixbufloader-$name.dll" ]; then
             install -D -m 0755 "$loader_src/libpixbufloader-$name.dll" "$loader_dst/libpixbufloader-$name.dll"
             loaders+=("$loader_src/libpixbufloader-$name.dll")
+        elif [[ " ${PIXBUF_REQUIRED[*]} " == *" $name "* ]]; then
+            die "il manque le chargeur d'images « $name » de gdk-pixbuf ($loader_src) : le programme ne saurait pas ouvrir ce format. Installez le paquet MSYS2 mingw-w64-ucrt-x86_64-gdk-pixbuf2."
         else
-            echo "    (pas de chargeur « $name » dans cette installation de MSYS2)"
+            echo "    (pas de chargeur « $name » dans cette installation de MSYS2 : ce format ne sera pas lu)"
         fi
     done
 

@@ -75,9 +75,10 @@ type Document interface {
 	Close()
 }
 
-// Loader reads a document. path is where the file sits (it may be empty): the
-// images the document links to are looked for next to it.
-type Loader func(svg []byte, path string) (Document, error)
+// Loader reads a document: an SVG or a picture, told apart by the first bytes
+// of data, never by the name of the file. path is where the file sits (it may
+// be empty): the images an SVG links to are looked for next to it.
+type Loader func(data []byte, path string) (Document, error)
 
 // FontMatcher tells which installed family the system gives for a requested
 // one: the same name when it is installed, another when it is substituted.

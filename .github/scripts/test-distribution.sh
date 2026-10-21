@@ -58,7 +58,7 @@ install_debian() {
     export DEBIAN_FRONTEND=noninteractive
     apt-get update
     apt-get install -y --no-install-recommends build-essential pkg-config dpkg-dev git ca-certificates \
-        librsvg2-dev libfontconfig-dev libgtk-4-dev libgirepository1.0-dev \
+        librsvg2-dev libgdk-pixbuf-2.0-dev libfontconfig-dev libgtk-4-dev libgirepository1.0-dev \
         fonts-dejavu-core adwaita-icon-theme xvfb xauth imagemagick poppler-utils
     # IBM Plex est la police du jeu d'essai, mais Debian ne la fournit pas
     # partout ; le test n'en dépend pas (une police de remplacement suffit).
@@ -78,7 +78,7 @@ install_redhat() {
     dnf -y install dnf-plugins-core epel-release || true
     dnf config-manager --set-enabled crb || dnf config-manager --set-enabled powertools || true
     dnf -y install gcc make pkgconf-pkg-config git tar gzip findutils which rpm-build \
-        librsvg2-devel cairo-devel fontconfig-devel gtk4-devel gobject-introspection-devel \
+        librsvg2-devel gdk-pixbuf2-devel cairo-devel fontconfig-devel gtk4-devel gobject-introspection-devel \
         dejavu-sans-fonts adwaita-icon-theme poppler-utils
     # L'écran virtuel est nécessaire pour essayer la fenêtre ; l'outil de
     # capture est facultatif. Un par un, pour que le journal dise lequel manque.

@@ -1,20 +1,30 @@
 .\" SPDX-License-Identifier: GPL-3.0-only
-.TH IMAGEPRINTLAYOUT 1 "2026-10-21" "imageprintlayout 1.1.0" "Benutzerbefehle"
+.TH IMAGEPRINTLAYOUT 1 "2026-10-21" "imageprintlayout 1.2.0" "Benutzerbefehle"
 .SH NAME
-imageprintlayout \- verteilt eine SVG\-Zeichnung auf mehrere Blätter und exportiert sie als PDF
+imageprintlayout \- verteilt eine SVG\-Zeichnung oder ein Bild auf mehrere Blätter und exportiert das Ergebnis als PDF
 .SH SYNOPSE
 .B imageprintlayout
-[\fB\-lang\fR \fISprache\fR] [\fIDatei.svg\fR | \fIProjekt.imgpl\fR]
+[\fB\-lang\fR \fISprache\fR] [\fIDatei.svg\fR | \fIBild\fR | \fIProjekt.imgpl\fR]
 .br
 .B imageprintlayout
 [\fB\-version\fR | \fB\-selftest\fR]
 .SH BESCHREIBUNG
 .B imageprintlayout
-bereitet ein SVG\-Vektordokument beliebiger Größe für den Druck auf mehreren
-Blättern Standardpapier vor: Man wählt Format, Ränder und Breite der
-Zeichnung, setzt die Schnitte mit der Maus und exportiert ein einziges
-mehrseitiges Vektor\-PDF. Die Zeichnung behält einen einzigen Maßstab, und die
-ursprüngliche SVG\-Datei wird nie verändert.
+bereitet ein Dokument beliebiger Größe für den Druck auf mehreren Blättern
+Standardpapier vor: eine SVG\-Vektorzeichnung oder ein Bild (JPEG, PNG, TIFF,
+WebP, BMP oder GIF). Man wählt Format, Ränder und Breite, setzt die Schnitte
+mit der Maus und exportiert ein einziges mehrseitiges PDF (bei SVG als
+Vektor\-PDF). Das Dokument behält einen einzigen Maßstab, und die
+ursprüngliche Datei wird nie verändert.
+.PP
+Die Art der Datei wird an ihrem Inhalt erkannt, nicht an ihrem Namen. Ein Bild
+ist auf dem Papier so groß, wie seine Datei angibt (seine Pixel geteilt durch
+seine Auflösung, oder 96 Punkte pro Zoll, wenn sie fehlt), und wird wie ein SVG
+geschnitten: Die automatischen Schnitte liegen zwischen seinen Blöcken, wenn es
+einen einfarbigen Hintergrund hat, und sind bei einem Foto gleichmäßig
+verteilt. Ein JPEG kommt unverändert, ohne erneute Kompression, ins PDF. Für
+WebP wird der WebP\-Lader von gdk\-pixbuf gebraucht (webp\-pixbuf\-loader unter
+Linux).
 .PP
 Das Fenster hat drei Bereiche: die Einstellungen links, die interaktive
 Vorschau in der Mitte und die Seitenliste rechts. Die Schnitte werden mit der
@@ -22,7 +32,7 @@ Maus gesetzt, verschoben und gelöscht; der Hintergrund des Dokuments und der
 Seite wird mit sofortiger Vorschau gewählt; jedes Blatt lässt sich so ansehen,
 wie es exportiert wird. Ein Layout wird in einer Projektdatei (\fI.imgpl\fR)
 gespeichert und später wieder geöffnet: Sie merkt sich Papier, Ränder, Maßstab,
-Hintergrund und Schnitte, und die ursprüngliche SVG\-Datei wird nie verändert.
+Hintergrund und Schnitte, und die ursprüngliche Datei wird nie verändert.
 Der Export liest das geschriebene PDF wieder ein, bevor er es dort ablegt, wo
 Sie es wollten.
 .PP
@@ -45,7 +55,7 @@ Fehlermeldung beizufügen.
 .B \-selftest
 Prüft, ob die Darstellungs\-Engine auf diesem Rechner funktioniert: lädt ein
 eingebautes SVG, misst und zeichnet es, exportiert es als PDF und prüft, ob die
-Schrift eingebettet ist. Beendet sich mit Code 0, wenn alles funktioniert,
+Schrift eingebettet ist; danach liest es ein eingebautes JPEG, PNG und TIFF. Beendet sich mit Code 0, wenn alles funktioniert,
 sonst mit 1.
 .TP
 .BI \-ready-file " Datei"
@@ -54,7 +64,7 @@ ist. Für Tests und Dokumentation gedacht.
 .SH DATEIEN
 .TP
 .I Projekt.imgpl
-Ein Layout-Projekt: die Einstellungen und der Ort des SVG\-Dokuments, nicht das Dokument selbst.
+Ein Layout-Projekt: die Einstellungen und der Ort des Dokuments (SVG oder Bild), nicht das Dokument selbst.
 .TP
 .I ~/.config/imageprintlayout/settings.json
 Die Einstellungen der Benutzerin oder des Benutzers (die Sprache der

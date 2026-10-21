@@ -14,8 +14,8 @@ Ouvrez une issue en précisant :
 - le système (la distribution et sa version, ou Windows 10 ou 11) ;
 - la version de l'application (`imageprintlayout -version`) ;
 - ce que vous avez fait, le comportement observé et le comportement attendu ;
-- si possible, le SVG en cause (ou un SVG minimal qui reproduit le problème) et le fichier
-  projet `.imgpl`.
+- si possible, le fichier en cause (un SVG ou une image, ou un exemple minimal qui reproduit
+  le problème) et le fichier projet `.imgpl`.
 
 ## Proposer une amélioration
 
@@ -41,12 +41,12 @@ discuter avant qu'après. Les fonctions listées comme hors périmètre dans
    indiquée dans `go.mod`.
 
    Si vous touchez au moteur de rendu (`internal/engine`), lancez aussi ses tests avec cgo
-   (`sudo apt-get install librsvg2-dev libfontconfig-dev poppler-utils fonts-ibm-plex`, puis
-   `CGO_ENABLED=1 go test ./internal/engine ./internal/testsvg`) : c'est ce que fait le job
+   (`sudo apt-get install librsvg2-dev libgdk-pixbuf-2.0-dev libfontconfig-dev poppler-utils fonts-ibm-plex`,
+   puis `CGO_ENABLED=1 go test ./internal/engine ./internal/testsvg ./internal/testimg`) : c'est ce que fait le job
    `engine` de l'intégration continue.
 
    Si vous touchez à la fenêtre (`internal/ui`), ajoutez GTK 4 et un écran virtuel
-   (`sudo apt-get install librsvg2-dev libfontconfig-dev libgtk-4-dev libgirepository1.0-dev xvfb xauth
+   (`sudo apt-get install librsvg2-dev libgdk-pixbuf-2.0-dev libfontconfig-dev libgtk-4-dev libgirepository1.0-dev xvfb xauth
    imagemagick fonts-ibm-plex`) et lancez `xvfb-run -a go test ./internal/ui
    ./cmd/imageprintlayout` : c'est le job `ui`, qui dépose aussi des captures de la fenêtre
    dans les quatre langues (artefact `screenshots`). Un texte de l'interface s'ajoute aux
@@ -79,7 +79,7 @@ Le contrat complet est dans `ARCHITECTURE.md`. Les règles à ne pas enfreindre 
 - **Coupures en unités du document**, pas en millimètres.
 - **Toute conversion d'unité passe par `units`** (1 mm = 72 / 25,4 points ; 1 unité = 1 pixel
   CSS à 96 dpi). Aucune constante de conversion recopiée ailleurs.
-- **Le SVG source n'est jamais ouvert en écriture.** Toute transformation s'applique à la
+- **Le fichier source (SVG ou image) n'est jamais ouvert en écriture.** Toute transformation s'applique à la
   copie de travail.
 - **Rien d'aléatoire ni de daté dans ce que l'application écrit** (PDF, projet) : pas
   d'horodatage, pas d'identifiant aléatoire, et jamais de parcours d'une `map` sans trier
@@ -117,6 +117,9 @@ Le contrat complet est dans `ARCHITECTURE.md`. Les règles à ne pas enfreindre 
   infrastructure réelle. Le générateur déterministe `internal/testsvg` en fournit un
   équivalent, et `SVGPL_MINICAD=/chemin/du/fichier.svg` fait passer les tests du moteur sur
   le vrai fichier (voir `docs/M0.md`).
+- Une image d'essai ne s'ajoute pas à `testdata/` : `internal/testimg` en fabrique, de façon
+  déterministe (PNG, TIFF et JPEG avec résolution et orientation, damier de quatre couleurs
+  qui rend toute rotation visible). Elle garde le dépôt léger et la méthode lisible.
 - Un test de rendu ne compare jamais deux rasters pixel par pixel : un rastériseur ne
   redessine pas deux fois la même image à l'identique. Comparez la géométrie écrite dans le
   PDF, ou des moyennes par carrés (voir « Test de couture » dans `ARCHITECTURE.md`).

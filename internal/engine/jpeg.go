@@ -75,8 +75,9 @@ func scanJPEG(data []byte) (h jpegHeader, ok bool) {
 // JPEG of 8 bits, in grey or colour, with the YCbCr transform its default
 // takes for three components. Anything else (CMYK, 12 bits, RGB stored
 // untransformed) is written as pixels. The pixels the viewer shows must be
-// those of the file's frame: an image that was turned by its orientation tag
-// is not embedded.
+// those of the file's frame: if the decoder gave a picture of another size,
+// it is not embedded. (An orientation tag does not prevent it: the picture is
+// turned by the matrix it is drawn with, not in its pixels.)
 func canEmbedJPEG(h jpegHeader, widthPx, heightPx int) bool {
 	if h.Precision != 8 || h.Width != widthPx || h.Height != heightPx {
 		return false

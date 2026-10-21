@@ -1,20 +1,29 @@
 .\" SPDX-License-Identifier: GPL-3.0-only
-.TH IMAGEPRINTLAYOUT 1 "2026-10-21" "imageprintlayout 1.1.0" "Comandos de usuario"
+.TH IMAGEPRINTLAYOUT 1 "2026-10-21" "imageprintlayout 1.2.0" "Comandos de usuario"
 .SH NOMBRE
-imageprintlayout \- reparte un dibujo SVG en varias hojas y lo exporta como PDF
+imageprintlayout \- reparte un dibujo SVG o una imagen en varias hojas y lo exporta como PDF
 .SH SINOPSIS
 .B imageprintlayout
-[\fB\-lang\fR \fIidioma\fR] [\fIarchivo.svg\fR | \fIproyecto.imgpl\fR]
+[\fB\-lang\fR \fIidioma\fR] [\fIarchivo.svg\fR | \fIimagen\fR | \fIproyecto.imgpl\fR]
 .br
 .B imageprintlayout
 [\fB\-version\fR | \fB\-selftest\fR]
 .SH DESCRIPCIÓN
 .B imageprintlayout
-prepara la impresión de un documento vectorial SVG de cualquier tamaño en
-varias hojas de papel estándar: se elige el formato, los márgenes y el ancho
-del dibujo, se colocan los cortes con el ratón y se exporta un único PDF
-vectorial de varias páginas. El dibujo conserva una única escala y el archivo
-SVG original nunca se modifica.
+prepara la impresión de un documento de cualquier tamaño en varias hojas de
+papel estándar: un dibujo vectorial SVG o una imagen (JPEG, PNG, TIFF, WebP,
+BMP o GIF). Se elige el formato, los márgenes y el ancho, se colocan los cortes
+con el ratón y se exporta un único PDF de varias páginas (vectorial si es un
+SVG). El documento conserva una única escala y el archivo original nunca se
+modifica.
+.PP
+El tipo de archivo se reconoce por su contenido, no por su nombre. Una imagen
+tiene en el papel el tamaño que indica su archivo (sus píxeles divididos por su
+resolución, o 96 puntos por pulgada si no la indica) y se corta como un SVG:
+los cortes automáticos caen entre sus bloques si tiene un fondo liso y se
+reparten por igual en una fotografía. Un JPEG entra en el PDF tal cual, sin
+recomprimir. WebP necesita el cargador WebP de gdk\-pixbuf
+(webp\-pixbuf\-loader en Linux).
 .PP
 La ventana tiene tres zonas: los ajustes a la izquierda, la vista previa
 interactiva en el centro y la lista de páginas a la derecha. Los cortes se
@@ -22,7 +31,7 @@ colocan, se mueven y se borran con el ratón; el fondo del documento y el de la
 página se eligen con una vista previa inmediata; cada hoja se ve tal como se
 exportará. Una maquetación se guarda en un archivo de proyecto
 (\fI.imgpl\fR) que se puede abrir más tarde: conserva el papel, los márgenes,
-la escala, el fondo y los cortes, y el archivo SVG original nunca se modifica.
+la escala, el fondo y los cortes, y el archivo original nunca se modifica.
 La exportación vuelve a leer el PDF que ha escrito antes de ponerlo donde se
 pidió.
 .PP
@@ -44,7 +53,7 @@ cualquier informe de problema.
 .B \-selftest
 Comprueba que el motor de representación funciona en esta máquina: carga un
 SVG integrado, lo mide, lo dibuja, lo exporta a PDF y verifica que la fuente
-queda incrustada. Termina con el código 0 si todo funciona y con 1 en caso
+queda incrustada; después lee un JPEG, un PNG y un TIFF integrados. Termina con el código 0 si todo funciona y con 1 en caso
 contrario.
 .TP
 .BI \-ready-file " archivo"
@@ -53,7 +62,7 @@ dibujado. Pensado para las pruebas y la documentación.
 .SH ARCHIVOS
 .TP
 .I proyecto.imgpl
-Un proyecto de maquetación: los ajustes y la ubicación del documento SVG, no el documento en sí.
+Un proyecto de maquetación: los ajustes y la ubicación del documento (SVG o imagen), no el documento en sí.
 .TP
 .I ~/.config/imageprintlayout/settings.json
 Las preferencias del usuario (el idioma de la interfaz). En Windows:

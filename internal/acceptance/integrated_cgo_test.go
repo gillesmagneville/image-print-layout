@@ -276,7 +276,7 @@ func TestAcceptance14ReopenTheProject(t *testing.T) {
 				t.Fatalf("test 14: export after reopening: %v", err)
 			}
 			if fileHash(t, first) != fileHash(t, second) {
-				t.Error("test 14: the PDF exported after reopening the project is not the one exported before")
+				t.Errorf("test 14: the PDF exported after reopening the project is not the one exported before: %s", describePDFDifference(t, first, second))
 			}
 
 			// The SVG is intact, and so is the project when saved again.

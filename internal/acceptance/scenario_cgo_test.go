@@ -10,9 +10,11 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/gillesmagneville/image-print-layout/internal/app"
@@ -168,6 +170,17 @@ func describePDFDifference(t *testing.T, pathA, pathB string) string {
 	}
 	if first >= 0 {
 		out += fmt.Sprintf("; %d bytes differ, the first at %d: %q and %q", count, first, window(a, first), window(b, first))
+		// The object that holds it: its number and the beginning of its
+		// dictionary, which is plain text, in each file.
+		objectAt := func(data []byte) string {
+			locs := regexp.MustCompile(`(?m)^\d+ \d+ obj`).FindAllIndex(data[:first+1], -1)
+			if len(locs) == 0 {
+				return "none"
+			}
+			at := locs[len(locs)-1][0]
+			return fmt.Sprintf("%q", data[at:min(len(data), at+120)])
+		}
+		out += fmt.Sprintf("; in the object %s and the object %s", objectAt(a), objectAt(b))
 	}
 	if pa, errA := export.ReadPDF(a); errA == nil {
 		if pb, errB := export.ReadPDF(b); errB == nil && len(pa.Pages) == len(pb.Pages) {
@@ -188,6 +201,18 @@ func describePDFDifference(t *testing.T, pathA, pathB string) string {
 		out += fmt.Sprintf("; named in the first: %s; in the second: %s", bytes.Join(na, []byte(" ")), bytes.Join(nb, []byte(" ")))
 	} else {
 		out += fmt.Sprintf("; both name %d fonts, identifiers and dates, the same", len(na))
+	}
+	// The fonts poppler finds in each file, when it is installed.
+	if fonts := func(path string) string {
+		res, err := exec.Command("pdffonts", path).CombinedOutput()
+		if err != nil {
+			return "unavailable"
+		}
+		return strings.Join(strings.Fields(string(res)), " ")
+	}; fonts(pathA) != fonts(pathB) {
+		out += fmt.Sprintf("; pdffonts says %q and %q", fonts(pathA), fonts(pathB))
+	} else {
+		out += "; pdffonts lists the same fonts"
 	}
 	return out
 }

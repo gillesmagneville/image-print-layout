@@ -6,6 +6,8 @@ package ui
 
 import (
 	"fmt"
+	"image"
+	"image/color"
 	"math"
 	"os"
 	"path/filepath"
@@ -22,12 +24,14 @@ import (
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 
 	"github.com/gillesmagneville/image-print-layout/internal/app"
+	"github.com/gillesmagneville/image-print-layout/internal/diag"
 	"github.com/gillesmagneville/image-print-layout/internal/engine"
 	"github.com/gillesmagneville/image-print-layout/internal/export"
 	"github.com/gillesmagneville/image-print-layout/internal/i18n"
 	"github.com/gillesmagneville/image-print-layout/internal/layout"
 	"github.com/gillesmagneville/image-print-layout/internal/model"
 	"github.com/gillesmagneville/image-print-layout/internal/project"
+	"github.com/gillesmagneville/image-print-layout/internal/testimg"
 	"github.com/gillesmagneville/image-print-layout/internal/testsvg"
 )
 
@@ -179,7 +183,7 @@ func runScenario() {
 		}
 		panelKeys := []string{"panel.source.title", "panel.paper.title", "panel.margins.title", "panel.scale.title",
 			"panel.placement.title", "panel.background.title", "panel.export.title", "pages.title", "pages.none",
-			"preview.empty.title", "preview.empty.hint", "action.open_svg", "status.ready", "source.none"}
+			"preview.empty.title", "preview.empty.hint", "action.open", "status.ready", "source.none"}
 
 		type step func() bool
 		var steps []step
@@ -1385,6 +1389,109 @@ func runScenario() {
 				return false
 			})
 		}
+
+		// 12. An image opens like an SVG: its file is told by its content, the
+		// panel says what it is, there is no background of the document to
+		// choose, and a picture that cannot be read is refused with a message in
+		// the language of the window. Opening an SVG again restores the panel.
+		var picture, tooLarge string
+		add(func() bool {
+			// A white page with two bands of ink, 400 x 300 pixels at 200 dpi.
+			img := image.NewRGBA(image.Rect(0, 0, 400, 300))
+			for y := 0; y < 300; y++ {
+				for x := 0; x < 400; x++ {
+					c := color.RGBA{255, 255, 255, 255}
+					if (y >= 40 && y < 100 || y >= 160 && y < 230) && x >= 40 && x < 360 {
+						c = color.RGBA{20, 20, 20, 255}
+					}
+					img.SetRGBA(x, y, c)
+				}
+			}
+			// Under a name that says SVG: the content decides.
+			picture = filepath.Join(dir, "scan.svg.png")
+			tooLarge = filepath.Join(dir, "huge.png")
+			if err := os.WriteFile(picture, testimg.PNG(img, 200, 200), 0o644); err != nil {
+				fail("image: %v", err)
+			}
+			if err := os.WriteFile(tooLarge, testimg.HugePNG(20000, 20000), 0o644); err != nil {
+				fail("image: %v", err)
+			}
+			w.setLanguageSetting("fr")
+			w.openPath(picture)
+			return true
+		})
+		add(func() bool {
+			if w.busy > 0 || w.session.Document() == nil || filepath.Base(w.session.Document().Path) != "scan.svg.png" || !w.pv.hasImage {
+				return false
+			}
+			doc := w.session.Document()
+			if !doc.IsImage() || doc.Size.W != 192 || doc.Size.H != 144 {
+				fail("image: document = %v, size %v; want an image of 192 x 144 units (400 x 300 pixels at 200 dpi)", doc.IsImage(), doc.Size)
+			}
+			if len(doc.Blocks) != 2 {
+				fail("image: %d blocks found in the two bands of ink, want 2", len(doc.Blocks))
+			}
+			expandAll(w.win)
+			tr := i18n.New(i18n.French)
+			shown := texts(w.win)
+			for _, want := range []string{
+				tr.T("source.image", "format", "PNG", "wpx", "400", "hpx", "300"),
+				tr.T("source.image.dpi", "dpi", "200"),
+				tr.T("bg.doc.image"),
+			} {
+				if !contains(shown, want) {
+					fail("image: %q is not shown; the window shows %q", want, shown)
+				}
+			}
+			if w.panel.bgDocBox.IsVisible() || !w.panel.bgImage.IsVisible() {
+				fail("image: the choices on the background of the document are offered for a picture")
+			}
+			if !w.panel.sourceImage.IsVisible() || !w.panel.sourceDPI.IsVisible() {
+				fail("image: the lines about the picture are hidden")
+			}
+			if err := w.session.SetDocBackground(model.WhitenBackground); diag.CodeOf(err) != "background.none" {
+				fail("image: whitening the background of a picture gave %v", err)
+			}
+			return true
+		})
+		// A picture that is too large: a message, and the picture stays.
+		add(func() bool { w.setLanguageSetting("de"); w.openPath(tooLarge); return true })
+		add(func() bool {
+			if w.busy > 0 {
+				return false
+			}
+			if doc := w.session.Document(); doc == nil || filepath.Base(doc.Path) != "scan.svg.png" {
+				fail("image: after a refused picture the open document is %+v", doc)
+			}
+			var message []string
+			for _, win := range application.Windows() {
+				if win.Object.Native() != w.win.Object.Native() {
+					message = append(message, texts(win)...)
+					win.Close()
+				}
+			}
+			tr := i18n.New(i18n.German)
+			if !contains(message, tr.T("dialog.error.open")) {
+				fail("image: no message for a picture that is too large: %q", message)
+			}
+			joined := strings.Join(message, "\n")
+			if !strings.Contains(joined, "20000") || !strings.Contains(joined, "Pixel") || strings.Contains(joined, "{") {
+				fail("image: the message does not say, in German, how large the picture is: %q", joined)
+			}
+			w.setLanguageSetting("fr")
+			w.openPath(svg)
+			return true
+		})
+		add(func() bool {
+			if w.busy > 0 || w.session.Document() == nil || filepath.Base(w.session.Document().Path) != "plan.svg" || !w.pv.hasImage {
+				return false
+			}
+			expandAll(w.win)
+			if !w.panel.bgDocBox.IsVisible() || w.panel.bgImage.IsVisible() || w.panel.sourceImage.IsVisible() || w.panel.sourceDPI.IsVisible() {
+				fail("image: after opening an SVG the panels still show a picture")
+			}
+			return true
+		})
 
 		// The steps run one at a time from the main loop; a step that is not
 		// done yet is asked again, for at most ten seconds.

@@ -67,13 +67,23 @@ func (s *settingsPanel) buildBackground() gtk.Widgetter {
 		w.texts.bind(func(tr *i18n.Translator) { l.SetLabel(tr.T(key)) })
 		return l
 	}
-	box.Append(title("bg.doc.title"))
-	box.Append(s.bgNone)
-	box.Append(s.bgFound)
-	box.Append(s.bgKeep)
-	box.Append(s.bgWhiten)
-	box.Append(s.bgRemove)
-	box.Append(s.note("bg.doc.hint"))
+	// The choices on the background of the document are for an SVG: a picture
+	// has no background of its own to keep, whiten or remove.
+	s.bgDocBox = s.column()
+	s.bgDocBox.SetMarginTop(0)
+	s.bgDocBox.Append(title("bg.doc.title"))
+	s.bgDocBox.Append(s.bgNone)
+	s.bgDocBox.Append(s.bgFound)
+	s.bgDocBox.Append(s.bgKeep)
+	s.bgDocBox.Append(s.bgWhiten)
+	s.bgDocBox.Append(s.bgRemove)
+	s.bgDocBox.Append(s.note("bg.doc.hint"))
+	box.Append(s.bgDocBox)
+	s.bgImage = s.note("bg.doc.image")
+	s.bgImage.SetWrap(true)
+	s.bgImage.SetMaxWidthChars(40)
+	s.bgImage.SetVisible(false)
+	box.Append(s.bgImage)
 	box.Append(gtk.NewSeparator(gtk.OrientationHorizontal))
 	box.Append(title("bg.page.title"))
 	box.Append(s.pageWhite)
@@ -112,8 +122,12 @@ func (s *settingsPanel) syncBackground() {
 	s.updating = true
 	defer func() { s.updating = false }()
 
+	doc := s.w.session.Document()
+	image := doc != nil && doc.IsImage()
+	s.bgDocBox.SetVisible(!image)
+	s.bgImage.SetVisible(image)
 	s.bgNone.SetLabel(tr.T("bg.doc.none"))
-	s.bgNone.SetVisible(s.w.session.Document() != nil && !found)
+	s.bgNone.SetVisible(doc != nil && !found)
 	s.bgFound.SetVisible(found)
 	if found {
 		element := tr.T("bg.element.rect")

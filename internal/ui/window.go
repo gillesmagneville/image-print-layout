@@ -290,21 +290,14 @@ func (w *window) statusText() string {
 	return w.texts.tr.T(w.statusKey, args...)
 }
 
-// openDialog asks for an SVG document.
+// openDialog asks for a document: an image or an SVG.
 func (w *window) openDialog() {
 	tr := w.texts.tr
-	filter := gtk.NewFileFilter()
-	filter.SetName(tr.T("dialog.filter.svg"))
-	filter.AddMIMEType("image/svg+xml")
-	filter.AddPattern("*.svg")
-	filter.AddPattern("*.SVG")
-	filters := gio.NewListStore(gtk.GTypeFileFilter)
-	filters.Append(filter.Object)
-
+	filters, first := documentFilters(tr)
 	dialog := gtk.NewFileDialog()
-	dialog.SetTitle(tr.T("dialog.open_svg.title"))
+	dialog.SetTitle(tr.T("dialog.open.title"))
 	dialog.SetFilters(filters)
-	dialog.SetDefaultFilter(filter)
+	dialog.SetDefaultFilter(first)
 	dialog.Open(context.Background(), &w.win.Window, func(res gio.AsyncResulter) {
 		file, err := dialog.OpenFinish(res)
 		if err != nil || file == nil {
@@ -317,7 +310,7 @@ func (w *window) openDialog() {
 // showOpenError tells the user that a document could not be opened.
 func (w *window) showOpenError(path string, err error) {
 	tr := w.texts.tr
-	w.showMessage(tr.T("dialog.error.open"), tr.T("dialog.error.open.detail", "path", path, "reason", err.Error()))
+	w.showMessage(tr.T("dialog.error.open"), tr.T("dialog.error.open.detail", "path", path, "reason", errorText(tr, err)))
 }
 
 // showMessage opens a small modal window with a heading, an explanation and a
@@ -430,8 +423,8 @@ func (w *window) buildHeaderBar() {
 	open := gtk.NewButton()
 	open.SetActionName("win.open")
 	w.texts.bind(func(tr *i18n.Translator) {
-		open.SetLabel(tr.T("action.open_svg"))
-		open.SetTooltipText(tr.T("action.open_svg.tooltip"))
+		open.SetLabel(tr.T("action.open"))
+		open.SetTooltipText(tr.T("action.open.tooltip"))
 	})
 	bar.PackStart(open)
 
@@ -490,7 +483,7 @@ func (w *window) buildCentre() gtk.Widgetter {
 	w.texts.bind(func(tr *i18n.Translator) {
 		title.SetLabel(tr.T("preview.empty.title"))
 		hint.SetLabel(tr.T("preview.empty.hint"))
-		open.SetLabel(tr.T("action.open_svg"))
+		open.SetLabel(tr.T("action.open"))
 	})
 
 	w.stack = gtk.NewStack()

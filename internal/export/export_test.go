@@ -332,6 +332,46 @@ func pdfOf(specs []engine.PageSpec, docW, docH float64) *PDF {
 	return pdf
 }
 
+// pictureOf is pdfOf for a document that is a picture: no rectangle, the
+// picture placed by a matrix, as cairo writes it. turn is the matrix of a
+// quarter turn (a picture with an orientation tag): the unit square is then
+// drawn with its sides swapped, to the same box.
+func pictureOf(specs []engine.PageSpec, docW, docH float64, turn bool) *PDF {
+	pdf := &PDF{}
+	for _, s := range specs {
+		w, h := docW*s.PtPerUnit, docH*s.PtPerUnit
+		x, y := s.OriginXPt, s.OriginYPt-s.BandTop*s.PtPerUnit
+		matrix := fmt.Sprintf("%.6f 0 0 %.6f %.6f %.6f", w, -h, x, y+h)
+		if turn {
+			matrix = fmt.Sprintf("0 %.6f %.6f 0 %.6f %.6f", h, w, x, y)
+		}
+		content := fmt.Sprintf("1 0 0 -1 0 %.6f cm\nq\nQ q\n%.3f %.3f %.3f %.3f re W n\nq\n%s cm\n/a0 gs /x7 Do\nQ\nQ\n",
+			s.HeightPt, s.OriginXPt, s.OriginYPt, w, (s.BandBottom-s.BandTop)*s.PtPerUnit, matrix)
+		pdf.Pages = append(pdf.Pages, PDFPage{WidthPt: s.WidthPt, HeightPt: s.HeightPt, Content: content})
+	}
+	return pdf
+}
+
+func TestVerifyChecksWhereAPictureIsDrawn(t *testing.T) {
+	specs := Specs(planOf(t, acceptance(1380.5, 2760, 4120.25)))
+	for _, turn := range []bool{false, true} {
+		if items := Verify(pictureOf(specs, miniCAD.W, miniCAD.H, turn), specs, miniCAD.W, miniCAD.H, true); len(items) != 0 {
+			t.Errorf("turn=%v: a matching picture raises %v", turn, codes(items))
+		}
+		moved := append([]engine.PageSpec(nil), specs...)
+		moved[2].BandTop += 0.1
+		moved[2].BandBottom += 0.1 // same window height, picture shifted
+		if items := Verify(pictureOf(moved, miniCAD.W, miniCAD.H, turn), specs, miniCAD.W, miniCAD.H, true); !has(items, "export.pdf_offset") {
+			t.Errorf("turn=%v: a shifted picture raises %v", turn, codes(items))
+		}
+	}
+	// A picture of another size is one that the document holds: not checked.
+	other := pictureOf(specs, miniCAD.W/2, miniCAD.H/2, false)
+	if items := Verify(other, specs, miniCAD.W, miniCAD.H, true); has(items, "export.pdf_offset") {
+		t.Errorf("a smaller picture is not the document: %v", codes(items))
+	}
+}
+
 func TestVerifyAcceptsAPDFThatMatchesThePlan(t *testing.T) {
 	specs := Specs(planOf(t, acceptance(1380.5, 2760, 4120.25)))
 	if items := Verify(pdfOf(specs, miniCAD.W, miniCAD.H), specs, miniCAD.W, miniCAD.H, true); len(items) != 0 {

@@ -273,6 +273,10 @@ const number = `(-?\d+(?:\.\d+)?)`
 var (
 	clipRe = regexp.MustCompile(number + ` ` + number + ` ` + number + ` ` + number + ` re W n`)
 	fillRe = regexp.MustCompile(number + ` ` + number + ` ` + number + ` ` + number + ` re f`)
+	// imageRe is a picture drawn: the matrix that places its unit square, then
+	// the call of the image (cairo may put the state of its opacity between).
+	imageRe = regexp.MustCompile(number + ` ` + number + ` ` + number + ` ` + number + ` ` + number + ` ` + number +
+		` cm\s+(?:/[\w.]+ gs\s+)?/[\w.]+ Do`)
 )
 
 func floats(m []string) []float64 {
@@ -348,17 +352,46 @@ func Verify(pdf *PDF, specs []engine.PageSpec, docW, docH float64, whitePage boo
 		}
 
 		// The offset: a rectangle that covers the whole document, if one is
-		// painted, sits where the plan puts the document.
+		// painted, sits where the plan puts the document. So does a picture
+		// that is the document: the box of its unit square under the matrix
+		// that places it, whatever turn the matrix gives it.
+		wantX, wantY := want.OriginXPt, want.OriginYPt-want.BandTop*want.PtPerUnit
+		shifted := false
 		for _, m := range fillRe.FindAllStringSubmatch(got.Content[after:], -1) {
 			f := floats(m[1:])
 			if math.Abs(f[2]-docW*want.PtPerUnit) > 0.01 || math.Abs(f[3]-docH*want.PtPerUnit) > 0.01 {
 				continue
 			}
-			if !near(f[0], want.OriginXPt) || !near(f[1], want.OriginYPt-want.BandTop*want.PtPerUnit) {
-				out = append(out, diag.New("export.pdf_offset", n))
+			if !near(f[0], wantX) || !near(f[1], wantY) {
+				shifted = true
 			}
 			break
 		}
+		for _, m := range imageRe.FindAllStringSubmatch(got.Content[after:], -1) {
+			a, b, c, d, e, f := vals6(floats(m[1:]))
+			x0, x1 := minmax(e, e+a, e+c, e+a+c)
+			y0, y1 := minmax(f, f+b, f+d, f+b+d)
+			if math.Abs((x1-x0)-docW*want.PtPerUnit) > 0.01 || math.Abs((y1-y0)-docH*want.PtPerUnit) > 0.01 {
+				continue // another picture: one that the document holds
+			}
+			if !near(x0, wantX) || !near(y0, wantY) {
+				shifted = true
+			}
+			break
+		}
+		if shifted {
+			out = append(out, diag.New("export.pdf_offset", n))
+		}
 	}
 	return out
+}
+
+func vals6(v []float64) (a, b, c, d, e, f float64) { return v[0], v[1], v[2], v[3], v[4], v[5] }
+
+func minmax(v ...float64) (lo, hi float64) {
+	lo, hi = v[0], v[0]
+	for _, x := range v[1:] {
+		lo, hi = math.Min(lo, x), math.Max(hi, x)
+	}
+	return lo, hi
 }

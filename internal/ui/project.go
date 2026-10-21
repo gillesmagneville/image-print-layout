@@ -112,20 +112,14 @@ func (w *window) locateDocument(pf *app.ProjectFile) {
 		})
 }
 
-// pickDocumentFor asks for the SVG a project is about, then opens the project.
+// pickDocumentFor asks for the document a project is about, then opens the project.
 func (w *window) pickDocumentFor(pf *app.ProjectFile) {
 	tr := w.texts.tr
-	filter := gtk.NewFileFilter()
-	filter.SetName(tr.T("dialog.filter.svg"))
-	filter.AddMIMEType("image/svg+xml")
-	filter.AddPattern("*.svg")
-	filter.AddPattern("*.SVG")
-	filters := gio.NewListStore(gtk.GTypeFileFilter)
-	filters.Append(filter.Object)
+	filters, first := documentFilters(tr)
 	dialog := gtk.NewFileDialog()
 	dialog.SetTitle(tr.T("dialog.locate.pick"))
 	dialog.SetFilters(filters)
-	dialog.SetDefaultFilter(filter)
+	dialog.SetDefaultFilter(first)
 	dialog.SetInitialFolder(gio.NewFileForPath(filepath.Dir(pf.Path)))
 	dialog.Open(context.Background(), &w.win.Window, func(res gio.AsyncResulter) {
 		file, err := dialog.OpenFinish(res)

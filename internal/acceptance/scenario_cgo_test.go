@@ -139,6 +139,59 @@ func fileHash(t *testing.T, path string) [32]byte {
 	return sha256.Sum256(data)
 }
 
+// describePDFDifference says, in a few words, how two PDFs that should be the
+// same differ: their sizes, where the first byte that differs is, which pages
+// have another content stream, and the identifiers and fonts each one names.
+// It is only read when the determinism test fails, which a CI log shows.
+func describePDFDifference(t *testing.T, pathA, pathB string) string {
+	t.Helper()
+	a, err := os.ReadFile(pathA)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(pathB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	window := func(data []byte, at int) []byte {
+		return data[max(0, at-16):min(len(data), at+24)]
+	}
+	out := fmt.Sprintf("%d and %d bytes", len(a), len(b))
+	first, count := -1, 0
+	for i := 0; i < min(len(a), len(b)); i++ {
+		if a[i] != b[i] {
+			if first < 0 {
+				first = i
+			}
+			count++
+		}
+	}
+	if first >= 0 {
+		out += fmt.Sprintf("; %d bytes differ, the first at %d: %q and %q", count, first, window(a, first), window(b, first))
+	}
+	if pa, errA := export.ReadPDF(a); errA == nil {
+		if pb, errB := export.ReadPDF(b); errB == nil && len(pa.Pages) == len(pb.Pages) {
+			same := true
+			for i := range pa.Pages {
+				if pa.Pages[i].Content != pb.Pages[i].Content {
+					same = false
+					out += fmt.Sprintf("; the content of page %d differs", i+1)
+				}
+			}
+			if same {
+				out += "; the content streams of the pages are the same"
+			}
+		}
+	}
+	names := regexp.MustCompile(`/(?:BaseFont|FontName)\s*/[A-Za-z0-9+_.,-]+|/ID\s*\[[^\]]*\]|/CreationDate\s*\([^)]*\)`)
+	if na, nb := names.FindAll(a, -1), names.FindAll(b, -1); !bytes.Equal(bytes.Join(na, []byte(" ")), bytes.Join(nb, []byte(" "))) {
+		out += fmt.Sprintf("; named in the first: %s; in the second: %s", bytes.Join(na, []byte(" ")), bytes.Join(nb, []byte(" ")))
+	} else {
+		out += fmt.Sprintf("; both name %d fonts, identifiers and dates, the same", len(na))
+	}
+	return out
+}
+
 var pageSizeRe = regexp.MustCompile(`Page\s+(\d+) size:\s+([\d.]+) x ([\d.]+) pts`)
 
 const dpi = 300
@@ -373,7 +426,7 @@ func TestAcceptance8To13OnTheScenario(t *testing.T) {
 			t.Run("export is deterministic", func(t *testing.T) {
 				again, _ := sc.exportWith(model.WhitenBackground, "whiten-again.pdf")
 				if fileHash(t, whiten) != fileHash(t, again) {
-					t.Error("two exports of the same project differ")
+					t.Errorf("two exports of the same project differ: %s", describePDFDifference(t, whiten, again))
 				}
 			})
 

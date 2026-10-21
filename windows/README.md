@@ -202,13 +202,13 @@ d'essai : installation, mise à jour par-dessus une installation, désinstallati
 **Windows 10 et 11.** Les paquets visent les deux, en 64 bits. La CI n'a pas de Windows 10 ni
 de Windows 11, seulement des Windows Server : Windows Server 2022 (le plus ancien proposé) sert
 de repère pour Windows 10, Windows Server 2025 pour Windows 11. Les deux ont été construits et
-essayés, mais l'essai sur de vraies machines Windows 10 et Windows 11 fait partie de la
-recette de M5.
+essayés, et les paquets de la CI ont été essayés à la main sur une machine Windows réelle
+(recette de M5). Ce sont les mêmes paquets pour les deux versions de Windows : l'installeur
+ne vérifie que le 64 bits.
 
-**Pas d'essai sur une machine Windows réelle** : ni la construction par l'utilisateur
-avec ses propres installations de MSYS2, ni le comportement de SmartScreen, ni
-l'affichage dans *Paramètres > Applications* n'ont été vus de ses yeux. Des ajustements
-seront probablement nécessaires au premier essai réel.
+**Pas encore vu sur une machine réelle** : la construction par l'utilisateur avec ses propres
+installations de MSYS2 (la CI la fait sur un MSYS2 neuf). Des ajustements seront peut-être
+nécessaires au premier essai.
 
 ## Dépannage
 

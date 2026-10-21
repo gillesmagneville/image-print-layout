@@ -261,8 +261,8 @@ jobs:
 
   # Windows 10 et 11 : la CI n'a ni l'un ni l'autre, seulement des Windows
   # Server. windows-2022 (le plus ancien proposé) sert de repère pour Windows 10,
-  # windows-latest (Windows Server 2025) pour Windows 11 ; la recette sur les
-  # vraies machines reste à faire (§14 de ARCHITECTURE.md).
+  # windows-latest (Windows Server 2025) pour Windows 11 ; la recette à la main sur
+  # une vraie machine Windows a été faite pour la 1.0.0 (§14 de ARCHITECTURE.md).
   windows-package:
     name: Windows package (${{ matrix.os }})
     runs-on: ${{ matrix.os }}

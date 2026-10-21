@@ -82,6 +82,14 @@
   </categories>
 
   <releases>
+    <release version="1.0.0" date="2026-10-21">
+      <description>
+        <p>First stable version: everything the specification asks for is there and tried by hand on Ubuntu and Windows. Open an SVG of any size, set paper, margins, scale and positioning, place the cuts with the mouse or have them proposed, choose the document and page backgrounds, preview every sheet, export a verified multi-page vector PDF, and save the project to reopen it later.</p>
+        <p xml:lang="fr">Première version stable : tout ce que demande le cahier des charges est là, et essayé à la main sous Ubuntu et sous Windows. On ouvre un SVG de n'importe quelle taille, on règle papier, marges, échelle et positionnement, on place les coupures à la souris ou on les fait proposer, on choisit les fonds du document et de la page, on voit chaque feuille, on exporte un PDF multipage vectoriel vérifié, et on enregistre le projet pour le rouvrir plus tard.</p>
+        <p xml:lang="es">Primera versión estable: todo lo que pide el pliego de condiciones está ahí, y probado a mano en Ubuntu y en Windows. Se abre un SVG de cualquier tamaño, se ajustan papel, márgenes, escala y posición, se colocan los cortes con el ratón o se piden propuestos, se eligen los fondos del documento y de la página, se ve cada hoja, se exporta un PDF vectorial de varias páginas verificado y se guarda el proyecto para reabrirlo más tarde.</p>
+        <p xml:lang="de">Erste stabile Version: alles, was das Pflichtenheft verlangt, ist da und von Hand unter Ubuntu und Windows ausprobiert. Ein SVG beliebiger Größe öffnen, Papier, Ränder, Maßstab und Positionierung einstellen, die Schnitte mit der Maus setzen oder vorschlagen lassen, die Hintergründe von Dokument und Seite wählen, jedes Blatt ansehen, ein geprüftes mehrseitiges Vektor-PDF exportieren und das Projekt speichern, um es später wieder zu öffnen.</p>
+      </description>
+    </release>
     <release version="0.3.1" date="2026-10-20">
       <description>
         <p>Fixes: replacing the document background with white, or removing it, now shows on every page and exports; typing a scale factor no longer sends the cursor back to the start; the About window shows the program icon and its credits (developed by Gilles MAGNEVILLE, designed with the help of claude.ai); the duplicate export button is gone from the title bar.</p>

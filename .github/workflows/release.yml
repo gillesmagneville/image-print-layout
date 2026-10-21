@@ -164,10 +164,16 @@ jobs:
           pattern: package-*
           path: release-files
           merge-multiple: true
+      # Un fichier .sha256 par paquet, à côté de lui : « sha256sum -c fichier.sha256 »
+      # le vérifie une fois les deux dans le même dossier.
       - name: Checksums and release notes
         run: |
-          (cd release-files && sha256sum svgprintlayout* > SHA256SUMS)
-          cat release-files/SHA256SUMS
+          cd release-files
+          for package in svgprintlayout*; do
+            sha256sum "$package" > "$package.sha256"
+          done
+          cat ./*.sha256
+          cd ..
           .github/scripts/release-notes.sh "$(tr -d '[:space:]' < VERSION)" release-files > release-notes.md
           cat release-notes.md
       - name: Create the release

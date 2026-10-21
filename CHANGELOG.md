@@ -9,6 +9,12 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Modifié
+
+- **Release : un fichier `.sha256` par paquet**, joint à côté de lui, au lieu d'un seul
+  `SHA256SUMS`. `sha256sum -c paquet.sha256` le vérifie quand les deux sont dans le même dossier.
+  Le texte de la release dit quel fichier vérifie quel paquet.
+
 ## [1.0.0] - 2026-10-21
 
 Première version stable. Le programme fait tout ce que demande le cahier des charges (jalons M1

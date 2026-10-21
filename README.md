@@ -125,6 +125,8 @@ Trois scripts, à la racine, construisent les paquets (comme dans Planche-Contac
 .\build-windows.ps1         # Windows 10 et 11 : un .zip portable et un installeur .exe
 ```
 
+Les paquets de chaque version sont aussi joints à sa [release GitHub](https://github.com/gillesmagneville/svg-print-layout/releases) (`.deb`, `.rpm`, installeur et version portable Windows, avec leurs empreintes SHA-256).
+
 Les paquets sont écrits à la racine du dépôt (non versionnés). Les trois scripts ont les
 mêmes options et gèrent le fichier `VERSION` de la même façon :
 

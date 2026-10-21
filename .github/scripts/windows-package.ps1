@@ -7,6 +7,9 @@
 #
 #   -Step build      construit les paquets avec build-windows.ps1 -Patch, comme un
 #                    utilisateur, et vérifie la gestion du fichier VERSION
+#   -Step release    construit les paquets de la version de VERSION, sans la
+#                    changer (build-windows.ps1 -NoVersionChange) : ceux que le
+#                    workflow release.yml joint à la release
 #   -Step acceptance exécute les 14 tests d'acceptation du cahier des charges
 #                    (go test ./internal/acceptance, sous MSYS2 UCRT64, poppler
 #                    rastérise les PDF)
@@ -18,7 +21,7 @@
 
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet("build", "acceptance", "portable", "installer", "clean")]
+    [ValidateSet("build", "release", "acceptance", "portable", "installer", "clean")]
     [string]$Step
 )
 
@@ -228,10 +231,24 @@ function Test-Installer {
     if (Test-Path $uninstallKey) { throw "l'entrée de désinstallation est toujours là" }
 }
 
+# Les paquets de la release : la version est celle de VERSION, qui ne bouge pas.
+function Invoke-Release {
+    $version = Get-Version
+    .\build-windows.ps1 -NoVersionChange -Oui
+    Assert-Success "build-windows.ps1 -NoVersionChange -Oui"
+    $after = Get-Version
+    if ($after -ne $version) { throw "VERSION vaut « $after » après -NoVersionChange, attendu « $version »" }
+    Get-ChildItem -File -Filter "svgprintlayout_*" | ForEach-Object { Write-Host ("{0,12:N0} octets  {1}" -f $_.Length, $_.Name) }
+    foreach ($name in "svgprintlayout_${version}_windows-portable.zip", "svgprintlayout_${version}_windows-setup.exe") {
+        if (-not (Test-Path $name)) { throw "$name manque à la racine du dépôt" }
+    }
+}
+
 try {
     & {
         switch ($Step) {
             "build"     { Invoke-Build }
+            "release"   { Invoke-Release }
             "acceptance" { Test-Acceptance }
             "portable"  { Test-Portable }
             "installer" { Test-Installer }

@@ -184,7 +184,20 @@ Une release est une pull request à part, « Release X.Y.Z » :
    AppStream et les quatre pages de manuel ne disent pas la même version et la même date ;
    la CI le lance. Un texte de la fiche AppStream (description de la release) s'écrit en
    anglais et dans les trois autres langues : `repocheck` le vérifie aussi ;
-4. fusionnez ; le tag `vX.Y.Z` est posé ensuite.
+4. fusionnez, puis posez le tag sur le commit de fusion :
+
+   ```bash
+   git tag vX.Y.Z && git push origin vX.Y.Z
+   ```
+
+   Le workflow `Release` (`.github/workflows/release.yml`) construit alors le `.deb`, le
+   `.rpm` et les paquets Windows de la version de `VERSION`, les essaie, puis crée la release
+   GitHub avec les paquets, leurs empreintes SHA-256 et la section du CHANGELOG. Il s'arrête
+   avant de construire si le tag n'est pas `v` suivi de `VERSION`, si le tag n'est pas sur
+   `main` ou si le CHANGELOG n'a pas de section pour cette version. Les paquets construits aux
+   étapes 1 et 2 ne servent plus qu'à l'essai : ceux de la release sont construits par le
+   workflow. Pour refaire une release dont le workflow a échoué avant de la créer, relancez-le
+   depuis l'onglet Actions ; si la release existe déjà, supprimez-la d'abord.
 
 Tant que `VERSION` porte un suffixe (`0.1.0-dev`), aucune version n'est publiée.
 

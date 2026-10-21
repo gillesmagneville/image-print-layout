@@ -1,0 +1,182 @@
+# SPDX-License-Identifier: GPL-3.0-only
+
+# Publie une version : un tag « vX.Y.Z » poussé sur un commit de main construit
+# les paquets de cette version, les essaie, puis crée la release GitHub avec les
+# paquets en pièces jointes et la section du CHANGELOG pour texte.
+#
+#   git tag v1.0.0 && git push origin v1.0.0
+#
+# Le tag doit être celui de VERSION et poser sur un commit de main : sinon le
+# workflow s'arrête avant de construire quoi que ce soit.
+#
+# Les paquets sont construits sans changer VERSION (--no-version-change) : ceux
+# du workflow CI portent la version suivante, parce qu'il essaie le changement
+# de version, et ne conviennent pas à une release.
+#
+# Le workflow se lance aussi, sans rien publier, quand on le modifie dans une
+# pull request et à la demande (« Run workflow ») : c'est ainsi qu'on l'essaie
+# avant d'avoir un tag.
+
+name: Release
+
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+  pull_request:
+    paths:
+      - .github/workflows/release.yml
+      - .github/scripts/release-notes.sh
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # Avant de construire : le tag dit la version de VERSION, il est sur main, et
+  # le CHANGELOG a une section pour cette version.
+  check:
+    name: Version and release notes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: The tag is the version, and it is on main
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          version="$(tr -d '[:space:]' < VERSION)"
+          if [ "$GITHUB_REF_NAME" != "v$version" ]; then
+            echo "::error title=Tag::le tag $GITHUB_REF_NAME ne correspond pas à VERSION ($version)"
+            exit 1
+          fi
+          case "$version" in
+            *-*) echo "::error title=Version::VERSION ($version) porte un suffixe : aucune version d'avant-publication n'est publiée"; exit 1 ;;
+          esac
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error title=Tag::le tag $GITHUB_REF_NAME n'est pas sur un commit de main"
+            exit 1
+          fi
+      - name: The CHANGELOG has a section for this version
+        run: .github/scripts/release-notes.sh "$(tr -d '[:space:]' < VERSION)"
+
+  # Les paquets Linux sont liés aux bibliothèques de la machine qui les a
+  # construits. Le .deb est construit sur Ubuntu 24.04 (le plus ancien système
+  # pris en charge de la famille Debian : il s'installe aussi sur Debian 13) et
+  # le .rpm sur AlmaLinux 10 (un clone de RHEL 10 : il s'installe aussi sur
+  # Fedora). Le script est celui du job « distributions » de la CI : il construit
+  # le paquet, l'installe avec apt ou dnf, lance le programme installé et les 14
+  # tests d'acceptation.
+  linux:
+    name: ${{ matrix.name }}
+    needs: check
+    runs-on: ubuntu-latest
+    container: ${{ matrix.image }}
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: ".deb (Ubuntu 24.04)", image: "ubuntu:24.04",   family: debian, artifact: package-deb }
+          - { name: ".rpm (AlmaLinux 10)", image: "almalinux:10",   family: redhat, artifact: package-rpm }
+    env:
+      CGO_ENABLED: "1"
+      GSK_RENDERER: cairo
+      GTK_A11Y: none
+      NO_AT_BRIDGE: "1"
+      LIBGL_ALWAYS_SOFTWARE: "1"
+    steps:
+      # git d'abord : le script de construction lit la date du dernier commit.
+      - name: Install git
+        run: |
+          if command -v apt-get > /dev/null; then
+            apt-get update && apt-get install -y --no-install-recommends git ca-certificates tar gzip
+          else
+            dnf -y install git tar gzip
+          fi
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Build the package, install it, run it
+        run: /usr/bin/bash .github/scripts/test-distribution.sh ${{ matrix.family }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            svgprintlayout_*.deb
+            svgprintlayout-*.rpm
+          if-no-files-found: error
+          retention-days: 14
+
+  # Windows : un seul système suffit, les paquets sont les mêmes pour Windows 10
+  # et 11 (MSYS2 UCRT64, 64 bits). Les paquets sont construits comme le fait un
+  # utilisateur (build-windows.ps1), puis la version portable et l'installeur
+  # sont lancés avec le seul PATH de Windows.
+  windows:
+    name: Windows (installer and portable version)
+    needs: check
+    runs-on: windows-2022
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install NSIS
+        shell: pwsh
+        run: choco install nsis --no-progress -y
+      - name: Build the packages of the version in VERSION
+        shell: powershell
+        run: .\.github\scripts\windows-package.ps1 -Step release
+      - name: Run the portable version with only Windows' own PATH
+        shell: powershell
+        run: .\.github\scripts\windows-package.ps1 -Step portable
+      - name: Install, run and uninstall with the installer
+        shell: powershell
+        run: .\.github\scripts\windows-package.ps1 -Step installer
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package-windows
+          path: |
+            svgprintlayout_*_windows-portable.zip
+            svgprintlayout_*_windows-setup.exe
+          if-no-files-found: error
+          retention-days: 14
+
+  # Seulement pour un tag : les paquets, leurs empreintes, et le texte de la
+  # release (la section du CHANGELOG, puis la liste des fichiers).
+  publish:
+    name: Publish the release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [check, linux, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: package-*
+          path: release-files
+          merge-multiple: true
+      - name: Checksums and release notes
+        run: |
+          (cd release-files && sha256sum svgprintlayout* > SHA256SUMS)
+          cat release-files/SHA256SUMS
+          .github/scripts/release-notes.sh "$(tr -d '[:space:]' < VERSION)" release-files > release-notes.md
+          cat release-notes.md
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(tr -d '[:space:]' < VERSION)"
+          gh release create "$GITHUB_REF_NAME" release-files/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --title "SVG Print Layout $version" \
+            --notes-file release-notes.md

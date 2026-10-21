@@ -79,7 +79,17 @@ la 1.1.0 ; rien n'est changé pour les SVG.
   « Ouvrir avec » dans le gestionnaire de fichiers. Les scripts de construction vérifient la
   présence des bibliothèques de développement de gdk-pixbuf.
 - La description du paquet, les fiches AppStream, l'entrée de menu et les quatre pages de manuel
-  parlent de documents SVG **et d'images**.
+  parlent de documents SVG **et d'images**. Le sous-titre de la fenêtre « À propos » aussi (il disait
+  « documents vectoriels », comme au temps de SVG Print Layout).
+
+### Corrigé
+
+- **L'icône du programme manquait dans la vue d'ensemble des fenêtres** de GNOME (un engrenage à
+  sa place) : GTK annonçait au bureau le nom de l'exécutable, `imageprintlayout`, au lieu de
+  l'identifiant `io.github.gillesmagneville.imageprintlayout`, qui est le nom de l'entrée de menu.
+  Depuis le changement de nom de la 1.1.0, la fenêtre ne retrouvait donc plus son entrée de menu.
+  Le programme annonce maintenant son identifiant (sous Wayland comme sous X11), et l'entrée de
+  menu porte `StartupWMClass`. Un test le vérifie.
 
 ## [1.1.0] - 2026-10-21
 

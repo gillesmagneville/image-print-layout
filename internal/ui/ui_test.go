@@ -19,7 +19,6 @@ import (
 
 	"github.com/diamondburned/gotk4/pkg/cairo"
 	"github.com/diamondburned/gotk4/pkg/gdk/v4"
-	"github.com/diamondburned/gotk4/pkg/gio/v2"
 	"github.com/diamondburned/gotk4/pkg/glib/v2"
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 
@@ -160,10 +159,20 @@ func runScenario() {
 	}
 	settingsPath := filepath.Join(dir, "config", "settings.json")
 
-	application := gtk.NewApplication(AppID+".test", gio.ApplicationFlagsNone)
+	application := newApplication(AppID + ".test")
 	application.ConnectActivate(func() {
 		w := newWindow(application, Options{Version: "test"}, app.DefaultSettings(), settingsPath, i18n.French)
 		w.show()
+
+		// What the desktop matches with the desktop file to give the window its
+		// icon (the app id of Wayland, the class of X11) is the AppID, not the
+		// name of the executable.
+		if got := glib.GetPrgname(); got != AppID {
+			fail("the program announces the name %q to the desktop, want %q", got, AppID)
+		}
+		if got := glib.GetApplicationName(); got != AppName {
+			fail("the application name is %q, want %q", got, AppName)
+		}
 
 		// checkTexts verifies that the window speaks the language: the texts of
 		// the catalog are there, and no key or placeholder shows through.

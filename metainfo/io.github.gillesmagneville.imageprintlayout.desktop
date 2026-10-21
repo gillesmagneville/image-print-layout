@@ -14,6 +14,9 @@ Comment[es]=Divide un dibujo SVG o una imagen en páginas y lo exporta como PDF 
 Comment[de]=Teilt eine SVG-Zeichnung oder ein Bild in Seiten auf und exportiert es als mehrseitiges PDF
 Exec=imageprintlayout %f
 Icon=imageprintlayout
+# The class (X11) or the app id (Wayland) of the window: the AppID, set by the
+# program, which is also the name of this file.
+StartupWMClass=io.github.gillesmagneville.imageprintlayout
 Terminal=false
 Categories=Graphics;2DGraphics;VectorGraphics;RasterGraphics;
 MimeType=image/svg+xml;image/jpeg;image/png;image/tiff;image/bmp;image/gif;image/webp;

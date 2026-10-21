@@ -48,7 +48,7 @@ func Run(opts Options) int {
 		setenv("LANGUAGE", string(lang))
 	}
 
-	application := gtk.NewApplication(AppID, gio.ApplicationFlagsNone)
+	application := newApplication(AppID)
 	var win *window
 	application.ConnectActivate(func() {
 		win = newWindow(application, opts, settings, settingsPath, lang)
@@ -61,6 +61,21 @@ func Run(opts Options) int {
 		code = win.exitCode
 	}
 	return code
+}
+
+// newApplication creates the application with the identity the desktop reads.
+//
+// The desktop finds the icon and the name of the program by matching the "app
+// id" a window announces with the name of the desktop file. On Wayland GTK
+// announces the program name, which is the name of the executable
+// (imageprintlayout) unless it is set; the desktop file is named after the
+// AppID, and with a name that matched nothing the window showed the icon of an
+// unknown program in the overview of the windows. On X11 the same name is the
+// class of the window.
+func newApplication(id string) *gtk.Application {
+	glib.SetPrgname(AppID)
+	glib.SetApplicationName(AppName)
+	return gtk.NewApplication(id, gio.ApplicationFlagsNone)
 }
 
 // window is the main window and what it shows.
@@ -324,7 +339,7 @@ func (w *window) showMessage(heading, detail string) {
 	dialog.SetTransientFor(&w.win.Window)
 	dialog.SetModal(true)
 	dialog.SetResizable(false)
-	dialog.SetTitle("Image Print Layout")
+	dialog.SetTitle(AppName)
 
 	column := gtk.NewBox(gtk.OrientationVertical, 12)
 	column.SetMarginTop(18)
@@ -561,7 +576,7 @@ func (w *window) showSheets(n int) {
 // ---- state -------------------------------------------------------------------------
 
 func (w *window) updateTitle() {
-	title := "Image Print Layout"
+	title := AppName
 	if doc := w.session.Document(); doc != nil {
 		name := baseName(doc.Path)
 		if path := w.session.ProjectPath(); path != "" {

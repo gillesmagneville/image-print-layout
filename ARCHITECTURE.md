@@ -266,7 +266,11 @@ versionnés : `.gitignore`).
 - **Contenu des paquets Linux.** `/usr/bin/imageprintlayout`, l'entrée de menu et les
   métadonnées AppStream (identifiant `io.github.gillesmagneville.imageprintlayout`, nom de
   domaine inversé : le fichier `.desktop` et `<launchable>` doivent s'y accorder, et
-  `desktop-file-validate` et `appstreamcli validate` le vérifient en CI), l'icône (SVG et PNG
+  `desktop-file-validate` et `appstreamcli validate` le vérifient en CI). **Le programme annonce
+  cet identifiant au bureau comme son nom** (`glib.SetPrgname`, `newApplication`) : sous Wayland, GNOME
+  associe une fenêtre à son entrée de menu par l'identifiant (`app_id`) qu'elle annonce, et GTK annonce
+  sinon le nom de l'exécutable (`imageprintlayout`), qui ne correspond à aucun fichier `.desktop` ; la
+  fenêtre perdait alors son icône dans la vue d'ensemble. `StartupWMClass` le redit pour X11 ; l'icône (SVG et PNG
   256), les pages de manuel (anglais dans `man1`, français, espagnol et allemand dans le
   dossier de leur langue), README et journal des modifications, copyright (`.deb`) ou licence
   (`.rpm`). Les dépendances comprennent GTK 4 (`libgtk-4-1`).

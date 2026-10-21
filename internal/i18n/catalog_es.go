@@ -14,7 +14,7 @@ var es = map[string]string{
 	"cli.error.language":  "idioma desconocido «{lang}»: elija fr, en, es o de",
 
 	// Aplicación.
-	"app.tagline":     "Maquetación, corte e impresión de documentos vectoriales",
+	"app.tagline":     "Maquetación, corte e impresión de documentos SVG e imágenes",
 	"about.version":   "Versión {version}",
 	"about.developed": "Desarrollado por {name}",
 	"about.designed":  "Diseñado con la ayuda de claude.ai",

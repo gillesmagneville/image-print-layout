@@ -180,7 +180,7 @@ func (w *window) showDialog(heading, detailText string, items []diag.Item, butto
 	dialog.SetApplication(w.app)
 	dialog.SetTransientFor(&w.win.Window)
 	dialog.SetModal(true)
-	dialog.SetTitle("Image Print Layout")
+	dialog.SetTitle(AppName)
 	dialog.SetDefaultSize(520, -1)
 
 	column := gtk.NewBox(gtk.OrientationVertical, 12)

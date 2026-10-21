@@ -11,13 +11,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/app"
-	"github.com/gillesmagneville/svg-print-layout/internal/diag"
-	"github.com/gillesmagneville/svg-print-layout/internal/export"
-	"github.com/gillesmagneville/svg-print-layout/internal/layout"
-	"github.com/gillesmagneville/svg-print-layout/internal/model"
-	"github.com/gillesmagneville/svg-print-layout/internal/project"
-	"github.com/gillesmagneville/svg-print-layout/internal/units"
+	"github.com/gillesmagneville/image-print-layout/internal/app"
+	"github.com/gillesmagneville/image-print-layout/internal/diag"
+	"github.com/gillesmagneville/image-print-layout/internal/export"
+	"github.com/gillesmagneville/image-print-layout/internal/layout"
+	"github.com/gillesmagneville/image-print-layout/internal/model"
+	"github.com/gillesmagneville/image-print-layout/internal/project"
+	"github.com/gillesmagneville/image-print-layout/internal/units"
 )
 
 // The acceptance tests 1 to 7 and 14 of the specification, on the whole chain
@@ -215,7 +215,7 @@ func TestAcceptance14ReopenTheProject(t *testing.T) {
 
 			// Save, in a folder of its own, next to a copy of nothing: the project
 			// finds the document by its relative path.
-			projectPath := filepath.Join(sc.dir, "mini-cad.svgpl")
+			projectPath := filepath.Join(sc.dir, "mini-cad.imgpl")
 			sc.must(sc.sess.SaveProject(projectPath))
 			if sc.sess.Dirty() {
 				t.Error("a saved project has unsaved changes")

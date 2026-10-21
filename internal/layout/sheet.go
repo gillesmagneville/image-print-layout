@@ -5,9 +5,9 @@ package layout
 import (
 	"math"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/diag"
-	"github.com/gillesmagneville/svg-print-layout/internal/model"
-	"github.com/gillesmagneville/svg-print-layout/internal/units"
+	"github.com/gillesmagneville/image-print-layout/internal/diag"
+	"github.com/gillesmagneville/image-print-layout/internal/model"
+	"github.com/gillesmagneville/image-print-layout/internal/units"
 )
 
 // Doc is the size of the document in document units: the pixels of its

@@ -28,7 +28,7 @@ func TestBundledEnvironmentOfACompleteLayout(t *testing.T) {
 	prefix := t.TempDir()
 	touch(t, filepath.Join(prefix, "etc", "fonts", "fonts.conf"))
 	touch(t, filepath.Join(prefix, "lib", "gdk-pixbuf-2.0", "2.10.0", "loaders.cache"))
-	exe := filepath.Join(prefix, "bin", "svgprintlayout.exe")
+	exe := filepath.Join(prefix, "bin", "imageprintlayout.exe")
 
 	got := BundledEnvironment(exe, fileExists)
 	want := map[string]string{
@@ -46,7 +46,7 @@ func TestBundledEnvironmentOfACompleteLayout(t *testing.T) {
 // libraries redirected: only files that exist are named.
 func TestBundledEnvironmentOnlyNamesWhatExists(t *testing.T) {
 	prefix := t.TempDir()
-	exe := filepath.Join(prefix, "bin", "svgprintlayout")
+	exe := filepath.Join(prefix, "bin", "imageprintlayout")
 	if got := BundledEnvironment(exe, fileExists); len(got) != 0 {
 		t.Errorf("an empty layout gave %v, want nothing", got)
 	}

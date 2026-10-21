@@ -6,10 +6,10 @@ import (
 	"bytes"
 	"time"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/diag"
-	"github.com/gillesmagneville/svg-print-layout/internal/layout"
-	"github.com/gillesmagneville/svg-print-layout/internal/model"
-	"github.com/gillesmagneville/svg-print-layout/internal/project"
+	"github.com/gillesmagneville/image-print-layout/internal/diag"
+	"github.com/gillesmagneville/image-print-layout/internal/layout"
+	"github.com/gillesmagneville/image-print-layout/internal/model"
+	"github.com/gillesmagneville/image-print-layout/internal/project"
 )
 
 // Command changes a project. It receives the current project and the document

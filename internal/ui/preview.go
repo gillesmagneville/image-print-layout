@@ -13,9 +13,9 @@ import (
 	"github.com/diamondburned/gotk4/pkg/glib/v2"
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/i18n"
-	"github.com/gillesmagneville/svg-print-layout/internal/layout"
-	"github.com/gillesmagneville/svg-print-layout/internal/viewport"
+	"github.com/gillesmagneville/image-print-layout/internal/i18n"
+	"github.com/gillesmagneville/image-print-layout/internal/layout"
+	"github.com/gillesmagneville/image-print-layout/internal/viewport"
 )
 
 // workspace is the colour of the area around the sheet: a neutral grey, the

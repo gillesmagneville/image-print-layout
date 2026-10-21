@@ -9,11 +9,39 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+## [1.1.0] - 2026-10-21
+
+Le programme change de nom : **Image Print Layout** remplace « SVG Print Layout ». Le programme va
+bientôt prendre aussi des images matricielles (JPEG, PNG, TIFF…) : « SVG » dans son nom ne
+dirait plus ce qu'il fait, alors qu'« image » couvre les deux (le SVG est une image vectorielle). Cette version ne change que le nom et la façon de reprendre l'existant ; le
+fonctionnement est celui de la 1.0.0. Les entrées plus bas gardent le nom qu'avait le
+programme à leur date.
+
 ### Modifié
 
+- **Nouveau nom : Image Print Layout.** La commande est `imageprintlayout`, les paquets s'appellent
+  `imageprintlayout` (`imageprintlayout_1.1.0_amd64.deb`, `imageprintlayout-1.1.0-1.x86_64.rpm`,
+  `imageprintlayout_1.1.0_windows-setup.exe`…), le dossier d'installation Windows est `Image Print Layout`,
+  l'identifiant d'application est `io.github.gillesmagneville.imageprintlayout`, la page de manuel
+  est `man imageprintlayout`, et le module Go est `github.com/gillesmagneville/image-print-layout`. L'icône, la
+  fenêtre « À propos », les textes en quatre langues et les documents disent Image Print Layout.
+- **Les projets s'enregistrent en `.imgpl`** (format `imageprintlayout-project`, toujours en
+  version 1 : seul le nom change).
 - **Release : un fichier `.sha256` par paquet**, joint à côté de lui, au lieu d'un seul
   `SHA256SUMS`. `sha256sum -c paquet.sha256` le vérifie quand les deux sont dans le même dossier.
   Le texte de la release dit quel fichier vérifie quel paquet.
+
+### Ajouté
+
+- **Reprise de l'existant**, pour que le changement de nom ne coûte rien à personne :
+  - les projets `.svgpl` de la 1.0.x s'ouvrent (le sélecteur de fichiers les propose) et
+    s'enregistrent ensuite en `.imgpl`, sans toucher au fichier d'origine ;
+  - la langue choisie est reprise depuis les réglages de la 1.0.x (`~/.config/svgprintlayout`,
+    `%AppData%\svgprintlayout`), une seule fois, sans les effacer ;
+  - installer le `.deb` ou le `.rpm` retire l'ancien paquet `svgprintlayout`
+    (`Conflicts`/`Replaces` pour Debian, `Obsoletes` pour RPM) ;
+  - l'installeur Windows désinstalle d'abord une installation de « SVG Print Layout » (fichiers,
+    raccourcis, clés de registre), avec son propre désinstalleur.
 
 ## [1.0.0] - 2026-10-21
 

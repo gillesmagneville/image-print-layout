@@ -10,7 +10,7 @@ import (
 // need to find the data shipped with the program, for the relocatable layout
 // of the Windows packages:
 //
-//	<prefix>/bin/svgprintlayout.exe        the program and its DLLs
+//	<prefix>/bin/imageprintlayout.exe        the program and its DLLs
 //	<prefix>/etc/fonts/fonts.conf          fontconfig configuration
 //	<prefix>/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache   image loaders
 //

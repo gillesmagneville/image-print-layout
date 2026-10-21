@@ -6,9 +6,9 @@ import (
 	"math"
 	"sort"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/diag"
-	"github.com/gillesmagneville/svg-print-layout/internal/model"
-	"github.com/gillesmagneville/svg-print-layout/internal/units"
+	"github.com/gillesmagneville/image-print-layout/internal/diag"
+	"github.com/gillesmagneville/image-print-layout/internal/model"
+	"github.com/gillesmagneville/image-print-layout/internal/units"
 )
 
 // CorrectionKind is the way a proposal fixes an overflow.

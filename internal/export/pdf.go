@@ -12,9 +12,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/diag"
-	"github.com/gillesmagneville/svg-print-layout/internal/engine"
-	"github.com/gillesmagneville/svg-print-layout/internal/units"
+	"github.com/gillesmagneville/image-print-layout/internal/diag"
+	"github.com/gillesmagneville/image-print-layout/internal/engine"
+	"github.com/gillesmagneville/image-print-layout/internal/units"
 )
 
 // PDF is what is read back of a PDF written by cairo: its pages, in order.

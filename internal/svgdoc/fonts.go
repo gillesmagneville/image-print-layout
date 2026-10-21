@@ -5,7 +5,7 @@ package svgdoc
 import (
 	"strings"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/diag"
+	"github.com/gillesmagneville/image-print-layout/internal/diag"
 )
 
 // generic lists the CSS generic families: the system always has one for them.

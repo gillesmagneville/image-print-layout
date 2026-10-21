@@ -1,8 +1,8 @@
 <!-- SPDX-License-Identifier: GPL-3.0-only -->
 
-# SVG Print Layout — Architecture
+# Image Print Layout — Architecture
 
-Ce document est le contrat technique canonique de SVG Print Layout. Là où
+Ce document est le contrat technique canonique d'Image Print Layout. Là où
 `PROJECT_CONTEXT.md` décrit la vision et les principes, celui-ci définit le concret : pile
 technique, paquets, interfaces, formules, format de projet, vérifications et plan de
 livraison. Si les deux semblent se contredire, ce document l'emporte pour tout ce qui est
@@ -10,7 +10,7 @@ concret (interfaces, formules, formats, valeurs par défaut).
 
 ## 1. Objet et périmètre
 
-Ce document dit comment réaliser SVG Print Layout v1.0 tel que défini par le cahier des charges. Il ne répète pas les exigences ; il dit comment les satisfaire et où se concentre le risque.
+Ce document dit comment réaliser Image Print Layout v1.0 tel que défini par le cahier des charges. Il ne répète pas les exigences ; il dit comment les satisfaire et où se concentre le risque.
 
 Hypothèses retenues pour la v1, à confirmer :
 
@@ -103,9 +103,9 @@ Fondation : model · units · diag · i18n
             types du projet, conversions d'unités, diagnostics partagés, traduction ; importés par tous
 ```
 
-Les flèches vont de l'appelant vers l'appelé. Le paquet `engine` a deux parties : les types et l'interface `Document`, en Go pur (`engine.go`), et leur réalisation par librsvg, en cgo (`rsvg_cgo.go`, et un bouchon `engine_nocgo.go` qui refuse de charger). `app` et `svgdoc` ne connaissent le moteur que par les types de la première partie : le programme (`cmd/svgprintlayout`) et l'interface lui donnent le `Loader` réel, et un faux moteur le remplace dans les tests. `ExportPDF` prend une liste de `PageSpec`, et non un `layout.Plan` : `engine` ne dépend pas de `layout`, et c'est `export` qui traduit le plan (M4). Seuls `ui` et `engine` dépendent de cgo. Le point d'entrée `cmd/svgprintlayout` se contente de câbler ces paquets.
+Les flèches vont de l'appelant vers l'appelé. Le paquet `engine` a deux parties : les types et l'interface `Document`, en Go pur (`engine.go`), et leur réalisation par librsvg, en cgo (`rsvg_cgo.go`, et un bouchon `engine_nocgo.go` qui refuse de charger). `app` et `svgdoc` ne connaissent le moteur que par les types de la première partie : le programme (`cmd/imageprintlayout`) et l'interface lui donnent le `Loader` réel, et un faux moteur le remplace dans les tests. `ExportPDF` prend une liste de `PageSpec`, et non un `layout.Plan` : `engine` ne dépend pas de `layout`, et c'est `export` qui traduit le plan (M4). Seuls `ui` et `engine` dépendent de cgo. Le point d'entrée `cmd/imageprintlayout` se contente de câbler ces paquets.
 
-Le dépôt GitHub s'appelle `svg-print-layout`, le module Go `github.com/gillesmagneville/svg-print-layout` et le binaire `svgprintlayout`. La disposition des fichiers est donnée après l'interface `Document`.
+Le dépôt GitHub s'appelle `imageprintlayout`, le module Go `github.com/gillesmagneville/image-print-layout` et le binaire `imageprintlayout`. La disposition des fichiers est donnée après l'interface `Document`.
 
 ```go
 // Un document chargé : utilisé par un seul fil à la fois, et à fermer.
@@ -127,13 +127,13 @@ Il n'y a pas de tuiles (§9) : l'aperçu demande au moteur la seule fenêtre vis
 ### Disposition du dépôt
 
 ```
-svg-print-layout/
+imageprintlayout/
 ├── go.mod
 ├── VERSION                    # version courante (SemVer), voir CONTRIBUTING.md
 ├── build-deb.sh               # construisent les paquets à la racine (voir « Paquets »),
 ├── build-rpm.sh               #   avec les options et la gestion de VERSION de
 ├── build-windows.ps1          #   Planche-Contact ; celui-ci relaie vers windows/
-├── cmd/svgprintlayout/        # point d'entrée : câble les paquets ; -version, -selftest
+├── cmd/imageprintlayout/        # point d'entrée : câble les paquets ; -version, -selftest
 ├── internal/
 │   ├── model/                 # types de données partagés, sans logique
 │   ├── units/                 # conversions SVG / px / pt / mm, longueurs SVG,
@@ -141,7 +141,7 @@ svg-print-layout/
 │   ├── diag/                  # diagnostics destinés à l'utilisateur (code et valeurs, sans texte)
 │   ├── i18n/                  # traduction : français, anglais, espagnol, allemand ; nombres
 │   ├── layout/                # plan de pages, états, coupures automatiques
-│   ├── project/               # fichier projet .svgpl
+│   ├── project/               # fichier projet .imgpl
 │   ├── svgdoc/                # analyse du SVG, copie de travail, blocs, détection du fond, polices demandées
 │   ├── engine/                # moteur de rendu derrière l'interface Document (cgo)
 │   ├── testsvg/               # générateur de SVG d'essai déterministe (Go pur)
@@ -155,7 +155,7 @@ svg-print-layout/
 ├── metainfo/                  # entrée de menu (.desktop) et métadonnées AppStream
 ├── icons/                     # icône de l'application (SVG et PNG) ; le paquet Go `icons` embarque le PNG (fenêtre « À propos »)
 ├── windows/                   # script de construction Windows, installeur NSIS, icône .ico
-├── docs/                      # rapports de jalon (M0.md), page de manuel (svgprintlayout.1)
+├── docs/                      # rapports de jalon (M0.md), page de manuel (imageprintlayout.1)
 └── testdata/                  # SVG de référence
 ```
 
@@ -171,7 +171,7 @@ L'interface est en français, en anglais, en espagnol et en allemand ; le paquet
 - **Les pluriels.** `tr.N("pages.count", n)` lit `pages.count.one` ou `pages.count.other` selon la langue (le français compte 0 au singulier, les trois autres non).
 - **Lire un nombre.** `ParseNumber` accepte la virgule comme le point et ignore les espaces, y compris l'espace insécable des milliers : une personne qui tape « 200,5 » ou « 200.5 » dans un champ de largeur obtient la même valeur, quelle que soit la langue de l'interface.
 - **Typographie française.** Le catalogue français s'écrit avec des espaces ordinaires ; au démarrage, l'espace insécable est mise avant « : », « ; », « ? », « ! » et dans les guillemets, pour qu'un libellé ne se coupe pas avant son deux-points.
-- **Choix de la langue.** Le réglage est un code (`fr`, `en`, `es`, `de`) ou `auto`. `auto` suit le système : variables `LANGUAGE`, `LC_ALL`, `LC_MESSAGES`, `LANG` sous Linux, langue de l'utilisateur sous Windows (`GetUserDefaultLocaleName`). Une langue du système qui n'est pas l'une des quatre donne l'anglais. L'option `-lang` de la ligne de commande l'emporte ; le choix fait dans l'interface (menu de la fenêtre, effet immédiat) est enregistré dans les préférences de l'utilisateur, `settings.json` du dossier de configuration du système (`~/.config/svgprintlayout/` sous Linux, `%AppData%\svgprintlayout\` sous Windows), hors du fichier projet : le projet ne dépend pas de la langue de celui qui l'ouvre.
+- **Choix de la langue.** Le réglage est un code (`fr`, `en`, `es`, `de`) ou `auto`. `auto` suit le système : variables `LANGUAGE`, `LC_ALL`, `LC_MESSAGES`, `LANG` sous Linux, langue de l'utilisateur sous Windows (`GetUserDefaultLocaleName`). Une langue du système qui n'est pas l'une des quatre donne l'anglais. L'option `-lang` de la ligne de commande l'emporte ; le choix fait dans l'interface (menu de la fenêtre, effet immédiat) est enregistré dans les préférences de l'utilisateur, `settings.json` du dossier de configuration du système (`~/.config/imageprintlayout/` sous Linux, `%AppData%\imageprintlayout\` sous Windows), hors du fichier projet : le projet ne dépend pas de la langue de celui qui l'ouvre.
 - **Messages d'erreur et diagnostics.** Un diagnostic (`diag`) porte un code et des valeurs, jamais un texte : l'interface le traduit par la clé `diag.<code>`. Ainsi une erreur de moteur ou d'export s'affiche dans la langue de l'utilisateur sans que les paquets de calcul connaissent les langues.
 - **Composants de GTK.** Les boutons des boîtes de dialogue standard (« Annuler », « Ouvrir »…) sont traduits par GTK lui-même, à partir de la langue choisie : l'interface la lui donne par la variable `LANGUAGE` avant de l'initialiser (sous Windows aussi dans l'environnement de la bibliothèque C, où gettext la lit), et le paquet Windows embarque les catalogues de GTK pour le français, l'espagnol et l'allemand.
 - **Fichiers lus par le système.** L'entrée de menu (`.desktop`), la fiche AppStream et la page de manuel existent dans les quatre langues, l'anglais étant le texte sans suffixe : le système le prend quand sa langue n'est pas l'une des quatre. Des tests de `repocheck` vérifient que chaque langue a ses lignes, et que les quatre pages de manuel portent la même version. Le programme d'installation Windows (NSIS) parle lui aussi les quatre langues, selon celle de Windows.
@@ -256,10 +256,10 @@ versionnés : `.gitignore`).
   dépendances, leur taille et leur numéro de version se calculent à la construction.
 - **Numéros.** Une version d'avant-publication se classe avant la finale : `0.1.0-dev` donne
   `0.1.0~dev` chez Debian et la release `0.1.dev` chez RPM ; `0.1.0` donne `0.1.0` chez Debian
-  (fichier `svgprintlayout_0.1.0_amd64.deb`, sans révision Debian, comme chez Planche-Contact et
-  LinuxDoctor) et la release `1` chez RPM (`svgprintlayout-0.1.0-1.x86_64.rpm`). Windows garde `0.1.0-dev` (quatre nombres dans les propriétés du `.exe`).
-- **Contenu des paquets Linux.** `/usr/bin/svgprintlayout`, l'entrée de menu et les
-  métadonnées AppStream (identifiant `io.github.gillesmagneville.svgprintlayout`, nom de
+  (fichier `imageprintlayout_0.1.0_amd64.deb`, sans révision Debian, comme chez Planche-Contact et
+  LinuxDoctor) et la release `1` chez RPM (`imageprintlayout-0.1.0-1.x86_64.rpm`). Windows garde `0.1.0-dev` (quatre nombres dans les propriétés du `.exe`).
+- **Contenu des paquets Linux.** `/usr/bin/imageprintlayout`, l'entrée de menu et les
+  métadonnées AppStream (identifiant `io.github.gillesmagneville.imageprintlayout`, nom de
   domaine inversé : le fichier `.desktop` et `<launchable>` doivent s'y accorder, et
   `desktop-file-validate` et `appstreamcli validate` le vérifient en CI), l'icône (SVG et PNG
   256), les pages de manuel (anglais dans `man1`, français, espagnol et allemand dans le
@@ -273,7 +273,7 @@ versionnés : `.gitignore`).
   sont déduites du binaire : on construit sur la distribution visée (§« Plateformes prises en
   charge »). Les noms en `t64` des paquets Debian n'existent pas avant Debian 13 et Ubuntu 24.04.
 - **Dossier de travail.** Hors du dépôt, comme chez Planche-Contact : `~/deb-build/build`,
-  `~/rpm-build/build` et `%LOCALAPPDATA%\svgprintlayout-build`. `--clean` les supprime, et
+  `~/rpm-build/build` et `%LOCALAPPDATA%\imageprintlayout-build`. `--clean` les supprime, et
   supprime les paquets déjà construits à la racine.
 - **Disposition Windows.** Le dossier livré est un préfixe (`bin/` pour les programmes et les
   DLL, `etc/fonts/`, `lib/gdk-pixbuf-2.0/`, `share/glib-2.0/schemas/`, `share/icons/`,
@@ -281,8 +281,8 @@ versionnés : `.gitignore`).
   GTK retrouvent leurs fichiers à partir de l'emplacement de leurs DLL, d'où ce préfixe ; sans
   les schémas de réglages, GTK s'arrête à l'ouverture d'un sélecteur de fichier, et sans le
   thème d'icônes les boutons de la fenêtre n'ont pas d'image. Il y a deux exécutables :
-  `svgprintlayout.exe` (sous-système Windows : aucune console ne s'ouvre derrière la
-  fenêtre, mais rien n'est écrit dans un terminal) et `svgprintlayout-console.exe`, le même
+  `imageprintlayout.exe` (sous-système Windows : aucune console ne s'ouvre derrière la
+  fenêtre, mais rien n'est écrit dans un terminal) et `imageprintlayout-console.exe`, le même
   programme en sous-système console, pour `-version`, `-selftest` et les messages d'erreur ;
   le script de construction vérifie le sous-système de chacun. Fontconfig, gdk-pixbuf et pango ne savent pas où est leur
   configuration dans ce cas ; `engine.ConfigureRuntime` la leur indique au démarrage (sous
@@ -290,7 +290,7 @@ versionnés : `.gitignore`).
   d'un document sont résolues, et remplacées, de la même façon partout (§12). Le paquet
   n'embarque aucune police ; il embarque la licence de chaque bibliothèque. Un script
   d'installation NSIS ne supprime que les fichiers qu'il a installés.
-- **Test de fumée.** `svgprintlayout -selftest` charge un SVG intégré (fond, bloc, texte
+- **Test de fumée.** `imageprintlayout -selftest` charge un SVG intégré (fond, bloc, texte
   accentué, image PNG incorporée), le mesure, le dessine et l'exporte en PDF, et vérifie
   qu'une police est incorporée et que deux exports sont identiques. Le script Windows le
   lance sur le dossier du paquet avec le seul PATH de Windows avant de produire le `.zip` ;
@@ -530,7 +530,7 @@ L'aperçu est immédiat : la copie modifiée est rechargée dans le moteur, hors
 
 ## 9. Interface graphique
 
-Une seule fenêtre à trois zones, sans dialogue pour les opérations courantes : les réglages se font dans les panneaux et la souris agit directement sur l'aperçu. La barre de titre porte Ouvrir un SVG, le menu Projet (Ouvrir un projet, Enregistrer, Enregistrer sous : Ctrl+Maj+O, Ctrl+S, Ctrl+Maj+S), Annuler et Rétablir et le menu ; le bouton d'export est dans la section Export du panneau de gauche, et nulle part ailleurs (Ctrl+E y mène aussi). La fenêtre « À propos » (menu) est une fenêtre du programme, dans la langue de l'interface : l'icône (embarquée, paquet `icons`), le nom, la version, « Développé par Gilles MAGNEVILLE », « Conçu avec l'aide de claude.ai », le site et la licence ; aucun texte n'y est sélectionnable, et le bouton Fermer a le focus. `svgprintlayout fichier.svgpl` ouvre un projet comme un SVG.
+Une seule fenêtre à trois zones, sans dialogue pour les opérations courantes : les réglages se font dans les panneaux et la souris agit directement sur l'aperçu. La barre de titre porte Ouvrir un SVG, le menu Projet (Ouvrir un projet, Enregistrer, Enregistrer sous : Ctrl+Maj+O, Ctrl+S, Ctrl+Maj+S), Annuler et Rétablir et le menu ; le bouton d'export est dans la section Export du panneau de gauche, et nulle part ailleurs (Ctrl+E y mène aussi). La fenêtre « À propos » (menu) est une fenêtre du programme, dans la langue de l'interface : l'icône (embarquée, paquet `icons`), le nom, la version, « Développé par Gilles MAGNEVILLE », « Conçu avec l'aide de claude.ai », le site et la licence ; aucun texte n'y est sélectionnable, et le bouton Fermer a le focus. `imageprintlayout fichier.imgpl` ouvre un projet comme un SVG.
 
 ### Panneau gauche : paramètres
 
@@ -583,11 +583,11 @@ Le bouton « Aperçu » au pied de chaque carte ouvre la vue Feuilles sur cette 
 
 ## 10. Format de projet
 
-Le projet est un fichier JSON lisible et versionné, d'extension `.svgpl`. Il enregistre des réglages, jamais le dessin : le SVG reste dans son fichier d'origine, et rien de dérivé (nombre de pages, états, dimensions de page) n'est stocké, tout est recalculé.
+Le projet est un fichier JSON lisible et versionné, d'extension `.imgpl`. Il enregistre des réglages, jamais le dessin : le SVG reste dans son fichier d'origine, et rien de dérivé (nombre de pages, états, dimensions de page) n'est stocké, tout est recalculé.
 
 ```json
 {
-  "format": "svgprintlayout-project",
+  "format": "imageprintlayout-project",
   "version": 1,
   "source": {
     "path": "schemas/mini-cad.svg",
@@ -618,6 +618,7 @@ Règles de lecture et d'écriture :
 - **Versions.** `version` est un entier. Chaque évolution ajoute une fonction de migration `vN → vN+1`, testée sur des fichiers d'exemple. Un fichier d'une version plus récente est refusé avec un message clair, jamais ouvert partiellement.
 - **Chemins.** Relatif au fichier projet, avec `/` comme séparateur sur toutes les plateformes, et repli sur le chemin absolu. Si le SVG est introuvable, un dialogue propose de le localiser et les réglages sont conservés ; le projet porte alors le nouvel emplacement à l'enregistrement suivant.
 - **Intégrité de la source.** Le SHA-256 (celui du fichier tel qu'il a été lu à l'ouverture, pas celui qu'il a sur le disque au moment de l'enregistrement) et les dimensions sont enregistrés. Si le hash a changé à la réouverture, un avertissement non bloquant explique que les coupures sont en unités du document et peuvent ne plus tomber là où elles avaient été placées. Si les dimensions ont changé, les coupures devenues hors du document sont signalées puis retirées après confirmation (`app.OutsideCuts`, puis `Session.OpenProject`) ; le projet est alors modifié par rapport au fichier, et l'astérisque le dit. Une instruction de fond (blanchir ou supprimer un élément) qui ne retrouve plus son élément est abandonnée, avec un avertissement (`project.background_lost`) : le projet doit dire ce que l'aperçu montre. Un projet que la mise en page refuse (papier inexistant pour ce document, par exemple) ne change rien à la session.
+- **Ancien nom.** Jusqu'à la 1.0.x le programme s'appelait « SVG Print Layout » : ses projets portaient l'extension `.svgpl` et `"format": "svgprintlayout-project"`. Ce sont des fichiers de version 1 comme les autres : `project.Decode` accepte les deux noms de format (`project.LegacyFormat`), le sélecteur de fichiers propose les deux extensions (`project.IsProjectPath`), et le programme n'écrit que `.imgpl`. Le fichier d'origine n'est jamais modifié ; `testdata/legacy-1.0.svgpl` en est l'exemple, comparé au fichier de référence actuel. Les réglages de l'utilisateur suivent la même règle : `app.ImportLegacySettings` reprend une fois `svgprintlayout/settings.json` quand `imageprintlayout/settings.json` n'existe pas.
 - **Dans la session.** `app.ReadProject` lit le fichier et cherche le document ; `Session.OpenProject` pose le document et les réglages d'un seul bloc, rend les avertissements et efface l'historique ; `Session.SaveProject` écrit le projet avec la description du document. Les avertissements ne bloquent rien : l'utilisateur décide.
 - **Surcharges par page.** Ajouter une coupure copie la surcharge de la page coupée sur les deux pages obtenues. Supprimer une coupure garde celle de la page du dessus.
 - **Source intacte.** Le SVG n'est jamais ouvert en écriture ; un test compare son SHA-256 avant et après chaque scénario.
@@ -728,7 +729,7 @@ Six jalons, dont M0 est le point de décision : le calcul de pages (M1) ne dépe
 | M4. Fond et export | Détection et remplacement du fond, export PDF, vérifications, aperçu de page | Tests 8 à 13 passés |
 | M5. Projet, paquets, recette | Enregistrement et réouverture dans l'interface, paquet .deb, installateur Windows, recette complète | Les 14 tests réussissent sur chaque système pris en charge : Debian 13 et Ubuntu 24.04 (famille Debian), RHEL 10 ou un clone (famille Red Hat), Windows 10 et Windows 11 |
 
-**État.** Le squelette du dépôt, le paquet `units`, le prototype du moteur (M0a, `docs/M0.md`), les scripts qui construisent les paquets `.deb`, `.rpm` et Windows, le paquet de traduction `i18n` et une première fenêtre GTK4 (trois panneaux, quatre langues, ouverture d'un SVG affiché en entier ; M0b) existent, avec leur CI, qui construit et essaie le paquet sur sept distributions Linux (familles Debian et Red Hat) et sur Windows. M0 n'est pas terminé : la comparaison du plan produit sous Windows et sous Linux reste à faire. **M1 est fait** : `model`, `diag`, `layout` (échelle, feuille, plan, états, corrections, coupures, aimantation, coupures automatiques) et `project` (format `.svgpl`) sont écrits et testés sans cgo, avec des tests de propriétés ; les panneaux de la fenêtre ne les utilisent pas encore. **M2 est fait** : `svgdoc` (analyse, constats, polices, blocs, fond, copie de travail), l'interface `Document` du moteur (chargement par chemin pour les images liées, polices par fontconfig), `app` (session, historique, plan), `viewport` et la fenêtre (panneaux Fichier source, Papier, Marges, Échelle, Positionnement ; liste des pages avec les corrections proposées ; aperçu avec zoom, déplacement, limites et numéros de page, annuler et rétablir) existent et sont essayés sous Xvfb. **M3 est fait** : `app` donne à la session les commandes sur les coupures (ajouter, glisser, déplacer, pousser d'un pas, supprimer, coupures automatiques), chacune une entrée d'historique, et aucune ne touche l'échelle (tests 5, 6 et 7) ; l'aperçu les reçoit par la souris (double-clic, glisser, aimantation aux vides, Alt pour la désactiver, clic droit, clavier) et la liste des pages montre les coupures et leurs blocs traversés, avec une sélection partagée. **M4 est fait** : `export` (pages du plan, contrôles avant l'export, relecture du PDF, écriture atomique), le moteur (`RenderPage`, progression, annulation), les commandes de fond de `app` (`SetDocBackground`, `SetPageBackground`, `Rebuild`), les sections Fond et Export, la vue Feuilles, le bouton d'aperçu de chaque page et `internal/acceptance` (tests 8 à 13, déterminisme, SVG source intact) existent, et la fenêtre exporte un PDF relu et vérifié. **M5 est fait** : `app` lit, écrit et pose un projet (`ReadProject`, `SaveProject`, `OpenProject`), la fenêtre a le menu Projet (ouvrir, enregistrer, enregistrer sous), localise un document déplacé, signale ce qu'un projet ne retrouve plus (document modifié, taille changée, coupures hors du document, fond perdu), montre l'astérisque des changements non enregistrés et demande avant de les perdre ; `internal/acceptance` automatise les 14 tests, et la CI les exécute sur chaque distribution essayée et sous Windows. La recette à la main a été faite sous Ubuntu et sous Windows (sur une machine réelle, avec les paquets de la CI, qui n'a que des Windows Server) : la version 1.0.0 est publiée. Le `CHANGELOG.md` tient le détail.
+**État.** Le squelette du dépôt, le paquet `units`, le prototype du moteur (M0a, `docs/M0.md`), les scripts qui construisent les paquets `.deb`, `.rpm` et Windows, le paquet de traduction `i18n` et une première fenêtre GTK4 (trois panneaux, quatre langues, ouverture d'un SVG affiché en entier ; M0b) existent, avec leur CI, qui construit et essaie le paquet sur sept distributions Linux (familles Debian et Red Hat) et sur Windows. M0 n'est pas terminé : la comparaison du plan produit sous Windows et sous Linux reste à faire. **M1 est fait** : `model`, `diag`, `layout` (échelle, feuille, plan, états, corrections, coupures, aimantation, coupures automatiques) et `project` (format `.imgpl`) sont écrits et testés sans cgo, avec des tests de propriétés ; les panneaux de la fenêtre ne les utilisent pas encore. **M2 est fait** : `svgdoc` (analyse, constats, polices, blocs, fond, copie de travail), l'interface `Document` du moteur (chargement par chemin pour les images liées, polices par fontconfig), `app` (session, historique, plan), `viewport` et la fenêtre (panneaux Fichier source, Papier, Marges, Échelle, Positionnement ; liste des pages avec les corrections proposées ; aperçu avec zoom, déplacement, limites et numéros de page, annuler et rétablir) existent et sont essayés sous Xvfb. **M3 est fait** : `app` donne à la session les commandes sur les coupures (ajouter, glisser, déplacer, pousser d'un pas, supprimer, coupures automatiques), chacune une entrée d'historique, et aucune ne touche l'échelle (tests 5, 6 et 7) ; l'aperçu les reçoit par la souris (double-clic, glisser, aimantation aux vides, Alt pour la désactiver, clic droit, clavier) et la liste des pages montre les coupures et leurs blocs traversés, avec une sélection partagée. **M4 est fait** : `export` (pages du plan, contrôles avant l'export, relecture du PDF, écriture atomique), le moteur (`RenderPage`, progression, annulation), les commandes de fond de `app` (`SetDocBackground`, `SetPageBackground`, `Rebuild`), les sections Fond et Export, la vue Feuilles, le bouton d'aperçu de chaque page et `internal/acceptance` (tests 8 à 13, déterminisme, SVG source intact) existent, et la fenêtre exporte un PDF relu et vérifié. **M5 est fait** : `app` lit, écrit et pose un projet (`ReadProject`, `SaveProject`, `OpenProject`), la fenêtre a le menu Projet (ouvrir, enregistrer, enregistrer sous), localise un document déplacé, signale ce qu'un projet ne retrouve plus (document modifié, taille changée, coupures hors du document, fond perdu), montre l'astérisque des changements non enregistrés et demande avant de les perdre ; `internal/acceptance` automatise les 14 tests, et la CI les exécute sur chaque distribution essayée et sous Windows. La recette à la main a été faite sous Ubuntu et sous Windows (sur une machine réelle, avec les paquets de la CI, qui n'a que des Windows Server) : la version 1.0.0 est publiée. La **version 1.1.0** change le nom du programme (Image Print Layout, ex-« SVG Print Layout ») pour préparer l'ouverture d'images, et reprend l'existant : projets `.svgpl`, réglages, paquets installés. Le `CHANGELOG.md` tient le détail.
 
 Après la v1, le §14 du cahier reste la liste des suites possibles. L'aperçu du PDF réel relu par un moteur PDF indépendant (le cahier demande « un aperçu du PDF final ») est le premier candidat : la v1 s'en tient à l'aperçu produit par la même fonction de dessin, ce qui est fidèle au PDF par construction.
 

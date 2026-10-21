@@ -6,8 +6,8 @@ import (
 	"math"
 	"sort"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/diag"
-	"github.com/gillesmagneville/svg-print-layout/internal/model"
+	"github.com/gillesmagneville/image-print-layout/internal/diag"
+	"github.com/gillesmagneville/image-print-layout/internal/model"
 )
 
 // MinCutGapMM is the smallest physical distance between two cuts, and

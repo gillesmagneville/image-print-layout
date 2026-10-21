@@ -1,7 +1,7 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: svg-print-layout
+Upstream-Name: imageprintlayout
 Upstream-Contact: Gilles MAGNEVILLE <gilles@magneville.fr>
-Source: https://github.com/gillesmagneville/svg-print-layout
+Source: https://github.com/gillesmagneville/image-print-layout
 Comment: Developed by Gilles MAGNEVILLE, designed with the help of claude.ai.
 
 Files: *

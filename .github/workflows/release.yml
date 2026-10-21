@@ -111,8 +111,8 @@ jobs:
         with:
           name: ${{ matrix.artifact }}
           path: |
-            svgprintlayout_*.deb
-            svgprintlayout-*.rpm
+            imageprintlayout_*.deb
+            imageprintlayout-*.rpm
           if-no-files-found: error
           retention-days: 14
 
@@ -143,8 +143,8 @@ jobs:
         with:
           name: package-windows
           path: |
-            svgprintlayout_*_windows-portable.zip
-            svgprintlayout_*_windows-setup.exe
+            imageprintlayout_*_windows-portable.zip
+            imageprintlayout_*_windows-setup.exe
           if-no-files-found: error
           retention-days: 14
 
@@ -169,7 +169,7 @@ jobs:
       - name: Checksums and release notes
         run: |
           cd release-files
-          for package in svgprintlayout*; do
+          for package in imageprintlayout*; do
             sha256sum "$package" > "$package.sha256"
           done
           cat ./*.sha256
@@ -184,5 +184,5 @@ jobs:
           gh release create "$GITHUB_REF_NAME" release-files/* \
             --repo "$GITHUB_REPOSITORY" \
             --verify-tag \
-            --title "SVG Print Layout $version" \
+            --title "Image Print Layout $version" \
             --notes-file release-notes.md

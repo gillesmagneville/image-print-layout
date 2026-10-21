@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/diag"
-	"github.com/gillesmagneville/svg-print-layout/internal/i18n"
+	"github.com/gillesmagneville/image-print-layout/internal/diag"
+	"github.com/gillesmagneville/image-print-layout/internal/i18n"
 )
 
 // A code is produced by diag.New and diag.Fail, or by the add method of the

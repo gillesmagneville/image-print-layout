@@ -7,9 +7,9 @@ package ui
 import (
 	"github.com/diamondburned/gotk4/pkg/glib/v2"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/app"
-	"github.com/gillesmagneville/svg-print-layout/internal/engine"
-	"github.com/gillesmagneville/svg-print-layout/internal/model"
+	"github.com/gillesmagneville/image-print-layout/internal/app"
+	"github.com/gillesmagneville/image-print-layout/internal/engine"
+	"github.com/gillesmagneville/image-print-layout/internal/model"
 )
 
 // The background of the document is an instruction on the working copy

@@ -15,9 +15,9 @@ import (
 	"github.com/diamondburned/gotk4/pkg/glib/v2"
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/diag"
-	"github.com/gillesmagneville/svg-print-layout/internal/export"
-	"github.com/gillesmagneville/svg-print-layout/internal/i18n"
+	"github.com/gillesmagneville/image-print-layout/internal/diag"
+	"github.com/gillesmagneville/image-print-layout/internal/export"
+	"github.com/gillesmagneville/image-print-layout/internal/i18n"
 )
 
 // The export (ARCHITECTURE §6 and §11): the checks on the plan, the choice of
@@ -180,7 +180,7 @@ func (w *window) showDialog(heading, detailText string, items []diag.Item, butto
 	dialog.SetApplication(w.app)
 	dialog.SetTransientFor(&w.win.Window)
 	dialog.SetModal(true)
-	dialog.SetTitle("SVG Print Layout")
+	dialog.SetTitle("Image Print Layout")
 	dialog.SetDefaultSize(520, -1)
 
 	column := gtk.NewBox(gtk.OrientationVertical, 12)

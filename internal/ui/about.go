@@ -9,7 +9,7 @@ import (
 	"github.com/diamondburned/gotk4/pkg/glib/v2"
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 
-	"github.com/gillesmagneville/svg-print-layout/icons"
+	"github.com/gillesmagneville/image-print-layout/icons"
 )
 
 // aboutLogoSize is the size of the icon in the About box, in pixels.
@@ -43,7 +43,7 @@ func (w *window) showAbout() {
 		box.Append(logo)
 	}
 
-	name := gtk.NewLabel("SVG Print Layout")
+	name := gtk.NewLabel("Image Print Layout")
 	name.AddCSSClass("title-1")
 	name.SetSelectable(false)
 	box.Append(name)

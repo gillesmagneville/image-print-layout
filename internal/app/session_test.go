@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/diag"
-	"github.com/gillesmagneville/svg-print-layout/internal/engine"
-	"github.com/gillesmagneville/svg-print-layout/internal/layout"
-	"github.com/gillesmagneville/svg-print-layout/internal/model"
-	"github.com/gillesmagneville/svg-print-layout/internal/testsvg"
+	"github.com/gillesmagneville/image-print-layout/internal/diag"
+	"github.com/gillesmagneville/image-print-layout/internal/engine"
+	"github.com/gillesmagneville/image-print-layout/internal/layout"
+	"github.com/gillesmagneville/image-print-layout/internal/model"
+	"github.com/gillesmagneville/image-print-layout/internal/testsvg"
 )
 
 // fakeDoc is an engine document that draws nothing: the use cases are tested
@@ -335,8 +335,8 @@ func TestDirtyFollowsTheSavedProject(t *testing.T) {
 		t.Error("dirty after going back to the saved project")
 	}
 	s.Redo()
-	s.SetProjectPath("/tmp/work.svgpl")
-	if s.Dirty() || s.ProjectPath() != "/tmp/work.svgpl" {
+	s.SetProjectPath("/tmp/work.imgpl")
+	if s.Dirty() || s.ProjectPath() != "/tmp/work.imgpl" {
 		t.Error("dirty after saving")
 	}
 	s.Undo()
@@ -375,8 +375,8 @@ func TestReplaceTakesAProjectAndStartsTheHistoryAgain(t *testing.T) {
 	must(t, s.Apply("undo.margins", "margins", Edit(func(p *model.Project) { p.Margins.Top = 12 })))
 	q := model.Default()
 	q.Paper.Format = "A5"
-	must(t, s.Replace(q, "/tmp/p.svgpl"))
-	if s.Project().Paper.Format != "A5" || s.CanUndo() || s.Dirty() || s.ProjectPath() != "/tmp/p.svgpl" {
+	must(t, s.Replace(q, "/tmp/p.imgpl"))
+	if s.Project().Paper.Format != "A5" || s.CanUndo() || s.Dirty() || s.ProjectPath() != "/tmp/p.imgpl" {
 		t.Error("Replace")
 	}
 	q.Margins = model.Margins{Top: 200, Bottom: 200}

@@ -11,7 +11,7 @@ import (
 	"github.com/diamondburned/gotk4/pkg/glib/v2"
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/i18n"
+	"github.com/gillesmagneville/image-print-layout/internal/i18n"
 )
 
 // typingDelay is how long a value waits after the last keystroke before it is

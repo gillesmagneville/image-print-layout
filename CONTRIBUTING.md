@@ -1,21 +1,21 @@
 <!-- SPDX-License-Identifier: GPL-3.0-only -->
 
-# Contribuer à SVG Print Layout
+# Contribuer à Image Print Layout
 
 Merci de l'intérêt porté à ce projet ! Ce document explique comment signaler un problème,
 proposer une amélioration, ou contribuer du code.
 
-SVG Print Layout est développé par Gilles MAGNEVILLE, et conçu avec l'aide de claude.ai.
+Image Print Layout est développé par Gilles MAGNEVILLE, et conçu avec l'aide de claude.ai.
 
 ## Signaler un bug
 
 Ouvrez une issue en précisant :
 
 - le système (la distribution et sa version, ou Windows 10 ou 11) ;
-- la version de l'application (`svgprintlayout -version`) ;
+- la version de l'application (`imageprintlayout -version`) ;
 - ce que vous avez fait, le comportement observé et le comportement attendu ;
 - si possible, le SVG en cause (ou un SVG minimal qui reproduit le problème) et le fichier
-  projet `.svgpl`.
+  projet `.imgpl`.
 
 ## Proposer une amélioration
 
@@ -48,7 +48,7 @@ discuter avant qu'après. Les fonctions listées comme hors périmètre dans
    Si vous touchez à la fenêtre (`internal/ui`), ajoutez GTK 4 et un écran virtuel
    (`sudo apt-get install librsvg2-dev libfontconfig-dev libgtk-4-dev libgirepository1.0-dev xvfb xauth
    imagemagick fonts-ibm-plex`) et lancez `xvfb-run -a go test ./internal/ui
-   ./cmd/svgprintlayout` : c'est le job `ui`, qui dépose aussi des captures de la fenêtre
+   ./cmd/imageprintlayout` : c'est le job `ui`, qui dépose aussi des captures de la fenêtre
    dans les quatre langues (artefact `screenshots`). Un texte de l'interface s'ajoute aux
    **quatre** catalogues de `internal/i18n` (le test dit lesquels l'oublient).
 
@@ -124,7 +124,7 @@ Le contrat complet est dans `ARCHITECTURE.md`. Les règles à ne pas enfreindre 
 - Les scripts de construction des paquets (`build-deb.sh`, `build-rpm.sh`,
   `windows/build-windows.sh`) passent sous `shellcheck` sans avertissement. Un changement qui
   les touche se vérifie en construisant le paquet, en l'installant et en lançant
-  `svgprintlayout -selftest` ; la CI le fait pour les trois formats. Deux constructions du
+  `imageprintlayout -selftest` ; la CI le fait pour les trois formats. Deux constructions du
   même code doivent donner des fichiers identiques : ne mettez dans un paquet ni date, ni
   chemin de la machine, ni ordre de fichiers laissé au hasard.
 - Les trois scripts (`build-deb.sh`, `build-rpm.sh`, `windows/build-windows.ps1`) ont les
@@ -153,7 +153,7 @@ Le projet suit le [Semantic Versioning](https://semver.org/lang/fr/). La version
 est dans le fichier `VERSION`, que l'on injecte à la compilation :
 
 ```bash
-go build -ldflags "-X main.version=$(cat VERSION)" ./cmd/svgprintlayout
+go build -ldflags "-X main.version=$(cat VERSION)" ./cmd/imageprintlayout
 ```
 
 Les scripts de construction des paquets gèrent `VERSION` : avec `--major`, `--minor` ou
@@ -172,11 +172,11 @@ Une release est une pull request à part, « Release X.Y.Z » :
 3. mettez à jour **tous les fichiers qui nomment la version**, dans la même pull request :
    - `CHANGELOG.md` : déplacez les notes de `[Non publié]` sous
      `## [X.Y.Z] - AAAA-MM-JJ` (le plus récent en premier) ;
-   - `metainfo/io.github.gillesmagneville.svgprintlayout.metainfo.xml` : ajoutez
+   - `metainfo/io.github.gillesmagneville.imageprintlayout.metainfo.xml` : ajoutez
      `<release version="X.Y.Z" date="AAAA-MM-JJ">` en tête de `<releases>`, avec sa
      description ;
-   - `docs/svgprintlayout.1`, `docs/fr/svgprintlayout.1`, `docs/es/svgprintlayout.1` et
-     `docs/de/svgprintlayout.1` : la date et `svg-print-layout X.Y.Z` de la ligne `.TH` ;
+   - `docs/imageprintlayout.1`, `docs/fr/imageprintlayout.1`, `docs/es/imageprintlayout.1` et
+     `docs/de/imageprintlayout.1` : la date et `imageprintlayout X.Y.Z` de la ligne `.TH` ;
    - `README.md`, `ARCHITECTURE.md` (§14, « État ») et les rapports de `docs/` quand ce
      qu'ils annoncent a changé avec la version ;
 

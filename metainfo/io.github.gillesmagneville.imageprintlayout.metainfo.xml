@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- SPDX-License-Identifier: GPL-3.0-only -->
 <!--
-  Métadonnées AppStream de SVG Print Layout, pour les gestionnaires de logiciels
+  Métadonnées AppStream d'Image Print Layout, pour les gestionnaires de logiciels
   (GNOME Logiciels, App Center, KDE Discover). Le texte sans attribut xml:lang
   est l'anglais, langue de repli ; xml:lang="fr", "es" et "de" donnent les trois
   autres langues du programme.
 
-  L'<id> doit correspondre au nom de ce fichier (io.github.gillesmagneville.svgprintlayout.metainfo.xml)
-  et le <launchable> au nom du fichier .desktop installé (io.github.gillesmagneville.svgprintlayout.desktop). Le nom
+  L'<id> doit correspondre au nom de ce fichier (io.github.gillesmagneville.imageprintlayout.metainfo.xml)
+  et le <launchable> au nom du fichier .desktop installé (io.github.gillesmagneville.imageprintlayout.desktop). Le nom
   de domaine inversé est celui que demande AppStream pour un projet hébergé sur GitHub.
 -->
 <component type="desktop-application">
-  <id>io.github.gillesmagneville.svgprintlayout</id>
+  <id>io.github.gillesmagneville.imageprintlayout</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-only</project_license>
 
-  <name>SVG Print Layout</name>
+  <name>Image Print Layout</name>
   <summary>Lays out an SVG drawing over several sheets and exports it as a PDF</summary>
   <summary xml:lang="fr">Met en page un dessin SVG sur plusieurs feuilles et l'exporte en PDF</summary>
   <summary xml:lang="es">Reparte un dibujo SVG en varias hojas y lo exporta como PDF</summary>
@@ -23,25 +23,25 @@
 
   <description>
     <p>
-      SVG Print Layout prepares a vector SVG document of any size for printing
+      Image Print Layout prepares a vector SVG document of any size for printing
       on several sheets of standard paper: you choose the format, the margins
       and the width of the drawing, place the cuts with the mouse, then export
       a single multi-page vector PDF.
     </p>
     <p xml:lang="fr">
-      SVG Print Layout prépare l'impression d'un document vectoriel SVG de
+      Image Print Layout prépare l'impression d'un document vectoriel SVG de
       dimensions quelconques sur plusieurs feuilles de papier standard : on
       choisit le format, les marges et la largeur du dessin, on place les
       coupures à la souris, puis on exporte un seul PDF multipage vectoriel.
     </p>
     <p xml:lang="es">
-      SVG Print Layout prepara la impresión de un documento vectorial SVG de
+      Image Print Layout prepara la impresión de un documento vectorial SVG de
       cualquier tamaño en varias hojas de papel estándar: se elige el formato,
       los márgenes y el ancho del dibujo, se colocan los cortes con el ratón y
       se exporta un único PDF vectorial de varias páginas.
     </p>
     <p xml:lang="de">
-      SVG Print Layout bereitet ein SVG-Vektordokument beliebiger Größe für den
+      Image Print Layout bereitet ein SVG-Vektordokument beliebiger Größe für den
       Druck auf mehreren Blättern Standardpapier vor: Man wählt Format, Ränder
       und Breite der Zeichnung, setzt die Schnitte mit der Maus und exportiert
       ein einziges mehrseitiges Vektor-PDF.
@@ -67,13 +67,13 @@
     </p>
   </description>
 
-  <launchable type="desktop-id">io.github.gillesmagneville.svgprintlayout.desktop</launchable>
+  <launchable type="desktop-id">io.github.gillesmagneville.imageprintlayout.desktop</launchable>
 
-  <url type="homepage">https://github.com/gillesmagneville/svg-print-layout</url>
-  <url type="bugtracker">https://github.com/gillesmagneville/svg-print-layout/issues</url>
+  <url type="homepage">https://github.com/gillesmagneville/image-print-layout</url>
+  <url type="bugtracker">https://github.com/gillesmagneville/image-print-layout/issues</url>
 
   <provides>
-    <binary>svgprintlayout</binary>
+    <binary>imageprintlayout</binary>
   </provides>
 
   <categories>
@@ -82,6 +82,14 @@
   </categories>
 
   <releases>
+    <release version="1.1.0" date="2026-10-21">
+      <description>
+        <p>The program is now called Image Print Layout (it was SVG Print Layout): it will soon take images as well as SVG. Nothing else changes. Projects saved as .svgpl still open, your language setting is carried over, and installing the package replaces the old one.</p>
+        <p xml:lang="fr">Le programme s'appelle maintenant Image Print Layout (il s'appelait SVG Print Layout) : il prendra bientôt des images en plus du SVG. Rien d'autre ne change. Les projets enregistrés en .svgpl s'ouvrent toujours, la langue choisie est reprise, et installer le paquet remplace l'ancien.</p>
+        <p xml:lang="es">El programa ahora se llama Image Print Layout (antes SVG Print Layout): pronto aceptará imágenes además de SVG. No cambia nada más. Los proyectos guardados como .svgpl se siguen abriendo, el idioma elegido se conserva e instalar el paquete sustituye al anterior.</p>
+        <p xml:lang="de">Das Programm heißt jetzt Image Print Layout (früher SVG Print Layout): bald nimmt es neben SVG auch Bilder. Sonst ändert sich nichts. Als .svgpl gespeicherte Projekte lassen sich weiter öffnen, die gewählte Sprache wird übernommen, und die Installation des Pakets ersetzt das alte.</p>
+      </description>
+    </release>
     <release version="1.0.0" date="2026-10-21">
       <description>
         <p>First stable version: everything the specification asks for is there and tried by hand on Ubuntu and Windows. Open an SVG of any size, set paper, margins, scale and positioning, place the cuts with the mouse or have them proposed, choose the document and page backgrounds, preview every sheet, export a verified multi-page vector PDF, and save the project to reopen it later.</p>

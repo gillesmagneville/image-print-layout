@@ -13,10 +13,10 @@ import (
 	"github.com/diamondburned/gotk4/pkg/glib/v2"
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 
-	"github.com/gillesmagneville/svg-print-layout/internal/engine"
-	"github.com/gillesmagneville/svg-print-layout/internal/export"
-	"github.com/gillesmagneville/svg-print-layout/internal/i18n"
-	"github.com/gillesmagneville/svg-print-layout/internal/layout"
+	"github.com/gillesmagneville/image-print-layout/internal/engine"
+	"github.com/gillesmagneville/image-print-layout/internal/export"
+	"github.com/gillesmagneville/image-print-layout/internal/i18n"
+	"github.com/gillesmagneville/image-print-layout/internal/layout"
 )
 
 // The sheets view (ARCHITECTURE §9): the pages side by side, each drawn by the

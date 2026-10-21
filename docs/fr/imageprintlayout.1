@@ -1,15 +1,15 @@
 .\" SPDX-License-Identifier: GPL-3.0-only
-.TH SVGPRINTLAYOUT 1 "2026-10-21" "svg-print-layout 1.0.0" "Commandes utilisateur"
+.TH IMAGEPRINTLAYOUT 1 "2026-10-21" "imageprintlayout 1.1.0" "Commandes utilisateur"
 .SH NOM
-svgprintlayout \- met en page un dessin SVG sur plusieurs feuilles et l'exporte en PDF
+imageprintlayout \- met en page un dessin SVG sur plusieurs feuilles et l'exporte en PDF
 .SH SYNOPSIS
-.B svgprintlayout
-[\fB\-lang\fR \fIlangue\fR] [\fIfichier.svg\fR | \fIprojet.svgpl\fR]
+.B imageprintlayout
+[\fB\-lang\fR \fIlangue\fR] [\fIfichier.svg\fR | \fIprojet.imgpl\fR]
 .br
-.B svgprintlayout
+.B imageprintlayout
 [\fB\-version\fR | \fB\-selftest\fR]
 .SH DESCRIPTION
-.B svgprintlayout
+.B imageprintlayout
 prépare l'impression d'un document vectoriel SVG de dimensions quelconques sur
 plusieurs feuilles de papier standard : on choisit le format, les marges et la
 largeur du dessin, on place les coupures à la souris, puis on exporte un seul
@@ -21,7 +21,7 @@ centre et la liste des pages à droite. Les coupures se placent, se déplacent
 et se suppriment à la souris ; le fond du document et celui de la page se
 choisissent avec un aperçu immédiat ; chaque feuille se voit telle qu'elle sera
 exportée. Une mise en page s'enregistre dans un fichier de projet
-(\fI.svgpl\fR) qu'on rouvre plus tard : il garde le papier, les marges,
+(\fI.imgpl\fR) qu'on rouvre plus tard : il garde le papier, les marges,
 l'échelle, le fond et les coupures, et le fichier SVG d'origine n'est jamais
 modifié. L'export relit le PDF qu'il a écrit avant de le mettre où vous l'avez
 demandé.
@@ -52,15 +52,15 @@ Crée ce fichier une fois la fenêtre affichée et le document dessiné. Destin�
 aux tests et à la documentation.
 .SH FICHIERS
 .TP
-.I projet.svgpl
+.I projet.imgpl
 Un projet de mise en page : les réglages et l'emplacement du document SVG, pas
 le document lui-même.
 .TP
-.I ~/.config/svgprintlayout/settings.json
+.I ~/.config/imageprintlayout/settings.json
 Les préférences de l'utilisateur (la langue de l'interface). Sous Windows :
-.IR %AppData%\esvgprintlayout\esettings.json .
+.IR %AppData%\eimageprintlayout\esettings.json .
 .SH VOIR AUSSI
-https://github.com/gillesmagneville/svg-print-layout
+https://github.com/gillesmagneville/image-print-layout
 .SH AUTEUR
 Développé par Gilles MAGNEVILLE, conçu avec l'aide de claude.ai.
 Distribué sous la licence GNU GPL version 3.

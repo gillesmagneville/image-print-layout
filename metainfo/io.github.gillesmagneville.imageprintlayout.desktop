@@ -3,7 +3,7 @@
 # [es] et [de] donnent les trois autres langues du programme.
 [Desktop Entry]
 Type=Application
-Name=SVG Print Layout
+Name=Image Print Layout
 GenericName=SVG layout for printing
 GenericName[fr]=Mise en page SVG pour l'impression
 GenericName[es]=Maquetación de SVG para imprimir
@@ -12,8 +12,8 @@ Comment=Splits an SVG drawing into pages and exports it as a multi-page PDF
 Comment[fr]=Découpe un dessin SVG en pages et l'exporte en PDF multipage
 Comment[es]=Divide un dibujo SVG en páginas y lo exporta como PDF de varias páginas
 Comment[de]=Teilt eine SVG-Zeichnung in Seiten auf und exportiert sie als mehrseitiges PDF
-Exec=svgprintlayout %f
-Icon=svgprintlayout
+Exec=imageprintlayout %f
+Icon=imageprintlayout
 Terminal=false
 Categories=Graphics;2DGraphics;VectorGraphics;
 MimeType=image/svg+xml;

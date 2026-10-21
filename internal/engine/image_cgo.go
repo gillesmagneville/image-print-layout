@@ -178,11 +178,31 @@ static char *ipl_format_names(void) {
 	g_slist_free(formats);
 	return g_string_free(out, FALSE);
 }
+// TEMP-DEBUG
+static char *ipl_dump(GdkPixbuf *pb) {
+	GString *s = g_string_new("");
+	g_string_append_printf(s, "size=%dx%d n=%d alpha=%d", gdk_pixbuf_get_width(pb), gdk_pixbuf_get_height(pb),
+		gdk_pixbuf_get_n_channels(pb), gdk_pixbuf_get_has_alpha(pb));
+	const guchar *p = gdk_pixbuf_read_pixels(pb);
+	g_string_append_printf(s, " px00=%d,%d,%d", p[0], p[1], p[2]);
+	GHashTable *o = gdk_pixbuf_get_options(pb);
+	if (o != NULL) {
+		GHashTableIter it;
+		gpointer k, v;
+		g_hash_table_iter_init(&it, o);
+		while (g_hash_table_iter_next(&it, &k, &v)) {
+			g_string_append_printf(s, " [%s=%.24s]", (const char *)k, (const char *)v);
+		}
+		g_hash_table_unref(o);
+	}
+	return g_string_free(s, FALSE);
+}
 */
 import "C"
 
 import (
 	"errors"
+	"fmt"
 	"image"
 	"image/color"
 	"io"
@@ -510,4 +530,22 @@ func (d *ImageDoc) RenderPage(p PageSpec, pxPerPt float64, whitePage bool) (*ima
 // written once and drawn on every page under the clip of its band.
 func (d *ImageDoc) ExportPDF(w io.Writer, pages []PageSpec, opt PDFOptions) error {
 	return exportPDF(d, w, pages, opt)
+}
+
+// TEMP-DEBUG: what the decoder reports for a file.
+func DebugOptions(data []byte) string {
+	var res C.ipl_result
+	var gerr *C.GError
+	if C.ipl_load((*C.guchar)(unsafe.Pointer(&data[0])), C.gsize(len(data)), C.gint64(MaxImagePixels), &res, &gerr) == 0 {
+		return "load failed: " + takeGError(gerr)
+	}
+	defer C.g_object_unref(C.gpointer(unsafe.Pointer(res.pixbuf)))
+	name := ""
+	if res.format != nil {
+		name = C.GoString(res.format)
+		C.g_free(C.gpointer(unsafe.Pointer(res.format)))
+	}
+	d := C.ipl_dump(res.pixbuf)
+	defer C.g_free(C.gpointer(unsafe.Pointer(d)))
+	return fmt.Sprintf("loader=%s animated=%v %s", name, res.animated != 0, C.GoString(d))
 }

@@ -66,8 +66,15 @@ type scenario struct {
 
 func newScenario(t *testing.T, svg []byte) *scenario {
 	t.Helper()
+	return newScenarioFile(t, "mini-cad.svg", svg)
+}
+
+// newScenarioFile is newScenario for a document of any kind, written under
+// the name given.
+func newScenarioFile(t *testing.T, name string, svg []byte) *scenario {
+	t.Helper()
 	dir := t.TempDir()
-	path := filepath.Join(dir, "mini-cad.svg")
+	path := filepath.Join(dir, name)
 	if err := os.WriteFile(path, svg, 0o644); err != nil {
 		t.Fatal(err)
 	}

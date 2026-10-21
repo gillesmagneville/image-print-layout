@@ -43,7 +43,7 @@ func (w *window) showAbout() {
 		box.Append(logo)
 	}
 
-	name := gtk.NewLabel("Image Print Layout")
+	name := gtk.NewLabel(AppName)
 	name.AddCSSClass("title-1")
 	name.SetSelectable(false)
 	box.Append(name)

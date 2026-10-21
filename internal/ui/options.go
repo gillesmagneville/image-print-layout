@@ -22,6 +22,9 @@ type Options struct {
 // and its AppStream component, in reverse domain order.
 const AppID = "io.github.gillesmagneville.imageprintlayout"
 
+// AppName is the name of the program as people read it.
+const AppName = "Image Print Layout"
+
 // IconName is the name of the icon of the program in the icon theme: the one
 // the packages install (hicolor/scalable/apps/imageprintlayout.svg) and the one
 // the desktop file names. It is not the AppID.

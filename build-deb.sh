@@ -5,14 +5,14 @@ set -euo pipefail
 # Construit le paquet Debian (.deb) d'Image Print Layout, pour Debian, Ubuntu et
 # leurs dérivés. Mêmes options et même gestion du fichier VERSION que le
 # build-deb.sh de Planche-Contact. Le programme est compilé en Go (cgo,
-# librsvg, cairo) et empaqueté avec dpkg-deb : ni fpm, ni environnement
+# librsvg, gdk-pixbuf, cairo) et empaqueté avec dpkg-deb : ni fpm, ni environnement
 # Python embarqué.
 
 # ====================== CONFIGURATION ======================
 PACKAGE_NAME="imageprintlayout"
 APP_ID="io.github.gillesmagneville.imageprintlayout"
 MAINTAINER="Gilles MAGNEVILLE <gilles@magneville.fr>"
-DESCRIPTION="Met en page un dessin SVG sur plusieurs feuilles et l'exporte en PDF"
+DESCRIPTION="Met en page un SVG ou une image sur plusieurs feuilles et l'exporte en PDF"
 URL="https://github.com/gillesmagneville/image-print-layout"
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORK_DIR="$HOME/deb-build"
@@ -43,7 +43,7 @@ version d'avant-publication (0.1.0-dev) est publiée par --minor ou --patch
 Le paquet est créé à la racine du dépôt : imageprintlayout_<version>_<arch>.deb
 
 Prérequis (Debian, Ubuntu) :
-  sudo apt install golang-go build-essential pkg-config librsvg2-dev libfontconfig-dev libgtk-4-dev libgirepository1.0-dev dpkg-dev
+  sudo apt install golang-go build-essential pkg-config librsvg2-dev libgdk-pixbuf-2.0-dev libfontconfig-dev libgtk-4-dev libgirepository1.0-dev dpkg-dev
 
 Pour une construction identique d'une fois sur l'autre, la date des fichiers
 est celle du dernier commit ; SOURCE_DATE_EPOCH la remplace si elle est définie.
@@ -95,8 +95,8 @@ command -v dpkg-shlibdeps >/dev/null 2>&1 || erreur "dpkg-shlibdeps n'est pas in
 command -v go >/dev/null 2>&1 || erreur "Go n'est pas installé (voir go.mod pour la version) : https://go.dev/doc/install"
 command -v gcc >/dev/null 2>&1 || erreur "gcc n'est pas installé. Installe-le avec : sudo apt install build-essential"
 command -v pkg-config >/dev/null 2>&1 || erreur "pkg-config n'est pas installé. Installe-le avec : sudo apt install pkg-config"
-pkg-config --exists librsvg-2.0 cairo fontconfig || erreur "les bibliothèques de développement de librsvg, de cairo et de fontconfig sont absentes.
-  Installe-les avec : sudo apt install librsvg2-dev libfontconfig-dev"
+pkg-config --exists librsvg-2.0 gdk-pixbuf-2.0 cairo fontconfig || erreur "les bibliothèques de développement de librsvg, de gdk-pixbuf, de cairo et de fontconfig sont absentes.
+  Installe-les avec : sudo apt install librsvg2-dev libgdk-pixbuf-2.0-dev libfontconfig-dev"
 pkg-config --exists gtk4 gobject-introspection-1.0 || erreur "les bibliothèques de développement de GTK 4 sont absentes (GTK 4.14 ou plus récent).
   Installe-les avec : sudo apt install libgtk-4-dev libgirepository1.0-dev"
 pkg-config --atleast-version=4.14 gtk4 && pkg-config --atleast-version=2.80 glib-2.0 && pkg-config --atleast-version=2.52 librsvg-2.0 ||
@@ -243,7 +243,7 @@ mkdir -p "$BUILD_DIR"
 # Le code est celui de la bibliothèque et ce n'est pas un défaut ; on masque
 # seulement cet avertissement, sans toucher aux options par défaut de cgo
 # (-O2 -g). Les autres avertissements restent visibles.
-echo ">>> Compilation (cgo, GTK4, librsvg, cairo)..."
+echo ">>> Compilation (cgo, GTK4, librsvg, gdk-pixbuf, cairo)..."
 echo "    La première compilation de GTK (gotk4) dure plusieurs minutes et n'affiche rien ;"
 echo "    les suivantes sont presque instantanées (cache de Go)."
 BINARY="$WORK_DIR/$PACKAGE_NAME"
@@ -322,18 +322,20 @@ Architecture: $DEB_ARCH
 Maintainer: $MAINTAINER
 Installed-Size: $INSTALLED_SIZE
 Depends: $DEPENDS
+Recommends: webp-pixbuf-loader
 Conflicts: svgprintlayout (<< 1.1.0)
 Replaces: svgprintlayout (<< 1.1.0)
 Homepage: $URL
 Description: $DESCRIPTION
- Image Print Layout prépare l'impression d'un document vectoriel SVG de
- dimensions quelconques sur plusieurs feuilles de papier standard : on choisit
- le format, les marges et la largeur du dessin, on place les coupures à la
- souris, puis on exporte un seul PDF multipage vectoriel.
+ Image Print Layout prépare l'impression d'un document de dimensions
+ quelconques sur plusieurs feuilles de papier standard : un dessin vectoriel
+ SVG, ou une image (JPEG, PNG, TIFF, WebP, BMP, GIF). On choisit le format,
+ les marges et la largeur, on place les coupures à la souris, puis on exporte
+ un seul PDF multipage (vectoriel pour un SVG).
  .
- Le dessin garde une échelle unique : aucune page n'est réduite en silence
- pour faire tenir une portion trop haute. Le fichier SVG d'origine n'est
- jamais modifié.
+ Le document garde une échelle unique : aucune page n'est réduite en silence
+ pour faire tenir une portion trop haute. Le fichier d'origine n'est jamais
+ modifié.
 EOF
 # Scripts de maintenance : dpkg-deb les traite nativement quand ils sont dans DEBIAN/.
 install -m 0755 "$PROJECT_DIR/debian/postinst" "$BUILD_DIR/DEBIAN/postinst"

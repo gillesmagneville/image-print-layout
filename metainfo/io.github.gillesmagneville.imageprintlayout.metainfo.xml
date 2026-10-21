@@ -16,54 +16,58 @@
   <project_license>GPL-3.0-only</project_license>
 
   <name>Image Print Layout</name>
-  <summary>Lays out an SVG drawing over several sheets and exports it as a PDF</summary>
-  <summary xml:lang="fr">Met en page un dessin SVG sur plusieurs feuilles et l'exporte en PDF</summary>
-  <summary xml:lang="es">Reparte un dibujo SVG en varias hojas y lo exporta como PDF</summary>
-  <summary xml:lang="de">Verteilt eine SVG-Zeichnung auf mehrere Blätter und exportiert sie als PDF</summary>
+  <summary>Lays out an SVG drawing or an image over several sheets and exports it as a PDF</summary>
+  <summary xml:lang="fr">Met en page un dessin SVG ou une image sur plusieurs feuilles et l'exporte en PDF</summary>
+  <summary xml:lang="es">Reparte un dibujo SVG o una imagen en varias hojas y lo exporta como PDF</summary>
+  <summary xml:lang="de">Verteilt eine SVG-Zeichnung oder ein Bild auf mehrere Blätter und exportiert das Ergebnis als PDF</summary>
 
   <description>
     <p>
-      Image Print Layout prepares a vector SVG document of any size for printing
-      on several sheets of standard paper: you choose the format, the margins
-      and the width of the drawing, place the cuts with the mouse, then export
-      a single multi-page vector PDF.
+      Image Print Layout prepares a document of any size for printing on several
+      sheets of standard paper: a vector SVG drawing, or an image (JPEG, PNG,
+      TIFF, WebP, BMP, GIF). You choose the format, the margins and the width,
+      place the cuts with the mouse, then export a single multi-page PDF
+      (vector for an SVG).
     </p>
     <p xml:lang="fr">
-      Image Print Layout prépare l'impression d'un document vectoriel SVG de
-      dimensions quelconques sur plusieurs feuilles de papier standard : on
-      choisit le format, les marges et la largeur du dessin, on place les
-      coupures à la souris, puis on exporte un seul PDF multipage vectoriel.
+      Image Print Layout prépare l'impression d'un document de dimensions
+      quelconques sur plusieurs feuilles de papier standard : un dessin
+      vectoriel SVG, ou une image (JPEG, PNG, TIFF, WebP, BMP, GIF). On choisit
+      le format, les marges et la largeur, on place les coupures à la souris,
+      puis on exporte un seul PDF multipage (vectoriel pour un SVG).
     </p>
     <p xml:lang="es">
-      Image Print Layout prepara la impresión de un documento vectorial SVG de
-      cualquier tamaño en varias hojas de papel estándar: se elige el formato,
-      los márgenes y el ancho del dibujo, se colocan los cortes con el ratón y
-      se exporta un único PDF vectorial de varias páginas.
+      Image Print Layout prepara la impresión de un documento de cualquier
+      tamaño en varias hojas de papel estándar: un dibujo vectorial SVG o una
+      imagen (JPEG, PNG, TIFF, WebP, BMP, GIF). Se elige el formato, los
+      márgenes y el ancho, se colocan los cortes con el ratón y se exporta un
+      único PDF de varias páginas (vectorial si es un SVG).
     </p>
     <p xml:lang="de">
-      Image Print Layout bereitet ein SVG-Vektordokument beliebiger Größe für den
-      Druck auf mehreren Blättern Standardpapier vor: Man wählt Format, Ränder
-      und Breite der Zeichnung, setzt die Schnitte mit der Maus und exportiert
-      ein einziges mehrseitiges Vektor-PDF.
+      Image Print Layout bereitet ein Dokument beliebiger Größe für den Druck auf
+      mehreren Blättern Standardpapier vor: eine SVG-Vektorzeichnung oder ein
+      Bild (JPEG, PNG, TIFF, WebP, BMP, GIF). Man wählt Format, Ränder und
+      Breite, setzt die Schnitte mit der Maus und exportiert ein einziges
+      mehrseitiges PDF (bei SVG als Vektor-PDF).
     </p>
     <p>
-      The drawing keeps a single scale: no page is silently shrunk to fit a
-      portion that is too tall. The original SVG file is never modified.
+      The document keeps a single scale: no page is silently shrunk to fit a
+      portion that is too tall. The original file is never modified.
     </p>
     <p xml:lang="fr">
-      Le dessin garde une échelle unique : aucune page n'est réduite en
-      silence pour faire tenir une portion trop haute. Le fichier SVG d'origine
+      Le document garde une échelle unique : aucune page n'est réduite en
+      silence pour faire tenir une portion trop haute. Le fichier d'origine
       n'est jamais modifié.
     </p>
     <p xml:lang="es">
-      El dibujo conserva una única escala: ninguna página se reduce en silencio
-      para que quepa una parte demasiado alta. El archivo SVG original nunca se
-      modifica.
+      El documento conserva una única escala: ninguna página se reduce en
+      silencio para que quepa una parte demasiado alta. El archivo original
+      nunca se modifica.
     </p>
     <p xml:lang="de">
-      Die Zeichnung behält einen einzigen Maßstab: Keine Seite wird
+      Das Dokument behält einen einzigen Maßstab: Keine Seite wird
       stillschweigend verkleinert, damit ein zu hoher Abschnitt passt. Die
-      ursprüngliche SVG-Datei wird nie verändert.
+      ursprüngliche Datei wird nie verändert.
     </p>
   </description>
 
@@ -79,9 +83,18 @@
   <categories>
     <category>Graphics</category>
     <category>VectorGraphics</category>
+    <category>RasterGraphics</category>
   </categories>
 
   <releases>
+    <release version="1.2.0" date="2026-10-21">
+      <description>
+        <p>Images open like SVG documents: JPEG, PNG, TIFF, WebP, BMP and GIF. The same single scale, cuts, preview and multi-page PDF; a JPEG goes into the PDF as it is, without recompression. The size on paper comes from the resolution of the file (96 dots per inch when it gives none). Automatic cuts fall between the blocks of an image with a plain background, and are evenly spaced for a photograph.</p>
+        <p xml:lang="fr">Les images s'ouvrent comme des documents SVG : JPEG, PNG, TIFF, WebP, BMP et GIF. Même échelle unique, mêmes coupures, même aperçu, même PDF multipage ; un JPEG entre dans le PDF tel quel, sans recompression. La taille sur le papier vient de la résolution du fichier (96 points par pouce quand il n'en donne pas). Les coupures automatiques tombent entre les blocs d'une image à fond uni, et se répartissent également pour une photographie.</p>
+        <p xml:lang="es">Las imágenes se abren como documentos SVG: JPEG, PNG, TIFF, WebP, BMP y GIF. La misma escala única, los mismos cortes, la misma vista previa y el mismo PDF de varias páginas; un JPEG entra en el PDF tal cual, sin recomprimir. El tamaño en el papel procede de la resolución del archivo (96 puntos por pulgada si no la indica). Los cortes automáticos caen entre los bloques de una imagen de fondo liso y se reparten por igual en una fotografía.</p>
+        <p xml:lang="de">Bilder lassen sich wie SVG-Dokumente öffnen: JPEG, PNG, TIFF, WebP, BMP und GIF. Derselbe einzige Maßstab, dieselben Schnitte, dieselbe Vorschau und dasselbe mehrseitige PDF; ein JPEG kommt unverändert, ohne erneute Kompression, ins PDF. Die Größe auf dem Papier ergibt sich aus der Auflösung der Datei (96 Punkte pro Zoll, wenn sie fehlt). Die automatischen Schnitte liegen zwischen den Blöcken eines Bildes mit einfarbigem Hintergrund und sind bei einem Foto gleichmäßig verteilt.</p>
+      </description>
+    </release>
     <release version="1.1.0" date="2026-10-21">
       <description>
         <p>The program is now called Image Print Layout (it was SVG Print Layout): it will soon take images as well as SVG. Nothing else changes. Projects saved as .svgpl still open, your language setting is carried over, and installing the package replaces the old one.</p>

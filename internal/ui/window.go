@@ -48,7 +48,7 @@ func Run(opts Options) int {
 		setenv("LANGUAGE", string(lang))
 	}
 
-	application := gtk.NewApplication(AppID, gio.ApplicationFlagsNone)
+	application := newApplication(AppID)
 	var win *window
 	application.ConnectActivate(func() {
 		win = newWindow(application, opts, settings, settingsPath, lang)
@@ -61,6 +61,21 @@ func Run(opts Options) int {
 		code = win.exitCode
 	}
 	return code
+}
+
+// newApplication creates the application with the identity the desktop reads.
+//
+// The desktop finds the icon and the name of the program by matching the "app
+// id" a window announces with the name of the desktop file. On Wayland GTK
+// announces the program name, which is the name of the executable
+// (imageprintlayout) unless it is set; the desktop file is named after the
+// AppID, and with a name that matched nothing the window showed the icon of an
+// unknown program in the overview of the windows. On X11 the same name is the
+// class of the window.
+func newApplication(id string) *gtk.Application {
+	glib.SetPrgname(AppID)
+	glib.SetApplicationName(AppName)
+	return gtk.NewApplication(id, gio.ApplicationFlagsNone)
 }
 
 // window is the main window and what it shows.
@@ -290,21 +305,14 @@ func (w *window) statusText() string {
 	return w.texts.tr.T(w.statusKey, args...)
 }
 
-// openDialog asks for an SVG document.
+// openDialog asks for a document: an image or an SVG.
 func (w *window) openDialog() {
 	tr := w.texts.tr
-	filter := gtk.NewFileFilter()
-	filter.SetName(tr.T("dialog.filter.svg"))
-	filter.AddMIMEType("image/svg+xml")
-	filter.AddPattern("*.svg")
-	filter.AddPattern("*.SVG")
-	filters := gio.NewListStore(gtk.GTypeFileFilter)
-	filters.Append(filter.Object)
-
+	filters, first := documentFilters(tr)
 	dialog := gtk.NewFileDialog()
-	dialog.SetTitle(tr.T("dialog.open_svg.title"))
+	dialog.SetTitle(tr.T("dialog.open.title"))
 	dialog.SetFilters(filters)
-	dialog.SetDefaultFilter(filter)
+	dialog.SetDefaultFilter(first)
 	dialog.Open(context.Background(), &w.win.Window, func(res gio.AsyncResulter) {
 		file, err := dialog.OpenFinish(res)
 		if err != nil || file == nil {
@@ -317,7 +325,7 @@ func (w *window) openDialog() {
 // showOpenError tells the user that a document could not be opened.
 func (w *window) showOpenError(path string, err error) {
 	tr := w.texts.tr
-	w.showMessage(tr.T("dialog.error.open"), tr.T("dialog.error.open.detail", "path", path, "reason", err.Error()))
+	w.showMessage(tr.T("dialog.error.open"), tr.T("dialog.error.open.detail", "path", path, "reason", errorText(tr, err)))
 }
 
 // showMessage opens a small modal window with a heading, an explanation and a
@@ -331,7 +339,7 @@ func (w *window) showMessage(heading, detail string) {
 	dialog.SetTransientFor(&w.win.Window)
 	dialog.SetModal(true)
 	dialog.SetResizable(false)
-	dialog.SetTitle("Image Print Layout")
+	dialog.SetTitle(AppName)
 
 	column := gtk.NewBox(gtk.OrientationVertical, 12)
 	column.SetMarginTop(18)
@@ -430,8 +438,8 @@ func (w *window) buildHeaderBar() {
 	open := gtk.NewButton()
 	open.SetActionName("win.open")
 	w.texts.bind(func(tr *i18n.Translator) {
-		open.SetLabel(tr.T("action.open_svg"))
-		open.SetTooltipText(tr.T("action.open_svg.tooltip"))
+		open.SetLabel(tr.T("action.open"))
+		open.SetTooltipText(tr.T("action.open.tooltip"))
 	})
 	bar.PackStart(open)
 
@@ -490,7 +498,7 @@ func (w *window) buildCentre() gtk.Widgetter {
 	w.texts.bind(func(tr *i18n.Translator) {
 		title.SetLabel(tr.T("preview.empty.title"))
 		hint.SetLabel(tr.T("preview.empty.hint"))
-		open.SetLabel(tr.T("action.open_svg"))
+		open.SetLabel(tr.T("action.open"))
 	})
 
 	w.stack = gtk.NewStack()
@@ -568,7 +576,7 @@ func (w *window) showSheets(n int) {
 // ---- state -------------------------------------------------------------------------
 
 func (w *window) updateTitle() {
-	title := "Image Print Layout"
+	title := AppName
 	if doc := w.session.Document(); doc != nil {
 		name := baseName(doc.Path)
 		if path := w.session.ProjectPath(); path != "" {

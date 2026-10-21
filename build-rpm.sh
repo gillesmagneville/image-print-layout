@@ -11,7 +11,7 @@ set -euo pipefail
 PACKAGE_NAME="imageprintlayout"
 APP_ID="io.github.gillesmagneville.imageprintlayout"
 MAINTAINER="Gilles MAGNEVILLE <gilles@magneville.fr>"
-DESCRIPTION="Met en page un dessin SVG sur plusieurs feuilles et l'exporte en PDF"
+DESCRIPTION="Met en page un SVG ou une image sur plusieurs feuilles et l'exporte en PDF"
 URL="https://github.com/gillesmagneville/image-print-layout"
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORK_DIR="$HOME/rpm-build"
@@ -44,8 +44,8 @@ imageprintlayout-<version>-<release>.<arch>.rpm. Une version d'avant-publication
 (0.1.0-dev) devient la release « 0.1.dev » et se classe avant la 0.1.0.
 
 Prérequis :
-  Fedora        : sudo dnf install golang gcc pkgconf librsvg2-devel cairo-devel fontconfig-devel gtk4-devel gobject-introspection-devel rpm-build
-  Debian/Ubuntu : sudo apt install golang-go build-essential pkg-config librsvg2-dev libfontconfig-dev libgtk-4-dev libgirepository1.0-dev rpm
+  Fedora        : sudo dnf install golang gcc pkgconf librsvg2-devel gdk-pixbuf2-devel cairo-devel fontconfig-devel gtk4-devel gobject-introspection-devel rpm-build
+  Debian/Ubuntu : sudo apt install golang-go build-essential pkg-config librsvg2-dev libgdk-pixbuf-2.0-dev libfontconfig-dev libgtk-4-dev libgirepository1.0-dev rpm
 
 Les dépendances du paquet (bibliothèques partagées) sont déduites du binaire
 par rpmbuild. Le paquet est lié aux versions des bibliothèques de la machine
@@ -101,9 +101,9 @@ command -v rpmbuild >/dev/null 2>&1 || erreur "rpmbuild n'est pas installé. Ins
 command -v go >/dev/null 2>&1 || erreur "Go n'est pas installé (voir go.mod pour la version) : https://go.dev/doc/install"
 command -v gcc >/dev/null 2>&1 || erreur "gcc n'est pas installé. Installe-le avec : sudo dnf install gcc (Debian/Ubuntu : sudo apt install build-essential)"
 command -v pkg-config >/dev/null 2>&1 || erreur "pkg-config n'est pas installé. Installe-le avec : sudo dnf install pkgconf (Debian/Ubuntu : sudo apt install pkg-config)"
-pkg-config --exists librsvg-2.0 cairo fontconfig || erreur "les bibliothèques de développement de librsvg, de cairo et de fontconfig sont absentes.
-  Fedora        : sudo dnf install librsvg2-devel cairo-devel fontconfig-devel
-  Debian/Ubuntu : sudo apt install librsvg2-dev libfontconfig-dev"
+pkg-config --exists librsvg-2.0 gdk-pixbuf-2.0 cairo fontconfig || erreur "les bibliothèques de développement de librsvg, de gdk-pixbuf, de cairo et de fontconfig sont absentes.
+  Fedora        : sudo dnf install librsvg2-devel gdk-pixbuf2-devel cairo-devel fontconfig-devel
+  Debian/Ubuntu : sudo apt install librsvg2-dev libgdk-pixbuf-2.0-dev libfontconfig-dev"
 pkg-config --exists gtk4 gobject-introspection-1.0 || erreur "les bibliothèques de développement de GTK 4 sont absentes (GTK 4.14 ou plus récent).
   Fedora        : sudo dnf install gtk4-devel gobject-introspection-devel
   Debian/Ubuntu : sudo apt install libgtk-4-dev libgirepository1.0-dev"
@@ -250,7 +250,7 @@ mkdir -p "$BUILD_DIR"
 # Le code est celui de la bibliothèque et ce n'est pas un défaut ; on masque
 # seulement cet avertissement, sans toucher aux options par défaut de cgo
 # (-O2 -g). Les autres avertissements restent visibles.
-echo ">>> Compilation (cgo, GTK4, librsvg, cairo)..."
+echo ">>> Compilation (cgo, GTK4, librsvg, gdk-pixbuf, cairo)..."
 echo "    La première compilation de GTK (gotk4) dure plusieurs minutes et n'affiche rien ;"
 echo "    les suivantes sont presque instantanées (cache de Go)."
 BINARY="$WORK_DIR/$PACKAGE_NAME"
@@ -310,19 +310,24 @@ Summary:        $DESCRIPTION
 License:        GPL-3.0-only
 URL:            $URL
 Packager:       $MAINTAINER
+# Les chargeurs d'images de gdk-pixbuf sont en partie dans des paquets à part :
+# le TIFF dans gdk-pixbuf2-modules, le WebP dans webp-pixbuf-loader. Sans eux, le
+# programme refuse ce format en le disant et lit les autres.
+Recommends:     gdk-pixbuf2-modules webp-pixbuf-loader
 # Le programme s'appelait « svgprintlayout » jusqu'à la version 1.0.x : installer
 # celui-ci retire l'ancien paquet.
 Obsoletes:      svgprintlayout < 1.1.0
 
 %description
-Image Print Layout prépare l'impression d'un document vectoriel SVG de
-dimensions quelconques sur plusieurs feuilles de papier standard : on choisit
-le format, les marges et la largeur du dessin, on place les coupures à la
-souris, puis on exporte un seul PDF multipage vectoriel.
+Image Print Layout prépare l'impression d'un document de dimensions
+quelconques sur plusieurs feuilles de papier standard : un dessin vectoriel
+SVG, ou une image (JPEG, PNG, TIFF, WebP, BMP, GIF). On choisit le format,
+les marges et la largeur, on place les coupures à la souris, puis on exporte
+un seul PDF multipage (vectoriel pour un SVG).
 
-Le dessin garde une échelle unique : aucune page n'est réduite en silence
-pour faire tenir une portion trop haute. Le fichier SVG d'origine n'est
-jamais modifié.
+Le document garde une échelle unique : aucune page n'est réduite en silence
+pour faire tenir une portion trop haute. Le fichier d'origine n'est jamais
+modifié.
 
 # Met à jour les caches de l'icône et du menu ; un échec n'est pas une erreur.
 %post

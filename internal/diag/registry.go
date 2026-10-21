@@ -63,6 +63,16 @@ var Registry = map[string]Spec{
 	"svg.more":            {Info, []string{"count"}},
 	"svg.coarse_blocks":   {Info, []string{"count"}},
 
+	// Opening a file (internal/app).
+	"file.unrecognised": {Failure, []string{"reason"}},
+	"image.unreadable":  {Failure, []string{"reason"}},
+	"image.unsupported": {Failure, []string{"format"}},
+	"image.too_large":   {Failure, []string{"w", "h", "mp", "max"}},
+	"image.truncated":   {Warning, nil},
+	"image.multipage":   {Warning, nil},
+	"image.animated":    {Warning, nil},
+	"image.no_dpi":      {Info, nil},
+
 	// Export (internal/export).
 	"export.no_pages":          {Failure, nil},
 	"export.cuts_invalid":      {Failure, nil},

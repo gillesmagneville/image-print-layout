@@ -5,9 +5,10 @@
 # Image Print Layout
 
 **Image Print Layout** est une application de bureau, écrite en **Go**, qui prépare un
-document vectoriel SVG de dimensions quelconques pour l'impression sur plusieurs feuilles
-de papier standard : on choisit le papier et la largeur du dessin, on place les coupures
-entre les pages sur un aperçu, puis on exporte **un seul PDF multipage vectoriel**.
+document de dimensions quelconques, dessin vectoriel SVG ou image (JPEG, PNG, TIFF, WebP,
+BMP, GIF), pour l'impression sur plusieurs feuilles de papier standard : on choisit le
+papier et la largeur du document, on place les coupures entre les pages sur un aperçu,
+puis on exporte **un seul PDF multipage** (vectoriel pour un SVG).
 
 Elle s'adresse à toute personne qui doit imprimer un grand dessin (un schéma, par exemple)
 sans connaître les coordonnées SVG, la programmation ou la géométrie.
@@ -71,7 +72,7 @@ Aucune de ces propositions n'est appliquée sans un clic.
 
 ## 2. Le fichier source n'est jamais modifié
 
-Le SVG d'origine n'est jamais ouvert en écriture. Toute transformation (remplacer ou
+Le fichier d'origine (SVG ou image) n'est jamais ouvert en écriture. Toute transformation (remplacer ou
 supprimer le fond, par exemple) s'applique à une copie de travail, et le projet n'en garde
 que l'instruction, rejouée à chaque chargement.
 
@@ -112,6 +113,8 @@ service en ligne et n'envoie aucune donnée.
 Image Print Layout couvre, pour la version 1.0 :
 
 * l'import de SVG 1.1 et de SVG compatibles Inkscape ;
+* depuis la version 1.2, l'import d'images matricielles (JPEG, PNG, TIFF, WebP, BMP, GIF), qui se
+  découpent et s'impriment comme un SVG ;
 * les formats A0 à A5, Letter, Legal, Tabloid et un format personnalisé, en portrait ou en
   paysage, avec quatre marges indépendantes ;
 * trois modes d'échelle : ajustement à la largeur, à la hauteur, ou échelle manuelle ;
@@ -127,7 +130,8 @@ Image Print Layout **n'est pas**, dans la version 1.0 :
 * un éditeur de dessin : la seule modification du contenu est le réglage du fond ;
 * un outil d'impression en mosaïque avec chevauchement, ni de marques de raccord ;
 * un outil de numérotation ou de pied de page ;
-* un convertisseur de PDF ou d'images matricielles (l'entrée est du SVG) ;
+* un convertisseur : l'entrée est un SVG ou une image, jamais un PDF, et le programme ne
+  retouche pas les pixels (pas de recadrage, de rééchantillonnage ni de correction de couleur) ;
 * un outil qui tient compte des marges non imprimables propres à une imprimante.
 
 Ces fonctions sont listées au §14 du cahier des charges comme possibles ultérieurement.
@@ -180,7 +184,7 @@ Après la version 1.0 (cahier des charges, §14) :
 * traits de repérage et marques de raccord ;
 * numérotation et pied de page ;
 * rotation automatique des pages ;
-* import de PDF et d'images matricielles ;
+* import de PDF (les images matricielles sont lues depuis la version 1.2) ;
 * détection avancée des groupes logiques du SVG ;
 * prévisualisation des marges non imprimables propres à l'imprimante.
 

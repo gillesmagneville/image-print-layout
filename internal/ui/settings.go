@@ -7,6 +7,7 @@ package ui
 import (
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
@@ -30,6 +31,8 @@ type settingsPanel struct {
 	sourceNone     *gtk.Label
 	sourceBox      *gtk.Box
 	sourceFile     *gtk.Label
+	sourceImage    *gtk.Label
+	sourceDPI      *gtk.Label
 	sourceSize     *gtk.Label
 	sourceMM       *gtk.Label
 	findingsExpand *gtk.Expander
@@ -63,6 +66,8 @@ type settingsPanel struct {
 	resultFactor        *gtk.Label
 
 	// Background.
+	bgDocBox                   *gtk.Box // the choices on the background of an SVG
+	bgImage                    *gtk.Label
 	bgNone                     *gtk.Label
 	bgFound                    *gtk.Label
 	bgKeep, bgWhiten, bgRemove *gtk.CheckButton
@@ -173,12 +178,14 @@ func (s *settingsPanel) buildSource() gtk.Widgetter {
 	s.sourceBox = gtk.NewBox(gtk.OrientationVertical, 4)
 	s.sourceNone = newLabel()
 	s.sourceFile = newLabel()
+	s.sourceImage = newLabel()
+	s.sourceDPI = newLabel()
 	s.sourceSize = newLabel()
 	s.sourceMM = newLabel()
 	s.findingsList = gtk.NewBox(gtk.OrientationVertical, 6)
 	s.findingsExpand = gtk.NewExpander("")
 	s.findingsExpand.SetChild(s.findingsList)
-	for _, l := range []*gtk.Label{s.sourceFile, s.sourceSize, s.sourceMM} {
+	for _, l := range []*gtk.Label{s.sourceFile, s.sourceImage, s.sourceDPI, s.sourceSize, s.sourceMM} {
 		s.sourceBox.Append(l)
 	}
 	s.sourceBox.Append(s.findingsExpand)
@@ -204,6 +211,22 @@ func (s *settingsPanel) refreshSource() {
 		return
 	}
 	s.sourceFile.SetLabel(tr.T("source.file", "name", baseName(doc.Path)))
+	info := doc.Image
+	s.sourceImage.SetVisible(info != nil)
+	s.sourceDPI.SetVisible(info != nil)
+	if info != nil {
+		s.sourceImage.SetLabel(tr.T("source.image", "format", info.Format.Label(),
+			"wpx", strconv.Itoa(info.WidthPx), "hpx", strconv.Itoa(info.HeightPx)))
+		if info.HasResolution() {
+			dpi := tr.Number(round(info.XDPI, 0), 0)
+			if math.Abs(info.XDPI-info.YDPI) >= 0.5 {
+				dpi += " × " + tr.Number(round(info.YDPI, 0), 0)
+			}
+			s.sourceDPI.SetLabel(tr.T("source.image.dpi", "dpi", dpi))
+		} else {
+			s.sourceDPI.SetLabel(tr.T("source.image.nodpi"))
+		}
+	}
 	s.sourceSize.SetLabel(tr.T("source.size", "w", shown(tr, doc.Size.W), "h", shown(tr, doc.Size.H)))
 	s.sourceMM.SetLabel(tr.T("source.size.mm", "w", shown(tr, units.PxToMM(doc.Size.W)), "h", shown(tr, units.PxToMM(doc.Size.H))))
 

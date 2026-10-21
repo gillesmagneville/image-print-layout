@@ -14,3 +14,6 @@ func MatchFont(family string) string { return family }
 
 // LoadDocument fails like Load.
 func LoadDocument(svg []byte, path string) (Document, error) { return nil, ErrNoEngine }
+
+// SupportedImageFormats is empty: without the engine no image can be read.
+func SupportedImageFormats() []Format { return nil }

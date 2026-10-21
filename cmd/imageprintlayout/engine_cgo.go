@@ -6,12 +6,14 @@ package main
 
 import (
 	"bytes"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"image/color"
 	"io"
 	"math"
 	"os"
+	"strings"
 
 	"github.com/gillesmagneville/image-print-layout/internal/engine"
 	"github.com/gillesmagneville/image-print-layout/internal/units"
@@ -37,9 +39,81 @@ const selfTestSVG = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http:/
   <image id="image" x="60" y="10" width="20" height="20" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAEElEQVR42mO4aWAARwzEcQAHghORZScVxwAAAABJRU5ErkJggg=="/>
 </svg>`
 
+// Three images of the same four quadrants (red top left, green top right, blue
+// bottom left, white bottom right), one for each format a package must be able
+// to read besides SVG: a JPEG of 16 x 16 pixels, and a PNG and a TIFF of 4 x 4
+// pixels at 300 dpi. They are read by the image loaders of gdk-pixbuf, which
+// packages ship apart from the library itself.
+const (
+	selfTestJPEG = "/9j/2wCEAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYUGBIUFRQBAwQEBQQFCQUFCRQNCw0UFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFP/AABEIABAAEAMBIgACEQEDEQH/xAGiAAABBQEBAQEBAQAAAAAAAAAAAQIDBAUGBwgJCgsQAAIBAwMCBAMFBQQEAAABfQECAwAEEQUSITFBBhNRYQcicRQygZGhCCNCscEVUtHwJDNicoIJChYXGBkaJSYnKCkqNDU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6g4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2drh4uPk5ebn6Onq8fLz9PX29/j5+gEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoLEQACAQIEBAMEBwUEBAABAncAAQIDEQQFITEGEkFRB2FxEyIygQgUQpGhscEJIzNS8BVictEKFiQ04SXxFxgZGiYnKCkqNTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqCg4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2dri4+Tl5ufo6ery8/T19vf4+fr/2gAMAwEAAhEDEQA/APnSvsavy8r+lujxM8DP9XPqf/Cl7T2ntP8Al1y25eT/AKeu97i8Ycz/AOI0/UPc+qfVPa9fa8/tfZ+VPl5fZ+d79La//9k="
+	selfTestPNG  = "iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAACXBIWXMAAC4jAAAuIwF4pT92AAAAIElEQVR4nGL5zwACjGCKiQEJsDAygAQh8igygAAAAP//ipEEC7T7bwUAAAAASUVORK5CYII="
+	selfTestTIFF = "SUkqAAgAAAANAAABBAABAAAABAAAAAEBBAABAAAABAAAAAIBAwADAAAAqgAAAAMBAwABAAAAAQAAAAYBAwABAAAAAgAAABEBBAABAAAAwAAAABIBAwABAAAAAQAAABUBAwABAAAAAwAAABYBBAABAAAABAAAABcBBAABAAAAMAAAABoBBQABAAAAsAAAABsBBQABAAAAuAAAACgBAwABAAAAAgAAAAAAAAAIAAgACAAwdQAAZAAAADB1AABkAAAA/wAA/wAAAP8AAP8A/wAA/wAAAP8AAP8AAAD/AAD/////////AAD/AAD/////////"
+)
+
+// checkImages reads the three images above with the engine and checks what it
+// sees: the size they have at their resolution, the red of the top left corner
+// and the white of the bottom right one, and that a JPEG goes into a PDF as it
+// is. It is what tells a package whose image loaders are missing.
+func checkImages(out io.Writer, ok func(string)) error {
+	for _, c := range []struct {
+		name   string
+		format engine.Format
+		data   string
+		units  float64 // the size in units: pixels at 96 dpi, or at 300
+	}{
+		{"JPEG", engine.FormatJPEG, selfTestJPEG, 16},
+		{"PNG", engine.FormatPNG, selfTestPNG, 4 * 96.0 / 300},
+		{"TIFF", engine.FormatTIFF, selfTestTIFF, 4 * 96.0 / 300},
+	} {
+		raw, err := base64.StdEncoding.DecodeString(c.data)
+		if err != nil {
+			return err
+		}
+		if got := engine.Detect(raw); got != c.format {
+			return fmt.Errorf("l'image %s d'essai est reconnue comme %q", c.name, got)
+		}
+		d, err := engine.LoadImage(raw, "")
+		if err != nil {
+			return fmt.Errorf("l'image %s d'essai n'a pas pu être lue : %v. Vérifiez que gdk-pixbuf et son chargeur d'images %s sont installés", c.name, err, c.name)
+		}
+		defer d.Close()
+		w, h := d.Size()
+		if math.Abs(w-c.units) > 0.01 || math.Abs(h-c.units) > 0.01 {
+			return fmt.Errorf("l'image %s d'essai devrait mesurer %.2f x %.2f unités, le moteur lit %v x %v", c.name, c.units, c.units, w, h)
+		}
+		px := 32 / w
+		img, err := d.Render(engine.Box{W: w, H: h}, px, nil)
+		if err != nil {
+			return err
+		}
+		red := color.RGBAModel.Convert(img.At(4, 4)).(color.RGBA)
+		white := color.RGBAModel.Convert(img.At(28, 28)).(color.RGBA)
+		if red.R < 200 || red.G > 80 || red.B > 80 || white.R < 200 || white.G < 200 || white.B < 200 {
+			return fmt.Errorf("l'image %s d'essai est mal lue : le coin haut gauche devrait être rouge (lu %v) et le coin bas droit blanc (lu %v)", c.name, red, white)
+		}
+		if c.format == engine.FormatJPEG {
+			var pdf bytes.Buffer
+			page := engine.PageSpec{WidthPt: 100, HeightPt: 100, BandTop: 0, BandBottom: h, PtPerUnit: 1}
+			if err := d.ExportPDF(&pdf, []engine.PageSpec{page}, engine.PDFOptions{WhitePage: true}); err != nil {
+				return err
+			}
+			if !bytes.Contains(pdf.Bytes(), []byte("/DCTDecode")) {
+				return errors.New("le JPEG d'essai n'est pas incorporé tel quel dans le PDF")
+			}
+		}
+		ok(fmt.Sprintf("lecture d'une image %s intégrée (%d × %d pixels)", c.name, d.ImageInfo().WidthPx, d.ImageInfo().HeightPx))
+	}
+	var have []string
+	for _, f := range engine.SupportedImageFormats() {
+		have = append(have, f.Label())
+	}
+	fmt.Fprintf(out, "Formats d'image lisibles : %s\n", strings.Join(have, ", "))
+	return nil
+}
+
 // runSelfTest checks, on the machine and with the libraries it runs on, the
 // whole chain an installed package depends on: the SVG library and its
-// fonts, the drawing library and the PDF writer. It is what a package
+// fonts, the drawing library, the PDF writer and the readers of images. It is what a package
 // smoke test, or a user whose export fails, runs first.
 func runSelfTest(out io.Writer) error {
 	rsvg, cairo := engine.Versions()
@@ -123,6 +197,10 @@ func runSelfTest(out io.Writer) error {
 		return errors.New("deux exports successifs du même document ne sont pas identiques")
 	}
 	ok("deux exports successifs identiques")
+
+	if err := checkImages(out, ok); err != nil {
+		return err
+	}
 
 	fmt.Fprintln(out, "Tout fonctionne.")
 	return nil

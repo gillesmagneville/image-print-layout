@@ -104,7 +104,11 @@ func (s *Session) OpenProject(d *Document, pf *ProjectFile) ([]diag.Item, error)
 	// otherwise the working copy was loaded as it is, and the project must
 	// say what the preview shows.
 	if bg := p.Background; bg.Document != model.KeepBackground && bg.Document != "" {
-		if _, applied, err := d.Analysis.Compose(bg); err != nil || !applied {
+		if d.Analysis == nil {
+			// An image has no background of its own to whiten or remove.
+			p.Background.Document, p.Background.Element = model.KeepBackground, ""
+			items = append(items, diag.New("project.background_lost", 0))
+		} else if _, applied, err := d.Analysis.Compose(bg); err != nil || !applied {
 			p.Background.Document, p.Background.Element = model.KeepBackground, ""
 			items = append(items, diag.New("project.background_lost", 0))
 		}

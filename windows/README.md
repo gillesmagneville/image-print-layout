@@ -74,7 +74,7 @@ Aucun changement du code ne peut le supprimer.
 | Outil | Rôle | Installation proposée par le script |
 | --- | --- | --- |
 | [MSYS2](https://www.msys2.org) | Fournit, pour Windows, Go, le compilateur C, GTK 4, librsvg et cairo (environnement UCRT64) | Oui, avec `winget` (dans `C:\msys64`) |
-| Paquets MSYS2 : `go`, `gcc`, `pkgconf`, `librsvg`, `cairo`, `gtk4`, `gobject-introspection`, `adwaita-icon-theme`, `hicolor-icon-theme`, `zip`, `git` | La chaîne de construction, et ce que la fenêtre embarque | Oui, avec `pacman`, après une mise à jour de MSYS2 |
+| Paquets MSYS2 : `go`, `gcc`, `pkgconf`, `librsvg`, `gdk-pixbuf2`, `cairo`, `gtk4`, `gobject-introspection`, `adwaita-icon-theme`, `hicolor-icon-theme`, `zip`, `git` | La chaîne de construction, et ce que la fenêtre embarque | Oui, avec `pacman`, après une mise à jour de MSYS2 |
 | [NSIS](https://nsis.sourceforge.io/) | Produit l'installeur `.exe` (facultatif) | Oui, avec `winget` |
 
 Sans NSIS, seule la version portable est produite ; ce n'est pas une erreur.
@@ -101,7 +101,7 @@ imageprintlayout-X.Y.Z-windows-x64/
 │   ├── imageprintlayout-console.exe  le même programme en console : -version, -selftest, messages d'erreur
 │   └── *.dll                       GTK 4, cairo, librsvg, pango, glib, fontconfig...
 ├── etc/fonts/                      configuration de fontconfig
-├── lib/gdk-pixbuf-2.0/2.10.0/      chargeurs d'images (PNG, JPEG, GIF, BMP, WebP, SVG) et leur cache
+├── lib/gdk-pixbuf-2.0/2.10.0/      chargeurs d'images (JPEG, PNG, TIFF, GIF, BMP, WebP, SVG) et leur cache
 ├── share/glib-2.0/schemas/         schémas de réglages de GTK (sans eux, GTK s'arrête à l'ouverture d'un sélecteur de fichier)
 ├── share/icons/                    thèmes d'icônes Adwaita et hicolor (images des boutons)
 ├── share/locale/                   traductions des textes propres à GTK (français, espagnol, allemand)

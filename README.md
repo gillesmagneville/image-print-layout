@@ -2,17 +2,17 @@
 
 # Image Print Layout
 
-Application de bureau (Linux — Debian, Ubuntu, Red Hat et leurs dérivés —, Windows 10 et 11, écrite en Go) pour **mettre en page, découper et imprimer un document vectoriel SVG sur plusieurs feuilles de papier standard**, puis l'exporter en **PDF multipage vectoriel**.
+Application de bureau (Linux — Debian, Ubuntu, Red Hat et leurs dérivés —, Windows 10 et 11, écrite en Go) pour **mettre en page, découper et imprimer un document SVG ou une image (JPEG, PNG, TIFF…) sur plusieurs feuilles de papier standard**, puis l'exporter en **PDF multipage** (vectoriel pour un SVG).
 
 Développé par Gilles MAGNEVILLE, conçu avec l'aide de [claude.ai](https://claude.ai).
 
-> **Image Print Layout s'appelait « SVG Print Layout » jusqu'à la version 1.0.x.** Le nom change parce que le programme prendra bientôt aussi des images (JPEG, PNG, TIFF…). Les projets `.svgpl` de la 1.0.x s'ouvrent toujours, la langue choisie est reprise et installer un paquet remplace l'ancien (voir le [CHANGELOG](CHANGELOG.md)).
+> **Image Print Layout s'appelait « SVG Print Layout » jusqu'à la version 1.0.x.** Le nom a changé parce que le programme ouvre aussi des images (JPEG, PNG, TIFF…), ce qu'il fait depuis la 1.2.0. Les projets `.svgpl` de la 1.0.x s'ouvrent toujours, la langue choisie est reprise et installer un paquet remplace l'ancien (voir le [CHANGELOG](CHANGELOG.md)).
 
-> **État : version 1.1.0, toutes les fonctions du cahier des charges sont là (jalons M1 à M5), et la recette a été faite à la main sous Ubuntu et sous Windows.** La fenêtre GTK4, en **français, anglais, espagnol et allemand**, ouvre un SVG, l'analyse (fonctions non prises en charge, polices absentes, images introuvables), calcule ses pages avec les réglages de papier, de marges, d'échelle et de positionnement, et montre l'aperçu avec les limites et les numéros de page, la liste des pages et les corrections proposées quand une page dépasse. On y ajoute, déplace et supprime les coupures à la souris (double-clic, glisser, aimantation aux vides, clavier) ou on demande des coupures automatiques, sans jamais changer l'échelle. On y choisit le fond du document (le garder, le remplacer par du blanc, le supprimer, avec l'aperçu immédiat) et celui de la page (blanc opaque ou transparent), on voit chaque feuille telle qu'elle sera imprimée, puis on exporte un PDF multipage que le programme relit et vérifie avant de le livrer. On enregistre le projet (réglages, coupures, fond, positions) et on le rouvre plus tard : le SVG d'origine n'est jamais modifié, un document déplacé se localise, et une astérisque dans le titre signale les changements non enregistrés. Les 14 tests d'acceptation du cahier des charges sont automatisés (`internal/acceptance`). Le dépôt contient aussi le prototype du moteur (librsvg + cairo : rendu d'une fenêtre et export PDF multipage, validé sur le Mini-CAD, voir [`docs/M0.md`](docs/M0.md)), les scripts qui construisent les paquets `.deb`, `.rpm` et Windows (voir [Paquets](#paquets)) et la CI.
+> **État : version 1.2.0, toutes les fonctions du cahier des charges sont là (jalons M1 à M5), et la recette a été faite à la main sous Ubuntu et sous Windows.** La fenêtre GTK4, en **français, anglais, espagnol et allemand**, ouvre un SVG ou une image (JPEG, PNG, TIFF, WebP, BMP, GIF), l'analyse (fonctions non prises en charge, polices absentes, images introuvables ; pour une image, sa résolution, un fichier tronqué ou de plusieurs pages), calcule ses pages avec les réglages de papier, de marges, d'échelle et de positionnement, et montre l'aperçu avec les limites et les numéros de page, la liste des pages et les corrections proposées quand une page dépasse. On y ajoute, déplace et supprime les coupures à la souris (double-clic, glisser, aimantation aux vides, clavier) ou on demande des coupures automatiques, sans jamais changer l'échelle. On y choisit le fond du document (le garder, le remplacer par du blanc, le supprimer, avec l'aperçu immédiat) et celui de la page (blanc opaque ou transparent), on voit chaque feuille telle qu'elle sera imprimée, puis on exporte un PDF multipage que le programme relit et vérifie avant de le livrer. On enregistre le projet (réglages, coupures, fond, positions) et on le rouvre plus tard : le fichier d'origine n'est jamais modifié, un document déplacé se localise, et une astérisque dans le titre signale les changements non enregistrés. Les 14 tests d'acceptation du cahier des charges sont automatisés (`internal/acceptance`). Le dépôt contient aussi le prototype du moteur (librsvg + cairo : rendu d'une fenêtre et export PDF multipage, validé sur le Mini-CAD, voir [`docs/M0.md`](docs/M0.md)), les scripts qui construisent les paquets `.deb`, `.rpm` et Windows (voir [Paquets](#paquets)) et la CI.
 
 ## Principe
 
-1. On ouvre un SVG de dimensions quelconques (par exemple un schéma de 1 280 × 5 479 unités).
+1. On ouvre un SVG de dimensions quelconques (par exemple un schéma de 1 280 × 5 479 unités) ou une image (une photo, un scan, une longue capture).
 2. On choisit le format papier, l'orientation, les marges et la largeur du dessin (ex. 200 mm sur A4 portrait).
 3. On place les coupures à la souris sur l'aperçu, ou on accepte une proposition automatique.
 4. On vérifie le résultat page par page, puis on exporte un seul PDF.
@@ -21,9 +21,24 @@ Règles fondamentales, reprises du cahier des charges :
 
 - **Une seule échelle pour tout le dessin** : les proportions ne sont jamais modifiées, et aucune page n'est réduite en silence pour « faire tenir » une portion trop haute — l'utilisateur est averti et choisit (ajouter une coupure, déplacer une coupure, changer l'échelle ou le papier).
 - **Le nombre de pages découle des dimensions et des coupures** ; il n'est jamais imposé.
-- **Le SVG d'origine n'est jamais modifié** : toutes les transformations (fond blanc, suppression du fond…) s'appliquent à une copie de travail.
+- **Le fichier d'origine n'est jamais modifié** : toutes les transformations (fond blanc, suppression du fond d'un SVG…) s'appliquent à une copie de travail.
 - **Le PDF est fidèle à l'aperçu** et déterministe : mêmes paramètres, même résultat.
 - **Aucun service en ligne**.
+
+## Formats ouverts
+
+Le format est reconnu au contenu du fichier, jamais à son extension. Une image se découpe et s'imprime comme un SVG : même échelle unique, mêmes coupures, même aperçu, même PDF.
+
+| Format | Ce que le programme en fait |
+| --- | --- |
+| SVG | Rendu vectoriel par librsvg ; le PDF garde les tracés et le texte. |
+| JPEG | Résolution (JFIF, à défaut Exif) et orientation (EXIF) lues. Le JPEG entre dans le PDF avec ses octets d'origine, sans recompression, quand le PDF sait le lire (8 bits, gris ou YCbCr). |
+| PNG | Résolution et transparence lues ; le fond de page se voit à travers les parties transparentes. |
+| TIFF | Première page ; résolution et orientation lues ; un fichier de plusieurs pages est signalé. |
+| WebP | Lu quand le chargeur gdk-pixbuf de WebP est installé (`webp-pixbuf-loader` sous Linux, que les paquets recommandent). Sinon, le fichier est refusé en le disant. |
+| BMP, GIF | Lus ; pour un GIF animé, seule la première image. |
+
+La taille d'une image sur le papier est celle que son fichier indique : ses pixels divisés par sa résolution (une photo de 3 000 pixels à 300 points par pouce fait 254 mm à 100 %). Sans résolution, elle est comptée à 96 points par pouce, comme un écran, et le programme le dit. Une image fait au plus 100 millions de pixels : au-delà, elle est refusée avant d'être décodée. Une image n'a pas de fond à part à remplacer : seul le fond de page agit, à travers ses parties transparentes. Ses coupures automatiques tombent entre ses blocs quand elle a un fond uni (une capture, un schéma, une page numérisée) et se répartissent également quand elle n'en a pas (une photographie).
 
 ## Organisation du code
 
@@ -37,7 +52,7 @@ internal/
   layout/    calcul des pages, bandes, états, coupures automatiques       (Go pur)
   project/   fichier projet .imgpl (JSON versionné, écriture déterministe) (Go pur)
   svgdoc/    lecture du SVG : constats, polices, blocs, fond, copie de travail   (Go pur)
-  engine/    moteur de rendu : interface Document, librsvg + cairo + fontconfig par cgo
+  engine/    moteur de rendu : interface Document, librsvg (SVG) + gdk-pixbuf (images) + cairo + fontconfig par cgo
   export/    export PDF multipage : contrôles avant, relecture et vérification du PDF écrit   (Go pur)
   app/       session (projet, plan, historique), ouverture d'un document     (Go pur)
   viewport/  arithmétique de la vue : zoom, déplacement, fenêtre à dessiner   (Go pur)
@@ -45,10 +60,11 @@ internal/
   i18n/      traduction : français, anglais, espagnol, allemand ; nombres  (Go pur, testé)
   ui/        interface graphique : GTK4 via gotk4 (bouchon sans cgo)
   testsvg/   générateur de SVG d'essai déterministe                      (Go pur)
+  testimg/   générateur d'images d'essai déterministe (PNG, TIFF, JPEG)   (Go pur)
   acceptance/ les tests d'acceptation du cahier des charges sur toute la chaîne
   repocheck/ tests sur le dépôt lui-même (en-têtes de licence, versions, documentation)
 docs/        rapports de jalon (M0.md)
-testdata/    SVG de référence
+testdata/    documents de référence
 ```
 
 Le sens des dépendances va de `ui` vers `app` et `viewport`, puis de `app` vers `layout`, `project`, `svgdoc` et `export` ; `app` n'appelle `engine` que par son interface `Document`. Seuls `ui` et `engine` utilisent cgo : tous les autres paquets se testent partout, sans bibliothèque graphique installée.
@@ -74,11 +90,11 @@ go run ./cmd/imageprintlayout -version
 
 La CI (GitHub Actions) exécute ces commandes sous Ubuntu et Windows, avec `CGO_ENABLED=0`.
 
-Le moteur de rendu (`internal/engine`) demande cgo, librsvg et cairo, et ses tests lisent des PDF avec poppler. Sous Ubuntu 24.04 :
+Le moteur de rendu (`internal/engine`) demande cgo, librsvg, gdk-pixbuf et cairo, et ses tests lisent des PDF avec poppler. Sous Ubuntu 24.04 :
 
 ```sh
-sudo apt-get install librsvg2-dev libfontconfig-dev poppler-utils fonts-ibm-plex
-CGO_ENABLED=1 go test ./internal/engine ./internal/testsvg
+sudo apt-get install librsvg2-dev libgdk-pixbuf-2.0-dev libfontconfig-dev poppler-utils fonts-ibm-plex
+CGO_ENABLED=1 go test ./internal/engine ./internal/testsvg ./internal/testimg
 ```
 
 Sans `CGO_ENABLED=1`, le paquet `engine` est vide et le reste se compile et se teste sans bibliothèque graphique. Un outil de poppler absent fait sauter le test concerné, sauf quand la variable `CI` est définie.
@@ -86,9 +102,9 @@ Sans `CGO_ENABLED=1`, le paquet `engine` est vide et le reste se compile et se t
 La fenêtre (`internal/ui`) demande en plus GTK 4.14 ou plus récent (gotk4 v0.3.1) : sans cgo, `ui` est un bouchon et le programme dit qu'il a été construit sans interface graphique. Sous Ubuntu 24.04 :
 
 ```sh
-sudo apt-get install librsvg2-dev libfontconfig-dev libgtk-4-dev libgirepository1.0-dev poppler-utils fonts-ibm-plex
+sudo apt-get install librsvg2-dev libgdk-pixbuf-2.0-dev libfontconfig-dev libgtk-4-dev libgirepository1.0-dev poppler-utils fonts-ibm-plex
 go run ./cmd/imageprintlayout                       # la fenêtre
-go run ./cmd/imageprintlayout -lang de plan.svg     # dans une langue, avec un document
+go run ./cmd/imageprintlayout -lang de plan.svg     # dans une langue, avec un document (SVG ou image)
 ```
 
 Les tests de la fenêtre ouvrent de vraies fenêtres : sans écran (terminal, CI), ils se lancent sur un écran virtuel, avec `sudo apt-get install xvfb xauth` :
@@ -169,14 +185,14 @@ installé. Les paquets Linux s'installent avec `apt install ./…deb` ou `dnf in
 Sous Debian et Ubuntu, les prérequis de construction sont :
 
 ```sh
-sudo apt install golang-go build-essential pkg-config librsvg2-dev libfontconfig-dev libgtk-4-dev libgirepository1.0-dev dpkg-dev rpm
+sudo apt install golang-go build-essential pkg-config librsvg2-dev libgdk-pixbuf-2.0-dev libfontconfig-dev libgtk-4-dev libgirepository1.0-dev dpkg-dev rpm
 ```
 
 Sous Fedora et la famille RHEL 10 (`golang` est dans AppStream ; `-devel` est dans CRB, à
 activer avec `sudo dnf config-manager --set-enabled crb`) :
 
 ```sh
-sudo dnf install golang gcc make pkgconf-pkg-config librsvg2-devel cairo-devel fontconfig-devel gtk4-devel gobject-introspection-devel rpm-build
+sudo dnf install golang gcc make pkgconf-pkg-config librsvg2-devel gdk-pixbuf2-devel cairo-devel fontconfig-devel gtk4-devel gobject-introspection-devel rpm-build
 ```
 
 Go 1.24 ou plus récent est nécessaire (`go.mod`) : si la version de la distribution est plus
@@ -188,7 +204,7 @@ la construction Windows (MSYS2, NSIS, SmartScreen, dépannage) dans
 [`windows/README.md`](windows/README.md).
 
 Le programme installé sait s'auto-vérifier : `imageprintlayout -selftest` contrôle le
-moteur de rendu (bibliothèques, polices, images incorporées, export PDF) sur la machine
+moteur de rendu (bibliothèques, polices, images incorporées, lecture d'un JPEG, d'un PNG et d'un TIFF, export PDF) sur la machine
 où il tourne. C'est la première commande à lancer en cas de problème.
 
 ## Auteur

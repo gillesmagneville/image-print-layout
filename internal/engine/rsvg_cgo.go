@@ -131,15 +131,6 @@ func Load(svg []byte, path string) (*Doc, error) {
 	return d, nil
 }
 
-// LoadDocument is Load as the Loader type of the package.
-func LoadDocument(svg []byte, path string) (Document, error) {
-	d, err := Load(svg, path)
-	if err != nil {
-		return nil, err
-	}
-	return d, nil
-}
-
 // Close releases the document. It is safe to call more than once.
 func (d *Doc) Close() {
 	if d.handle != nil {
@@ -310,9 +301,20 @@ func (d *Doc) drawPage(cr *C.cairo_t, p PageSpec, whitePage bool) error {
 	return nil
 }
 
+// drawer is what differs between the documents the engine draws, a vector
+// drawing and an image: how one sheet is drawn on a cairo context. The rest,
+// the preview of a sheet and the PDF, is the same for both.
+type drawer interface {
+	drawPage(cr *C.cairo_t, p PageSpec, whitePage bool) error
+}
+
 // RenderPage draws a sheet as an image, pxPerPt pixels to the point, with the
 // function that writes the PDF. A transparent page stays transparent.
 func (d *Doc) RenderPage(p PageSpec, pxPerPt float64, whitePage bool) (*image.RGBA, error) {
+	return renderPage(d, p, pxPerPt, whitePage)
+}
+
+func renderPage(d drawer, p PageSpec, pxPerPt float64, whitePage bool) (*image.RGBA, error) {
 	wpx, hpx := int(math.Ceil(p.WidthPt*pxPerPt)), int(math.Ceil(p.HeightPt*pxPerPt))
 	if wpx <= 0 || hpx <= 0 || pxPerPt <= 0 {
 		return nil, errors.New("engine: empty sheet")
@@ -350,7 +352,12 @@ func goCairoWrite(closure unsafe.Pointer, data *C.uchar, length C.uint) C.cairo_
 	return C.CAIRO_STATUS_SUCCESS
 }
 
-// ExportPDF writes one PDF page per PageSpec. Every page draws the whole
+// ExportPDF writes one PDF page per PageSpec; see exportPDF.
+func (d *Doc) ExportPDF(out io.Writer, pages []PageSpec, opt PDFOptions) error {
+	return exportPDF(d, out, pages, opt)
+}
+
+// exportPDF writes one PDF page per PageSpec. Every page draws the whole
 // document again, translated to its band and clipped to the band's
 // rectangle: a page is the same drawing windowed, never a geometrically cut
 // copy, and cairo drops the operations that fall entirely outside the clip.
@@ -360,7 +367,7 @@ func goCairoWrite(closure unsafe.Pointer, data *C.uchar, length C.uint) C.cairo_
 // surface as a single form whose extent is that of its first use, so every
 // page after the first would lose the part of the drawing its predecessor's
 // clip did not need (measured with cairo 1.18, see docs/M0.md).
-func (d *Doc) ExportPDF(out io.Writer, pages []PageSpec, opt PDFOptions) error {
+func exportPDF(d drawer, out io.Writer, pages []PageSpec, opt PDFOptions) error {
 	if len(pages) == 0 {
 		return errors.New("engine: no page to export")
 	}

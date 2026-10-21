@@ -4,20 +4,23 @@
 [Desktop Entry]
 Type=Application
 Name=Image Print Layout
-GenericName=SVG layout for printing
-GenericName[fr]=Mise en page SVG pour l'impression
-GenericName[es]=Maquetación de SVG para imprimir
-GenericName[de]=SVG-Seitenlayout für den Druck
-Comment=Splits an SVG drawing into pages and exports it as a multi-page PDF
-Comment[fr]=Découpe un dessin SVG en pages et l'exporte en PDF multipage
-Comment[es]=Divide un dibujo SVG en páginas y lo exporta como PDF de varias páginas
-Comment[de]=Teilt eine SVG-Zeichnung in Seiten auf und exportiert sie als mehrseitiges PDF
+GenericName=Page layout of SVG and images for printing
+GenericName[fr]=Mise en page de SVG et d'images pour l'impression
+GenericName[es]=Maquetación de SVG e imágenes para imprimir
+GenericName[de]=Seitenlayout von SVG und Bildern für den Druck
+Comment=Splits an SVG drawing or an image into pages and exports it as a multi-page PDF
+Comment[fr]=Découpe un dessin SVG ou une image en pages et l'exporte en PDF multipage
+Comment[es]=Divide un dibujo SVG o una imagen en páginas y lo exporta como PDF de varias páginas
+Comment[de]=Teilt eine SVG-Zeichnung oder ein Bild in Seiten auf und exportiert es als mehrseitiges PDF
 Exec=imageprintlayout %f
 Icon=imageprintlayout
+# The class (X11) or the app id (Wayland) of the window: the AppID, set by the
+# program, which is also the name of this file.
+StartupWMClass=io.github.gillesmagneville.imageprintlayout
 Terminal=false
-Categories=Graphics;2DGraphics;VectorGraphics;
-MimeType=image/svg+xml;
-Keywords=SVG;PDF;print;pages;cuts;
-Keywords[fr]=SVG;PDF;impression;pages;coupures;
-Keywords[es]=SVG;PDF;impresión;páginas;cortes;
-Keywords[de]=SVG;PDF;Druck;Seiten;Schnitte;
+Categories=Graphics;2DGraphics;VectorGraphics;RasterGraphics;
+MimeType=image/svg+xml;image/jpeg;image/png;image/tiff;image/bmp;image/gif;image/webp;
+Keywords=SVG;image;JPEG;PNG;PDF;print;pages;cuts;
+Keywords[fr]=SVG;image;JPEG;PNG;PDF;impression;pages;coupures;
+Keywords[es]=SVG;imagen;JPEG;PNG;PDF;impresión;páginas;cortes;
+Keywords[de]=SVG;Bild;JPEG;PNG;PDF;Druck;Seiten;Schnitte;

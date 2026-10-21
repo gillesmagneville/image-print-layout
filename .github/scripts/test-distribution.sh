@@ -71,24 +71,49 @@ build_install_debian() {
     apt-get install -y ./imageprintlayout_*.deb
 }
 
+# Un miroir d'EPEL défaillant (certificat ou somme de contrôle fausse) fait
+# échouer toute transaction dnf, et ce n'est pas le programme qu'on essaie : si
+# l'échec vient du téléchargement des métadonnées, on repart de métadonnées
+# neuves, pour qu'un autre miroir soit choisi, avant de conclure. Un paquet
+# simplement absent des dépôts échoue tout de suite, sans nouvel essai.
+dnf_retry() {
+    local try log status
+    log=$(mktemp)
+    for try in 1 2 3; do
+        status=0
+        dnf -y "$@" > "$log" 2>&1 || status=$?
+        cat "$log"
+        if [ "$status" -eq 0 ]; then
+            rm -f "$log"
+            return 0
+        fi
+        grep -q 'downloading metadata\|download metadata\|Cannot download' "$log" || break
+        note "dnf $1 : métadonnées indisponibles (essai $try sur 3), nouvel essai"
+        dnf clean metadata > /dev/null 2>&1 || true
+        sleep 5
+    done
+    rm -f "$log"
+    return 1
+}
+
 install_redhat() {
     # Les paquets de développement de GTK et de GObject Introspection sont dans
     # le dépôt CRB (« PowerTools » avant la version 9) des clones de RHEL ; ni
     # CRB ni EPEL n'existent chez Fedora, d'où les « || true ».
-    dnf -y install dnf-plugins-core epel-release || true
+    dnf_retry install dnf-plugins-core epel-release || true
     dnf config-manager --set-enabled crb || dnf config-manager --set-enabled powertools || true
-    dnf -y install gcc make pkgconf-pkg-config git tar gzip findutils which rpm-build \
+    dnf_retry install gcc make pkgconf-pkg-config git tar gzip findutils which rpm-build \
         librsvg2-devel gdk-pixbuf2-devel cairo-devel fontconfig-devel gtk4-devel gobject-introspection-devel \
         dejavu-sans-fonts adwaita-icon-theme poppler-utils
     # L'écran virtuel est nécessaire pour essayer la fenêtre ; l'outil de
     # capture est facultatif. Un par un, pour que le journal dise lequel manque.
     local package
     for package in xorg-x11-server-Xvfb xorg-x11-xauth ImageMagick; do
-        dnf -y install "$package" || note "paquet introuvable dans les dépôts : $package"
+        dnf_retry install "$package" || note "paquet introuvable dans les dépôts : $package"
     done
     # RHEL 10 et ses clones n'ont plus Xvfb : un compositeur Wayland sans écran
     # (weston, lancé par wlheadless-run) en tient lieu, sans capture.
-    command -v xvfb-run > /dev/null || dnf -y install xwayland-run weston || note "xwayland-run ou weston introuvable dans les dépôts"
+    command -v xvfb-run > /dev/null || dnf_retry install xwayland-run weston || note "xwayland-run ou weston introuvable dans les dépôts"
 }
 
 build_install_redhat() {

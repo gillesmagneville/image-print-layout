@@ -32,7 +32,7 @@ Le format est reconnu au contenu du fichier, jamais à son extension. Une image 
 | Format | Ce que le programme en fait |
 | --- | --- |
 | SVG | Rendu vectoriel par librsvg ; le PDF garde les tracés et le texte. |
-| JPEG | Résolution (JFIF, EXIF) et orientation (EXIF) lues. Le JPEG entre dans le PDF avec ses octets d'origine, sans recompression, quand le PDF sait le lire (8 bits, gris ou YCbCr). |
+| JPEG | Résolution (JFIF, à défaut Exif) et orientation (EXIF) lues. Le JPEG entre dans le PDF avec ses octets d'origine, sans recompression, quand le PDF sait le lire (8 bits, gris ou YCbCr). |
 | PNG | Résolution et transparence lues ; le fond de page se voit à travers les parties transparentes. |
 | TIFF | Première page ; résolution et orientation lues ; un fichier de plusieurs pages est signalé. |
 | WebP | Lu quand le chargeur gdk-pixbuf de WebP est installé (`webp-pixbuf-loader` sous Linux, que les paquets recommandent). Sinon, le fichier est refusé en le disant. |

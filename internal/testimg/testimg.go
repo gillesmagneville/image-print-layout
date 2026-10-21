@@ -176,3 +176,42 @@ func WithJFIFDensity(data []byte, xdpi, ydpi int) []byte {
 	out = append(out, seg...)
 	return append(out, data[2:]...)
 }
+
+// WithEXIFResolution inserts an Exif segment that carries only a resolution, in
+// dots to the inch (or, when unit is 3, to the centimetre), after the start of
+// a JPEG file.
+func WithEXIFResolution(data []byte, xres, yres, unit int) []byte {
+	le := binary.LittleEndian
+	var seg []byte
+	seg = append(seg, "Exif\x00\x00"...)
+	seg = append(seg, 'I', 'I', 42, 0, 8, 0, 0, 0) // header, first IFD at 8
+	seg = le.AppendUint16(seg, 3)                  // three entries
+	const ifdEnd = 8 + 2 + 3*12 + 4
+	entry := func(tag, typ uint16, value uint32) {
+		seg = le.AppendUint16(seg, tag)
+		seg = le.AppendUint16(seg, typ)
+		seg = le.AppendUint32(seg, 1)
+		seg = le.AppendUint32(seg, value)
+	}
+	entry(0x011A, 5, ifdEnd)       // XResolution: a rational, after the directory
+	entry(0x011B, 5, ifdEnd+8)     // YResolution
+	entry(0x0128, 3, uint32(unit)) // ResolutionUnit
+	seg = le.AppendUint32(seg, 0)
+	seg = le.AppendUint32(seg, uint32(xres))
+	seg = le.AppendUint32(seg, 1)
+	seg = le.AppendUint32(seg, uint32(yres))
+	seg = le.AppendUint32(seg, 1)
+	out := append([]byte{}, data[:2]...)
+	out = append(out, 0xFF, 0xE1, byte((len(seg)+2)>>8), byte(len(seg)+2))
+	out = append(out, seg...)
+	return append(out, data[2:]...)
+}
+
+// WithJFIFAspect inserts a JFIF segment whose density is an aspect ratio only
+// (unit 0), as most cameras write, after the start of a JPEG file.
+func WithJFIFAspect(data []byte) []byte {
+	seg := []byte{0xFF, 0xE0, 0, 16, 'J', 'F', 'I', 'F', 0, 1, 1, 0, 0, 1, 0, 1, 0, 0}
+	out := append([]byte{}, data[:2]...)
+	out = append(out, seg...)
+	return append(out, data[2:]...)
+}

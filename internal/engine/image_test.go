@@ -10,6 +10,7 @@ import (
 	"image"
 	"image/color"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/gillesmagneville/image-print-layout/internal/testimg"
@@ -233,9 +234,11 @@ func TestUnreadableImagesAreReportedByKind(t *testing.T) {
 	}
 }
 
-func TestAFileThatStopsEarlyIsOpenedAndSaidTruncated(t *testing.T) {
-	// The decoders give the part of the picture they have and no error; the
-	// program must be able to tell the user.
+func TestAFileThatStopsEarlyIsSaidTruncatedOrRefusedWithItsReason(t *testing.T) {
+	// The decoders of gdk-pixbuf 2.42 give the part of the picture they have and
+	// no error: the program must tell the user. The one of 2.44 (glycin)
+	// refuses the file: the user must then be told why, in the decoder's words
+	// and without the place in its source code.
 	for name, data := range map[string][]byte{
 		"png":  testimg.PNG(testimg.Quadrants(300, 300), 0, 0),
 		"jpeg": testimg.JPEG(testimg.Quadrants(300, 300)),
@@ -246,7 +249,15 @@ func TestAFileThatStopsEarlyIsOpenedAndSaidTruncated(t *testing.T) {
 		}
 		d, err := LoadImage(data[:len(data)*6/10], "")
 		if err != nil {
-			t.Errorf("%s: a truncated file is opened as far as it goes, got %v", name, err)
+			var ie *ImageError
+			switch {
+			case !errors.As(err, &ie) || ie.Kind != ImageUnreadable:
+				t.Errorf("%s: a truncated file gave %v, want a file that is unreadable", name, err)
+			case strings.Contains(ie.Reason, ".rs") || strings.Contains(ie.Reason, "glycin.Error"):
+				t.Errorf("%s: the reason keeps the decoder's internals: %q", name, ie.Reason)
+			case ie.Reason == "":
+				t.Errorf("%s: the refusal has no reason", name)
+			}
 			continue
 		}
 		if !d.ImageInfo().Truncated {

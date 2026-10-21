@@ -24,8 +24,9 @@ la 1.1.0 ; rien n'est changé pour les SVG.
   fichier, jamais à son nom : un `.png` qui est un JPEG s'ouvre comme un JPEG. Un fichier qui
   n'est ni une image connue ni un SVG est refusé, avec la raison.
 - **Taille sur le papier d'après la résolution du fichier** : les pixels divisés par les points
-  par pouce que le fichier indique (JFIF ou EXIF pour un JPEG, `pHYs` pour un PNG, étiquettes
-  de résolution pour un TIFF), sur chaque axe. Sans résolution valable, 96 points par pouce, et
+  par pouce que le fichier indique (densité JFIF d'un JPEG, à défaut sa résolution Exif ; `pHYs` d'un PNG ;
+  étiquettes de résolution d'un TIFF), sur chaque axe, lus par le programme dans le fichier
+  lui-même (les décodeurs récents de gdk-pixbuf ne les rapportent pas). Sans résolution valable, 96 points par pouce, et
   la section Fichier source le dit (une photo de 3 000 pixels à 300 points par pouce fait 254 mm
   à 100 %). L'échelle reste unique, et l'image ne se déforme jamais.
 - **Orientation** : l'étiquette d'orientation d'un JPEG (EXIF) ou d'un TIFF est appliquée, aux
@@ -44,7 +45,8 @@ la 1.1.0 ; rien n'est changé pour les SVG.
   aucune n'est dite traverser quelque chose.
 - **Garde-fous, dits à l'utilisateur** : plus de 100 millions de pixels (refusé **avant** de
   décoder, la taille étant lue à l'en-tête, si bien qu'une image énorme ne fait pas de mémoire) ;
-  fichier PNG ou JPEG dont la fin manque (ouvert tel qu'on a pu le lire, avec un avertissement) ;
+  fichier PNG ou JPEG dont la fin manque (ouvert tel qu'on a pu le lire, avec un avertissement,
+  ou refusé avec la raison du décodeur quand celui-ci, comme avec gdk-pixbuf 2.44, ne rend rien) ;
   TIFF de plusieurs pages et GIF animé (seule la première image est lue, avec un avertissement) ;
   image illisible ou format sans décodeur sur cette installation (le WebP sans son chargeur, sous
   Linux), avec un message qui dit lequel.
@@ -56,6 +58,10 @@ la 1.1.0 ; rien n'est changé pour les SVG.
   l'image et la compare au plan, comme il le fait pour le clip de chaque page.
 - **`-selftest`** lit un JPEG, un PNG et un TIFF intégrés et compare leurs pixels, en plus du SVG ;
   le paquet Windows embarque le chargeur TIFF de gdk-pixbuf.
+- **Indépendance vis-à-vis de la version de gdk-pixbuf** : la résolution, les pages d'un TIFF et
+  l'animation (GIF, WebP, PNG animé) sont lues dans les octets du fichier, car gdk-pixbuf 2.44
+  (glycin : Ubuntu 26.04, Fedora 44) ne les rapporte plus, et les messages d'erreur du décodeur
+  sont débarrassés de leur jargon. Mêmes résultats avec la 2.42 (Debian 13, Ubuntu 24.04, RHEL 10).
 - **Jeu d'essai** : le paquet `internal/testimg` fabrique des images de référence déterministes
   (PNG, TIFF, JPEG, avec résolution et orientation), et les 14 tests d'acceptation passent aussi
   sur une image, pour chaque format et chacune des huit orientations.

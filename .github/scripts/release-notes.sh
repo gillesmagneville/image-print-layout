@@ -39,6 +39,8 @@ echo
 for path in "$files"/svgprintlayout*; do
     [ -f "$path" ] || continue
     name="$(basename "$path")"
+    # Les empreintes sont dites avec le paquet qu'elles vérifient.
+    case "$name" in *.sha256) continue ;; esac
     case "$name" in
         *.deb)                  what="Ubuntu 24.04 et suivants, Debian 13 : \`sudo apt install ./$name\`" ;;
         *.rpm)                  what="RHEL 10 et ses clones, Fedora : \`sudo dnf install ./$name\`" ;;
@@ -46,6 +48,7 @@ for path in "$files"/svgprintlayout*; do
         *_windows-portable.zip) what="Windows 10 et 11, 64 bits : version portable, à décompresser n'importe où" ;;
         *)                      what="" ;;
     esac
-    echo "- \`$name\`${what:+ : $what}"
+    echo "- \`$name\`${what:+ : $what}$([ -f "$path.sha256" ] && echo " (empreinte : \`$name.sha256\`)")"
 done
-echo "- \`SHA256SUMS\` : les empreintes SHA-256 de ces fichiers"
+echo
+echo "Chaque paquet a son fichier \`.sha256\`. Pour vérifier un paquet téléchargé, mettez-le dans le même dossier que son fichier \`.sha256\` et lancez \`sha256sum -c <paquet>.sha256\` (Linux) ou comparez le résultat de \`Get-FileHash -Algorithm SHA256 <paquet>\` (PowerShell) avec le contenu du fichier."

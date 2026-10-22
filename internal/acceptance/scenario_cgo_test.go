@@ -125,7 +125,7 @@ func (sc *scenario) exportWith(mode model.DocBackground, name string) (path stri
 	sc.must(err)
 	defer doc.Close()
 	path = filepath.Join(sc.dir, name)
-	res, err = export.Run(export.Request{Doc: doc, Plan: sc.sess.Plan(), Project: sc.sess.Project(), Path: path})
+	res, err = export.Run(export.Request{Doc: doc, Plan: sc.sess.Plan(), Project: sc.sess.Project(), Path: path, Progress: traceThreads(path)})
 	if err != nil {
 		sc.t.Fatalf("export: %v", err)
 	}
@@ -202,6 +202,7 @@ func describePDFDifference(t *testing.T, pathA, pathB string) string {
 	} else {
 		out += fmt.Sprintf("; both name %d fonts, identifiers and dates, the same", len(na))
 	}
+	out += fmt.Sprintf("; the OS thread after each page: %v and %v", threadsOf(pathA), threadsOf(pathB))
 	// The fonts poppler finds in each file, when it is installed.
 	if fonts := func(path string) string {
 		res, err := exec.Command("pdffonts", path).CombinedOutput()

@@ -272,7 +272,7 @@ func TestAcceptance14ReopenTheProject(t *testing.T) {
 			// The plan is the same, so the PDF is the same: the project is the whole
 			// of what the layout needs.
 			second := filepath.Join(sc.dir, "second.pdf")
-			if _, err := export.Run(export.Request{Doc: o.Engine, Plan: reopened.Plan(), Project: reopened.Project(), Path: second}); err != nil {
+			if _, err := export.Run(export.Request{Doc: o.Engine, Plan: reopened.Plan(), Project: reopened.Project(), Path: second, Progress: traceThreads(second)}); err != nil {
 				t.Fatalf("test 14: export after reopening: %v", err)
 			}
 			if fileHash(t, first) != fileHash(t, second) {

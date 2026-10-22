@@ -4,7 +4,11 @@
 
 package acceptance
 
-import "sync"
+import (
+	"path/filepath"
+	"sync"
+	"testing"
+)
 
 // The OS thread that runs the engine matters: Pango, which librsvg draws text
 // with, keeps its default font map for each thread, and a PDF whose pages were
@@ -32,4 +36,19 @@ func threadsOf(path string) []uint32 {
 	traceMu.Lock()
 	defer traceMu.Unlock()
 	return append([]uint32(nil), traces[path]...)
+}
+
+// oneThread fails the test when the export of the PDF at path ran on more
+// than one OS thread: the engine keeps its thread for the whole export, which
+// the fonts of the PDF depend on (see exportPDF in the engine). It can only
+// say so where the test can read the thread (Windows and Linux).
+func oneThread(t *testing.T, path string) {
+	t.Helper()
+	ids := threadsOf(path)
+	for _, id := range ids {
+		if id != ids[0] {
+			t.Errorf("the export of %s changed OS threads between its pages: %v", filepath.Base(path), ids)
+			return
+		}
+	}
 }

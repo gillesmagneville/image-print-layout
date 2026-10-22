@@ -129,6 +129,7 @@ func (sc *scenario) exportWith(mode model.DocBackground, name string) (path stri
 	if err != nil {
 		sc.t.Fatalf("export: %v", err)
 	}
+	oneThread(sc.t, path)
 	return path, res
 }
 

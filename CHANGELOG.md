@@ -49,6 +49,18 @@ rien télécharger, avec l'image entière ou découpée aux coupures. Le PDF est
   liées), d'acceptation sur un dessin, une image tournée par son étiquette et une image découpée,
   et de la fenêtre (page découpée en quatre morceaux, page entière).
 
+### Corrigé
+
+- **L'export PDF garde son thread système du début à la fin.** Pango, avec lequel librsvg dessine
+  le texte, garde sa table de polices par thread, et cairo écrit dans le PDF un sous-ensemble de
+  polices propre à chaque table : quand Go reprenait un export sur un autre thread entre deux pages,
+  les mêmes polices étaient embarquées deux fois. Le PDF était plus gros (jusqu'à la moitié de plus
+  sur le jeu d'essai) et deux exports du même projet n'avaient pas les mêmes octets, ce qui
+  contredit le déterminisme demandé. Constaté sous Windows, de temps en temps (des échecs
+  intermittents du test 14 et du test de déterminisme dans la CI), et jamais sous Linux. Les tests
+  d'export notent maintenant le thread de chaque page et échouent si l'export en change ; ils disent
+  aussi, quand deux PDF devraient être identiques, en quoi ils diffèrent.
+
 ## [1.2.0] - 2026-10-21
 
 Le programme ouvre des **images** : JPEG, PNG, TIFF, WebP, BMP et GIF. Une image se découpe et

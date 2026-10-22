@@ -275,6 +275,7 @@ func TestAcceptance14ReopenTheProject(t *testing.T) {
 			if _, err := export.Run(export.Request{Doc: o.Engine, Plan: reopened.Plan(), Project: reopened.Project(), Path: second, Progress: traceThreads(second)}); err != nil {
 				t.Fatalf("test 14: export after reopening: %v", err)
 			}
+			oneThread(t, second)
 			if fileHash(t, first) != fileHash(t, second) {
 				t.Errorf("test 14: the PDF exported after reopening the project is not the one exported before: %s", describePDFDifference(t, first, second))
 			}

@@ -87,6 +87,11 @@ var Registry = map[string]Spec{
 	"export.pdf_clip":          {Failure, nil},
 	"export.pdf_offset":        {Failure, nil},
 	"export.pdf_unreadable":    {Failure, []string{"reason"}},
+	"export.html_pieces":       {Failure, []string{"got", "want"}},
+	"export.html_band":         {Failure, nil},
+	"export.html_width":        {Failure, []string{"w", "want"}},
+	"export.html_picture":      {Failure, nil},
+	"export.html_too_large":    {Failure, []string{"mb", "max"}},
 
 	// Background.
 	"background.none": {Failure, nil},

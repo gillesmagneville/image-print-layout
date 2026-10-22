@@ -9,6 +9,58 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+## [1.3.0] - 2026-10-21
+
+Le programme exporte aussi en **page HTML unique** : un seul fichier, qu'un navigateur ouvre sans
+rien télécharger, avec l'image entière ou découpée aux coupures. Le PDF est inchangé.
+
+### Ajouté
+
+- **Exporter en page HTML** : le bouton « Exporter en page HTML… » du bloc « Page HTML » de la
+  section Export, ou Ctrl+Maj+E. Même déroulement que le PDF : contrôles avant l'export (erreurs
+  qui bloquent, avertissements qui demandent confirmation), sélecteur de fichier (`<nom>.html`
+  proposé), écriture à côté de la destination sous un nom temporaire, **relecture depuis le
+  disque**, comparaison avec le plan, puis seulement le remplacement du fichier : un export
+  refusé ou raté ne laisse rien à moitié écrit et n'écrase pas un bon fichier.
+- **Découpée ou entière.** La case « Découper l'image aux coupures » (cochée par défaut) écrit un
+  morceau par page du plan, les uns sous les autres, chacun avec sa légende (« Page 2 sur 4 ») :
+  ce sont les bandes de l'aperçu, donc les coupures posées à la souris. Décochée, la page montre
+  l'image d'un seul tenant. Le navigateur imprime un morceau par feuille, sans les légendes.
+- **Un fichier, une seule copie de l'image.** L'image est écrite une fois, en base64, dans la
+  page ; chaque morceau n'est qu'une boîte qui en montre une bande, si bien que la page ne grossit
+  pas avec le nombre de morceaux. La colonne a la largeur du plan en millimètres et rétrécit avec
+  la fenêtre sans jamais déformer l'image. Le fond de page du projet (blanc opaque ou transparent)
+  est repris, comme le fond du document d'un SVG.
+- **Ce que la page contient.** Un SVG reste vectoriel (la page porte la copie de travail, jamais le
+  fichier source) ; son texte est dessiné avec les polices de l'ordinateur qui ouvre la page, ce
+  que la section Export dit. Les images qu'il lie par un chemin relatif sont incorporées dans la
+  page (PNG, JPEG, GIF, WebP, BMP, SVG), faute de quoi une page lue ailleurs ne les retrouverait
+  pas. Un JPEG ou un PNG est écrit tel que le fichier est ; un TIFF, un GIF, un WebP, un BMP, un
+  PNG animé ou une image à tourner est dessiné par le moteur (redressé, première image,
+  transparence gardée) et écrit en PNG.
+- **Vérification.** `export.VerifyHTML` relit la page avec les seuls nombres qu'elle contient et
+  retrouve le haut et la hauteur de chaque bande, la hauteur du document, la largeur de la colonne
+  et l'image elle-même ; un écart est refusé avec le numéro du morceau. Au-delà de 256 Mo, la page
+  est refusée avant d'être écrite, avec la taille qu'elle aurait.
+- Les messages sont traduits en français, anglais, espagnol et allemand, y compris la langue de
+  la page et la légende « Page n sur total ».
+- **Tests** : unitaires (morceaux, déterminisme, simulation de la règle de style, relecture qui
+  échoue quand une bande, la largeur ou l'image change, `ImageSource`), de `svgdoc` (images
+  liées), d'acceptation sur un dessin, une image tournée par son étiquette et une image découpée,
+  et de la fenêtre (page découpée en quatre morceaux, page entière).
+
+### Corrigé
+
+- **L'export PDF garde son thread système du début à la fin.** Pango, avec lequel librsvg dessine
+  le texte, garde sa table de polices par thread, et cairo écrit dans le PDF un sous-ensemble de
+  polices propre à chaque table : quand Go reprenait un export sur un autre thread entre deux pages,
+  les mêmes polices étaient embarquées deux fois. Le PDF était plus gros (jusqu'à la moitié de plus
+  sur le jeu d'essai) et deux exports du même projet n'avaient pas les mêmes octets, ce qui
+  contredit le déterminisme demandé. Constaté sous Windows, de temps en temps (des échecs
+  intermittents du test 14 et du test de déterminisme dans la CI), et jamais sous Linux. Les tests
+  d'export notent maintenant le thread de chaque page et échouent si l'export en change ; ils disent
+  aussi, quand deux PDF devraient être identiques, en quoi ils diffèrent.
+
 ## [1.2.0] - 2026-10-21
 
 Le programme ouvre des **images** : JPEG, PNG, TIFF, WebP, BMP et GIF. Une image se découpe et

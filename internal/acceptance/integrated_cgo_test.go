@@ -272,11 +272,12 @@ func TestAcceptance14ReopenTheProject(t *testing.T) {
 			// The plan is the same, so the PDF is the same: the project is the whole
 			// of what the layout needs.
 			second := filepath.Join(sc.dir, "second.pdf")
-			if _, err := export.Run(export.Request{Doc: o.Engine, Plan: reopened.Plan(), Project: reopened.Project(), Path: second}); err != nil {
+			if _, err := export.Run(export.Request{Doc: o.Engine, Plan: reopened.Plan(), Project: reopened.Project(), Path: second, Progress: traceThreads(second)}); err != nil {
 				t.Fatalf("test 14: export after reopening: %v", err)
 			}
+			oneThread(t, second)
 			if fileHash(t, first) != fileHash(t, second) {
-				t.Error("test 14: the PDF exported after reopening the project is not the one exported before")
+				t.Errorf("test 14: the PDF exported after reopening the project is not the one exported before: %s", describePDFDifference(t, first, second))
 			}
 
 			// The SVG is intact, and so is the project when saved again.

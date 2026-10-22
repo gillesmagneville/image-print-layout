@@ -3,8 +3,13 @@
 package svgdoc
 
 import (
+	"bytes"
+	"encoding/base64"
 	"fmt"
 	"math"
+	"net/http"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -286,7 +291,27 @@ func orthogonalBox(d string) (minX, minY, maxX, maxY float64, ok bool) {
 // (the file changed since the project was saved) is not applied; the second
 // result tells it, so that the caller can say so.
 func (a *Analysis) Compose(bg model.Background) (work []byte, applied bool, err error) {
+	work, applied, _, err = a.compose(bg, false)
+	return work, applied, err
+}
+
+// ComposeStandalone is Compose for a copy that is read away from the folder of
+// the document, as a page HTML shows it: the images the document links to are
+// written into it (as data: addresses), since a link to a file would lead
+// nowhere. An image that cannot be written in (the file cannot be read, or is
+// not of a kind a browser shows) keeps its link. The second result is how many
+// images were written in.
+func (a *Analysis) ComposeStandalone(bg model.Background) (work []byte, inlined int, err error) {
+	work, _, inlined, err = a.compose(bg, true)
+	return work, inlined, err
+}
+
+func (a *Analysis) compose(bg model.Background, inline bool) (work []byte, applied bool, inlined int, err error) {
 	edits := append([]edit(nil), a.idEdits...)
+	var links []edit
+	if inline {
+		links = a.linkEdits()
+	}
 	b := a.Background
 	if b != nil && bg.Document != model.KeepBackground && bg.Document != "" && (bg.Element == "" || bg.Element == b.Ref) {
 		switch bg.Document {
@@ -299,14 +324,57 @@ func (a *Analysis) Compose(bg model.Background) (work []byte, applied bool, err 
 				}
 			}
 			edits = append(kept, edit{b.start, b.end, ""})
+			keptLinks := links[:0]
+			for _, e := range links {
+				if e.start < b.start || e.start >= b.end {
+					keptLinks = append(keptLinks, e)
+				}
+			}
+			links = keptLinks
 			applied = true
 		case model.WhitenBackground:
 			edits = append(edits, whiten(a.src, b))
 			applied = true
 		}
 	}
-	work, err = apply(a.src, edits)
-	return work, applied, err
+	work, err = apply(a.src, append(edits, links...))
+	return work, applied, len(links), err
+}
+
+// maxInlinedImage is the largest file written into a copy, in bytes.
+const maxInlinedImage = 64 << 20
+
+// linkEdits writes the images the document links to as data: addresses.
+func (a *Analysis) linkEdits() []edit {
+	var out []edit
+	for _, l := range a.links {
+		info, err := os.Stat(l.path)
+		if err != nil || info.IsDir() || info.Size() > maxInlinedImage {
+			continue
+		}
+		data, err := os.ReadFile(l.path)
+		if err != nil {
+			continue
+		}
+		mime := imageMIME(l.path, data)
+		if mime == "" {
+			continue
+		}
+		out = append(out, edit{l.start, l.end, "data:" + mime + ";base64," + base64.StdEncoding.EncodeToString(data)})
+	}
+	return out
+}
+
+// imageMIME is the type of an image a browser shows, or "" for any other file.
+func imageMIME(path string, data []byte) string {
+	switch m := http.DetectContentType(data); m {
+	case "image/png", "image/jpeg", "image/gif", "image/webp", "image/bmp":
+		return m
+	}
+	if strings.EqualFold(filepath.Ext(path), ".svg") || bytes.Contains(data[:min(len(data), 2048)], []byte("<svg")) {
+		return "image/svg+xml"
+	}
+	return ""
 }
 
 const whiteFill = "fill:#ffffff;fill-opacity:1"

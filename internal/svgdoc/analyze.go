@@ -17,6 +17,7 @@ package svgdoc
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -79,6 +80,9 @@ type Analysis struct {
 
 	src     []byte
 	idEdits []edit
+	// links are the images the document links to and that were found: where
+	// the link sits in the source, and the file.
+	links []link
 }
 
 // Analyze reads a document. baseDir is where linked images are looked for
@@ -338,6 +342,42 @@ func hrefOf(e *element) string {
 	return ""
 }
 
+// link is the link of an image element to a file that exists: the bytes of
+// the value of the attribute in the source, and the path of the file.
+type link struct {
+	start, end int
+	path       string
+}
+
+// linkedFile resolves the link of an image to a file name: the value is a path
+// relative to baseDir, absolute, or a file:// address, possibly with its
+// characters written as %XX. It returns false when baseDir is not known and the
+// path is relative.
+func linkedFile(baseDir, href string) (path string, ok bool) {
+	written := strings.TrimPrefix(href, "file://")
+	candidates := []string{written}
+	// The name as written is tried first: a file may really be called "a%20b".
+	if u, err := url.PathUnescape(written); err == nil && u != written {
+		candidates = append(candidates, u)
+	}
+	for i, c := range candidates {
+		c = filepath.FromSlash(c)
+		if !filepath.IsAbs(c) {
+			if baseDir == "" {
+				return "", false
+			}
+			c = filepath.Join(baseDir, c)
+		}
+		if info, err := os.Stat(c); err == nil && !info.IsDir() {
+			return c, true
+		}
+		if i == 0 {
+			path = c
+		}
+	}
+	return path, true
+}
+
 // image classifies the link of an image element.
 func (r *report) image(e *element) {
 	href := hrefOf(e)
@@ -348,16 +388,19 @@ func (r *report) image(e *element) {
 	case isRemote(href):
 		r.add("svg.image_remote", e, "url", href)
 	default:
-		path := strings.TrimPrefix(href, "file://")
-		path = filepath.FromSlash(path)
-		if !filepath.IsAbs(path) {
-			if r.baseDir == "" {
-				return // nothing to check against
-			}
-			path = filepath.Join(r.baseDir, path)
+		path, ok := linkedFile(r.baseDir, href)
+		if !ok {
+			return // nothing to check against
 		}
 		if info, err := os.Stat(path); err != nil || info.IsDir() {
 			r.add("svg.image_missing", e, "path", href)
+			return
+		}
+		for _, a := range e.Attrs {
+			if a.Local == "href" {
+				r.a.links = append(r.a.links, link{e.Start + a.ValStart, e.Start + a.ValEnd, path})
+				break
+			}
 		}
 	}
 }

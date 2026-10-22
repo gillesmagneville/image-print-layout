@@ -146,6 +146,138 @@ func (w *window) exportDone(path string, res *export.Result, err error) {
 // drawn.
 func (w *window) cancelExportRun() { w.cancelExport.Store(true) }
 
+// ---- the page HTML ---------------------------------------------------------------------------
+
+// exportHTMLPage starts the export of a page HTML: the picture in one file for
+// a browser, cut at the cuts of the plan or whole. The checks are those of the
+// document: the paper is none of them.
+func (w *window) exportHTMLPage() {
+	if w.session.Document() == nil || w.exporting {
+		return
+	}
+	if w.rebuilding || w.loadedBG != w.session.Project().Background.Document {
+		w.afterRebuild = append(w.afterRebuild, w.exportHTMLPage)
+		return
+	}
+	items := w.session.CheckExportHTML(w.htmlCut)
+	switch {
+	case export.Blocked(items):
+		w.showReport("dialog.export_blocked.title", "dialog.export_blocked.detail", items, nil)
+	case export.NeedsConfirmation(items):
+		w.showReport("dialog.export_confirm.title", "dialog.export_html_confirm.detail", items, []dialogButton{
+			{label: "dialog.cancel"},
+			{label: "dialog.export_confirm.go", primary: true, run: w.chooseHTMLFile},
+		})
+	default:
+		w.chooseHTMLFile()
+	}
+}
+
+// chooseHTMLFile asks where to write the page, then writes it.
+func (w *window) chooseHTMLFile() {
+	tr := w.texts.tr
+	doc := w.session.Document()
+	if doc == nil {
+		return
+	}
+	filter := gtk.NewFileFilter()
+	filter.SetName(tr.T("dialog.filter.html"))
+	filter.AddMIMEType("text/html")
+	filter.AddPattern("*.html")
+	filter.AddPattern("*.htm")
+	filter.AddPattern("*.HTML")
+	filters := gio.NewListStore(gtk.GTypeFileFilter)
+	filters.Append(filter.Object)
+
+	dialog := gtk.NewFileDialog()
+	dialog.SetTitle(tr.T("dialog.export_html.title"))
+	dialog.SetFilters(filters)
+	dialog.SetDefaultFilter(filter)
+	base := baseName(doc.Path)
+	dialog.SetInitialName(strings.TrimSuffix(base, filepath.Ext(base)) + ".html")
+	folder := w.lastExportDir
+	if folder == "" {
+		folder = filepath.Dir(doc.Path)
+	}
+	dialog.SetInitialFolder(gio.NewFileForPath(folder))
+	dialog.Save(context.Background(), &w.win.Window, func(res gio.AsyncResulter) {
+		file, err := dialog.SaveFinish(res)
+		if err != nil || file == nil {
+			return // cancelled
+		}
+		path := file.Path()
+		switch strings.ToLower(filepath.Ext(path)) {
+		case ".html", ".htm":
+		default:
+			path += ".html"
+		}
+		w.runExportHTML(path)
+	})
+}
+
+// runExportHTML writes the page HTML of the plan the window shows, to path.
+func (w *window) runExportHTML(path string) {
+	doc := w.session.Document()
+	eng := w.engineDoc
+	plan := w.session.Plan()
+	if doc == nil || eng == nil || plan == nil || w.exporting {
+		return
+	}
+	project := w.session.Project()
+	tr := w.texts.tr
+	name := baseName(path)
+	title := strings.TrimSuffix(baseName(doc.Path), filepath.Ext(doc.Path))
+	options := export.HTMLOptions{
+		Title:     title,
+		Lang:      string(tr.Lang()),
+		Generator: AppName + " " + w.opts.Version,
+		Cut:       w.htmlCut,
+		WhitePage: export.WhitePage(project),
+		PageLabel: func(n, total int) string { return tr.T("export.html.page", "n", n, "total", total) },
+	}
+	w.exporting = true
+	w.refreshExportState()
+	w.setStatus("status.exporting", "name", name)
+	w.busy++
+	w.engine.do(func() {
+		// The engine draws a picture that a browser could not show as it is, so
+		// the source is made on the thread that owns the engine.
+		var res *export.Result
+		src, err := doc.HTMLSource(eng, project.Background)
+		if err == nil {
+			res, err = export.RunHTML(export.HTMLRequest{Plan: plan, Source: src, Options: options, Path: path})
+		}
+		glib.IdleAdd(func() {
+			w.busy--
+			w.exporting = false
+			w.htmlDone(path, options.Cut, res, err)
+			w.refreshExportState()
+		})
+	})
+}
+
+// htmlDone says how the export of a page HTML ended.
+func (w *window) htmlDone(path string, cut bool, res *export.Result, err error) {
+	tr := w.texts.tr
+	var verify *export.VerifyError
+	switch {
+	case err == nil:
+		w.lastExportDir = filepath.Dir(path)
+		kb := int(math.Max(1, math.Round(float64(res.Bytes)/1024)))
+		if cut {
+			w.setStatus("status.exported_html_cut", plural{res.Pages}, "name", baseName(path), "kb", kb)
+		} else {
+			w.setStatus("status.exported_html", "name", baseName(path), "kb", kb)
+		}
+	case errors.As(err, &verify):
+		w.setStatus("status.ready")
+		w.showReport("dialog.export_html_verify.title", "dialog.export_verify.detail", verify.Items, nil)
+	default:
+		w.setStatus("status.ready")
+		w.showMessage(tr.T("dialog.export_failed.title"), tr.T("dialog.export_html_failed.detail", "reason", errorText(tr, err)))
+	}
+}
+
 // ---- the reports of the checks ---------------------------------------------------------------
 
 // dialogButton is a button of a report: the key of its text, whether it is the

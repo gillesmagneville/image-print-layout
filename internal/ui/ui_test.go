@@ -974,6 +974,70 @@ func runScenario() {
 			return true
 		})
 
+		// 7b. The page HTML: the picture cut at the cuts, then whole.
+		htmlPath := filepath.Join(dir, "plan.html")
+		wholePath := filepath.Join(dir, "whole.html")
+		add(func() bool {
+			if !w.exportHTML.Enabled() || !w.panel.htmlButton.IsSensitive() {
+				fail("html: the export of a page is not offered once a document is open")
+			}
+			if !w.htmlCut || !w.panel.htmlCut.Active() {
+				fail("html: the page is not cut at the cuts by default")
+			}
+			w.runExportHTML(htmlPath)
+			if !w.exporting {
+				fail("html: the export did not start")
+			}
+			return true
+		})
+		add(func() bool {
+			if w.exporting || w.busy > 0 {
+				return false
+			}
+			data, err := os.ReadFile(htmlPath)
+			if err != nil {
+				fail("html: no file: %v", err)
+				return true
+			}
+			if n := strings.Count(string(data), `class="piece doc`); n != 4 {
+				fail("html: the page has %d pieces, want 4 (one for each page of the plan)", n)
+			}
+			if !strings.Contains(string(data), "Page 3 sur 4") || !strings.Contains(string(data), `<html lang="fr">`) {
+				fail("html: the page is not in the language of the window")
+			}
+			if status := plain(w.status.Label()); !strings.HasPrefix(status, "plan.html : 4 morceaux, ") || !strings.Contains(status, "relu") {
+				fail("html: the status says %q", status)
+			}
+			if entries, _ := filepath.Glob(filepath.Join(dir, ".*.part")); len(entries) != 0 {
+				fail("html: a temporary file is left: %v", entries)
+			}
+			// The same plan, the picture whole.
+			w.panel.htmlCut.SetActive(false)
+			if w.htmlCut {
+				fail("html: unticking the box does not give a whole picture")
+			}
+			w.runExportHTML(wholePath)
+			return true
+		})
+		add(func() bool {
+			if w.exporting || w.busy > 0 {
+				return false
+			}
+			data, err := os.ReadFile(wholePath)
+			if err != nil {
+				fail("html: no file for the whole picture: %v", err)
+				return true
+			}
+			if n := strings.Count(string(data), `class="piece doc`); n != 1 {
+				fail("html: the whole picture is in %d pieces, want 1", n)
+			}
+			if status := plain(w.status.Label()); !strings.HasPrefix(status, "whole.html : image entière, ") {
+				fail("html: the status says %q", status)
+			}
+			w.panel.htmlCut.SetActive(true)
+			return true
+		})
+
 		// 8. The project: saved, opened again, and the questions that go with it.
 		projectPath := filepath.Join(dir, "plan.imgpl")
 		missingProject := filepath.Join(dir, "missing", "plan.imgpl")

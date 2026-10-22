@@ -2,20 +2,20 @@
 
 # Image Print Layout
 
-Application de bureau (Linux — Debian, Ubuntu, Red Hat et leurs dérivés —, Windows 10 et 11, écrite en Go) pour **mettre en page, découper et imprimer un document SVG ou une image (JPEG, PNG, TIFF…) sur plusieurs feuilles de papier standard**, puis l'exporter en **PDF multipage** (vectoriel pour un SVG).
+Application de bureau (Linux — Debian, Ubuntu, Red Hat et leurs dérivés —, Windows 10 et 11, écrite en Go) pour **mettre en page, découper et imprimer un document SVG ou une image (JPEG, PNG, TIFF…) sur plusieurs feuilles de papier standard**, puis l'exporter en **PDF multipage** (vectoriel pour un SVG) ou en **page HTML unique**, image entière ou découpée aux coupures.
 
 Développé par Gilles MAGNEVILLE, conçu avec l'aide de [claude.ai](https://claude.ai).
 
 > **Image Print Layout s'appelait « SVG Print Layout » jusqu'à la version 1.0.x.** Le nom a changé parce que le programme ouvre aussi des images (JPEG, PNG, TIFF…), ce qu'il fait depuis la 1.2.0. Les projets `.svgpl` de la 1.0.x s'ouvrent toujours, la langue choisie est reprise et installer un paquet remplace l'ancien (voir le [CHANGELOG](CHANGELOG.md)).
 
-> **État : version 1.2.0, toutes les fonctions du cahier des charges sont là (jalons M1 à M5), et la recette a été faite à la main sous Ubuntu et sous Windows.** La fenêtre GTK4, en **français, anglais, espagnol et allemand**, ouvre un SVG ou une image (JPEG, PNG, TIFF, WebP, BMP, GIF), l'analyse (fonctions non prises en charge, polices absentes, images introuvables ; pour une image, sa résolution, un fichier tronqué ou de plusieurs pages), calcule ses pages avec les réglages de papier, de marges, d'échelle et de positionnement, et montre l'aperçu avec les limites et les numéros de page, la liste des pages et les corrections proposées quand une page dépasse. On y ajoute, déplace et supprime les coupures à la souris (double-clic, glisser, aimantation aux vides, clavier) ou on demande des coupures automatiques, sans jamais changer l'échelle. On y choisit le fond du document (le garder, le remplacer par du blanc, le supprimer, avec l'aperçu immédiat) et celui de la page (blanc opaque ou transparent), on voit chaque feuille telle qu'elle sera imprimée, puis on exporte un PDF multipage que le programme relit et vérifie avant de le livrer. On enregistre le projet (réglages, coupures, fond, positions) et on le rouvre plus tard : le fichier d'origine n'est jamais modifié, un document déplacé se localise, et une astérisque dans le titre signale les changements non enregistrés. Les 14 tests d'acceptation du cahier des charges sont automatisés (`internal/acceptance`). Le dépôt contient aussi le prototype du moteur (librsvg + cairo : rendu d'une fenêtre et export PDF multipage, validé sur le Mini-CAD, voir [`docs/M0.md`](docs/M0.md)), les scripts qui construisent les paquets `.deb`, `.rpm` et Windows (voir [Paquets](#paquets)) et la CI.
+> **État : version 1.3.0, toutes les fonctions du cahier des charges sont là (jalons M1 à M5), et la recette a été faite à la main sous Ubuntu et sous Windows.** La fenêtre GTK4, en **français, anglais, espagnol et allemand**, ouvre un SVG ou une image (JPEG, PNG, TIFF, WebP, BMP, GIF), l'analyse (fonctions non prises en charge, polices absentes, images introuvables ; pour une image, sa résolution, un fichier tronqué ou de plusieurs pages), calcule ses pages avec les réglages de papier, de marges, d'échelle et de positionnement, et montre l'aperçu avec les limites et les numéros de page, la liste des pages et les corrections proposées quand une page dépasse. On y ajoute, déplace et supprime les coupures à la souris (double-clic, glisser, aimantation aux vides, clavier) ou on demande des coupures automatiques, sans jamais changer l'échelle. On y choisit le fond du document (le garder, le remplacer par du blanc, le supprimer, avec l'aperçu immédiat) et celui de la page (blanc opaque ou transparent), on voit chaque feuille telle qu'elle sera imprimée, puis on exporte un PDF multipage que le programme relit et vérifie avant de le livrer, ou une page HTML unique (Ctrl+Maj+E), relue elle aussi. On enregistre le projet (réglages, coupures, fond, positions) et on le rouvre plus tard : le fichier d'origine n'est jamais modifié, un document déplacé se localise, et une astérisque dans le titre signale les changements non enregistrés. Les 14 tests d'acceptation du cahier des charges sont automatisés (`internal/acceptance`). Le dépôt contient aussi le prototype du moteur (librsvg + cairo : rendu d'une fenêtre et export PDF multipage, validé sur le Mini-CAD, voir [`docs/M0.md`](docs/M0.md)), les scripts qui construisent les paquets `.deb`, `.rpm` et Windows (voir [Paquets](#paquets)) et la CI.
 
 ## Principe
 
 1. On ouvre un SVG de dimensions quelconques (par exemple un schéma de 1 280 × 5 479 unités) ou une image (une photo, un scan, une longue capture).
 2. On choisit le format papier, l'orientation, les marges et la largeur du dessin (ex. 200 mm sur A4 portrait).
 3. On place les coupures à la souris sur l'aperçu, ou on accepte une proposition automatique.
-4. On vérifie le résultat page par page, puis on exporte un seul PDF.
+4. On vérifie le résultat page par page, puis on exporte un seul PDF, ou une seule page HTML (voir [Page HTML](#page-html)).
 
 Règles fondamentales, reprises du cahier des charges :
 
@@ -40,6 +40,15 @@ Le format est reconnu au contenu du fichier, jamais à son extension. Une image 
 
 La taille d'une image sur le papier est celle que son fichier indique : ses pixels divisés par sa résolution (une photo de 3 000 pixels à 300 points par pouce fait 254 mm à 100 %). Sans résolution, elle est comptée à 96 points par pouce, comme un écran, et le programme le dit. Une image fait au plus 100 millions de pixels : au-delà, elle est refusée avant d'être décodée. Une image n'a pas de fond à part à remplacer : seul le fond de page agit, à travers ses parties transparentes. Ses coupures automatiques tombent entre ses blocs quand elle a un fond uni (une capture, un schéma, une page numérisée) et se répartissent également quand elle n'en a pas (une photographie).
 
+## Page HTML
+
+Le bouton « Exporter en page HTML… » de la section Export (Ctrl+Maj+E) écrit la mise en page en **un seul fichier `.html`**, qui s'ouvre dans n'importe quel navigateur, hors connexion, sans dossier d'accompagnement : l'image y est écrite une seule fois.
+
+- **Découpée aux coupures** (case cochée par défaut) : un morceau par page du plan, les uns sous les autres, avec leur légende (« Page 2 sur 4 »). Ce sont exactement les bandes de l'aperçu. Le navigateur imprime un morceau par feuille.
+- **Entière** (case décochée) : l'image d'un seul tenant, à la largeur du plan.
+- Un SVG reste vectoriel dans la page (son texte prend les polices de l'ordinateur qui ouvre la page) et ses images liées y sont incorporées. Un JPEG ou un PNG est écrit tel quel ; un TIFF, un GIF, un WebP ou un BMP, tel que l'aperçu le montre, en PNG.
+- Comme le PDF, la page est relue après l'écriture et comparée au plan ; si elle ne correspond pas, rien n'est livré. Au-delà de 256 Mo, l'export est refusé.
+
 ## Organisation du code
 
 ```
@@ -53,7 +62,7 @@ internal/
   project/   fichier projet .imgpl (JSON versionné, écriture déterministe) (Go pur)
   svgdoc/    lecture du SVG : constats, polices, blocs, fond, copie de travail   (Go pur)
   engine/    moteur de rendu : interface Document, librsvg (SVG) + gdk-pixbuf (images) + cairo + fontconfig par cgo
-  export/    export PDF multipage : contrôles avant, relecture et vérification du PDF écrit   (Go pur)
+  export/    exports PDF multipage et page HTML : contrôles avant, relecture et vérification du fichier écrit   (Go pur)
   app/       session (projet, plan, historique), ouverture d'un document     (Go pur)
   viewport/  arithmétique de la vue : zoom, déplacement, fenêtre à dessiner   (Go pur)
   diag/      avertissements et erreurs destinés à l'utilisateur (un code et des valeurs)

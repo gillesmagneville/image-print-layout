@@ -375,6 +375,16 @@ func exportPDF(d drawer, out io.Writer, pages []PageSpec, opt PDFOptions) error 
 		opt.FixedDate = DefaultFixedDate
 	}
 
+	// The export keeps its OS thread from the first page to the last. Pango,
+	// which librsvg draws text with, keeps its default font map for each
+	// thread, and cairo writes a font that comes from another font map as a
+	// subset of its own: an export that Go moved to another thread between
+	// two pages embedded the same font twice (a PDF half as large again, and
+	// two exports of the same project that were not the same file). Seen on
+	// Windows, where Go moves goroutines between threads more readily.
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
 	sink := &pdfSink{w: out}
 	handle := cgo.NewHandle(sink)
 	defer handle.Delete()

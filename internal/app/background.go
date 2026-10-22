@@ -68,11 +68,24 @@ func (s *Session) CheckExport() []diag.Item {
 	if s.doc == nil || s.plan == nil {
 		return []diag.Item{diag.New("app.no_document", 0)}
 	}
+	return export.Check(s.exportInput())
+}
+
+// CheckExportHTML runs the checks that come before the export of a page HTML,
+// cut at the cuts of the plan or not: the paper is not one of them.
+func (s *Session) CheckExportHTML(cut bool) []diag.Item {
+	if s.doc == nil || s.plan == nil {
+		return []diag.Item{diag.New("app.no_document", 0)}
+	}
+	return export.CheckHTML(s.exportInput(), cut)
+}
+
+func (s *Session) exportInput() export.Input {
 	_, found := s.DocumentBackground()
-	return export.Check(export.Input{
+	return export.Input{
 		Project:       s.project,
 		Plan:          s.plan,
 		HasBackground: found,
 		Findings:      s.doc.Findings,
-	})
+	}
 }

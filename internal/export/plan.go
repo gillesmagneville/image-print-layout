@@ -51,12 +51,40 @@ const tol = units.ToleranceMM
 // checks recompute from the plan what the plan is meant to guarantee, rather
 // than trusting its states.
 func Check(in Input) []diag.Item {
-	var out []diag.Item
 	pl := in.Plan
 	if pl == nil || len(pl.Pages) == 0 {
 		return []diag.Item{diag.New("export.no_pages", 0)}
 	}
+	out := checkBands(pl)
+	out = append(out, checkSheet(pl)...)
+	out = append(out, checkBackground(in, true)...)
+	return append(out, checkFindings(in)...)
+}
 
+// CheckHTML runs the checks before the export of a page HTML. A page has no
+// sheet: nothing is checked against the paper or its margins, and a plan with
+// a page too tall for its sheet is exported all the same. What the page shows
+// is the picture whole, or its bands, so the bands are checked when it is cut;
+// the background and what the engine does not draw as the document says are
+// checked as for the PDF.
+func CheckHTML(in Input, cut bool) []diag.Item {
+	pl := in.Plan
+	if pl == nil || len(pl.Pages) == 0 {
+		return []diag.Item{diag.New("export.no_pages", 0)}
+	}
+	var out []diag.Item
+	if cut {
+		out = checkBands(pl)
+	}
+	out = append(out, checkBackground(in, false)...)
+	return append(out, checkFindings(in)...)
+}
+
+// checkBands runs the checks of the bands of the plan (1 to 3): the cuts are
+// in order, the bands add up to the document, and the drawing is as wide on
+// every page.
+func checkBands(pl *layout.Plan) []diag.Item {
+	var out []diag.Item
 	// 1. The cuts are in strict order, inside the document, far enough apart.
 	minGap := layout.MinCutGapMM / pl.Scale
 	for i, p := range pl.Pages {
@@ -91,8 +119,13 @@ func Check(in Input) []diag.Item {
 			out = append(out, diag.New("export.width_differs", p.Number, "w", p.ContentW, "want", wantW))
 		}
 	}
+	return out
+}
 
-	// 4 and 5. The content is on the sheet, and inside the margins.
+// checkSheet runs the checks of the content on the sheet (4 and 5): it is on
+// the sheet, and inside the margins.
+func checkSheet(pl *layout.Plan) []diag.Item {
+	var out []diag.Item
 	sh := pl.Sheet
 	for _, p := range pl.Pages {
 		r := p.Rect()
@@ -106,18 +139,28 @@ func Check(in Input) []diag.Item {
 			out = append(out, diag.New("export.outside_margins", p.Number))
 		}
 	}
+	return out
+}
 
-	// 6. The background asked for matches the one found.
+// checkBackground runs the check of the background (6): the one asked for
+// matches the one found. A transparent page covered by the background of the
+// document is a matter of the PDF (pdf true); a page HTML says nothing of it.
+func checkBackground(in Input, pdf bool) []diag.Item {
+	var out []diag.Item
 	bg := in.Project.Background
 	if bg.Document != model.KeepBackground && bg.Document != "" && !in.HasBackground {
 		out = append(out, diag.New("export.no_background", 0))
 	}
-	if bg.Page == model.TransparentPage && in.HasBackground && (bg.Document == model.KeepBackground || bg.Document == model.WhitenBackground || bg.Document == "") {
+	if pdf && bg.Page == model.TransparentPage && in.HasBackground && (bg.Document == model.KeepBackground || bg.Document == model.WhitenBackground || bg.Document == "") {
 		out = append(out, diag.New("export.background_covers", 0))
 	}
+	return out
+}
 
-	// 7. What the engine will not draw as the document says: listed as the
-	// analysis found it.
+// checkFindings lists what the engine will not draw as the document says (7),
+// as the analysis found it.
+func checkFindings(in Input) []diag.Item {
+	var out []diag.Item
 	for _, f := range in.Findings {
 		if f.Level == diag.Warning {
 			out = append(out, f)

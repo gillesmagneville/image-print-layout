@@ -87,6 +87,14 @@
   </categories>
 
   <releases>
+    <release version="1.3.1" date="2026-10-30">
+      <description>
+        <p>Documentation release: every document of the project now exists in English and in French, and the packages ship both. The program itself does not change.</p>
+        <p xml:lang="fr">Version de documentation : tous les documents du projet existent désormais en anglais et en français, et les paquets embarquent les deux. Le programme lui-même ne change pas.</p>
+        <p xml:lang="es">Versión de documentación: todos los documentos del proyecto existen ahora en inglés y en francés, y los paquetes incluyen ambos. El programa en sí no cambia.</p>
+        <p xml:lang="de">Dokumentationsversion: Alle Dokumente des Projekts gibt es jetzt auf Englisch und auf Französisch, und die Pakete enthalten beide. Das Programm selbst ändert sich nicht.</p>
+      </description>
+    </release>
     <release version="1.3.0" date="2026-10-21">
       <description>
         <p>New: export as a single HTML page (Ctrl+Shift+E), the whole picture or cut at the cuts, one piece for each page. One file that a browser opens with nothing to download; the page is read back and checked against the preview, like the PDF.</p>

@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-10-30
+
+Documentation release: the program itself does not change.
+
 ### Changed
 
 - **The documentation is now bilingual.** Every document of the project (`README`,
@@ -22,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   README and the CHANGELOG in both languages; the GitHub release text gives the section of
   the CHANGELOG in English, then in French; the `repocheck` tests check both CHANGELOGs and both
   ARCHITECTUREs, and that every document exists in both languages with the same sections.
+- **Repository clean-up.** The build files that had been added by mistake (`dist/`, `*.sha256`)
+  are removed from the repository and are now ignored by Git.
 
 ## [1.3.0] - 2026-10-21
 

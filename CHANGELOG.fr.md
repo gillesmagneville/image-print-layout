@@ -11,6 +11,10 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+## [1.3.1] - 2026-10-30
+
+Version de documentation : le programme lui-même ne change pas.
+
 ### Modifié
 
 - **La documentation est désormais bilingue.** Chaque document du projet (`README`,
@@ -22,6 +26,8 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
   embarquent le README et le CHANGELOG dans les deux langues ; le texte de la release GitHub
   donne la section du CHANGELOG en anglais, puis en français ; les tests de `repocheck`
   vérifient les deux CHANGELOG et les deux ARCHITECTURE, et que chaque document existe dans les deux langues avec les mêmes sections.
+- **Nettoyage du dépôt.** Les fichiers de construction ajoutés par erreur (`dist/`, `*.sha256`)
+  sont retirés du dépôt et désormais ignorés par Git.
 
 ## [1.3.0] - 2026-10-21
 

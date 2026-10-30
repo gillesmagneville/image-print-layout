@@ -7,7 +7,7 @@
 
 .DESCRIPTION
     Ce script ne fait que transmettre ses arguments à windows\build-windows.ps1,
-    où vit la logique de construction (voir windows\README.md : prérequis,
+    où vit la logique de construction (voir windows\README.fr.md : prérequis,
     options, dépannage). Rien n'est dupliqué : ce fichier reste à jour tout
     seul, puisqu'il ne fait qu'appeler l'autre script.
 

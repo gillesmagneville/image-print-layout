@@ -269,14 +269,17 @@ done
 
 DOC_DIR="$BUILD_DIR/usr/share/doc/$PACKAGE_NAME"
 install -D -m 0644 "$PROJECT_DIR/README.md" "$DOC_DIR/README.md"
+install -D -m 0644 "$PROJECT_DIR/README.fr.md" "$DOC_DIR/README.fr.md"
 install -D -m 0644 "$PROJECT_DIR/debian/copyright" "$DOC_DIR/copyright"
 # Noms que Debian attend pour les journaux de modifications : celui du projet
-# (changelog.gz) et celui du paquet (changelog.Debian.gz, au format Debian).
+# (changelog.gz, en anglais, avec sa version française changelog.fr.gz) et celui
+# du paquet (changelog.Debian.gz, au format Debian).
 gzip -9n -c "$PROJECT_DIR/CHANGELOG.md" > "$DOC_DIR/changelog.gz"
+gzip -9n -c "$PROJECT_DIR/CHANGELOG.fr.md" > "$DOC_DIR/changelog.fr.gz"
 {
     echo "$PACKAGE_NAME ($DEB_VERSION) unstable; urgency=low"
     echo ""
-    echo "  * Paquet construit à partir du dépôt ; l'historique est dans changelog.gz."
+    echo "  * Paquet construit à partir du dépôt ; l'historique est dans changelog.gz (en anglais) et changelog.fr.gz (en français)."
     echo ""
     echo " -- $MAINTAINER  $(date -u -d "@$SOURCE_DATE_EPOCH" -R)"
 } | gzip -9n -c > "$DOC_DIR/changelog.Debian.gz"
@@ -362,7 +365,7 @@ else
     echo "$NEW_VERSION" > "$VERSION_FILE"
     echo "   Version enregistrée : $NEW_VERSION"
     if [[ "$NEW_VERSION" != *-* ]]; then
-        echo "   Pensez à ajouter « ## [$NEW_VERSION] » à CHANGELOG.md (voir CONTRIBUTING.md)."
+        echo "   Pensez à ajouter « ## [$NEW_VERSION] » à CHANGELOG.md et à CHANGELOG.fr.md (voir CONTRIBUTING.fr.md)."
     fi
 fi
 echo ""

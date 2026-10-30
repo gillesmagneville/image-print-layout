@@ -275,7 +275,9 @@ for LANGUE in fr es de; do
 done
 chmod 0644 "$BUILD_DIR"/usr/share/man/man1/*.gz "$BUILD_DIR"/usr/share/man/*/man1/*.gz
 install -D -m 0644 "$PROJECT_DIR/README.md" "$BUILD_DIR/usr/share/doc/$PACKAGE_NAME/README.md"
+install -D -m 0644 "$PROJECT_DIR/README.fr.md" "$BUILD_DIR/usr/share/doc/$PACKAGE_NAME/README.fr.md"
 install -D -m 0644 "$PROJECT_DIR/CHANGELOG.md" "$BUILD_DIR/usr/share/doc/$PACKAGE_NAME/CHANGELOG.md"
+install -D -m 0644 "$PROJECT_DIR/CHANGELOG.fr.md" "$BUILD_DIR/usr/share/doc/$PACKAGE_NAME/CHANGELOG.fr.md"
 install -D -m 0644 "$PROJECT_DIR/LICENSE" "$BUILD_DIR/usr/share/licenses/$PACKAGE_NAME/LICENSE"
 
 # install -m fixe les permissions voulues, quel que soit l'umask de la machine
@@ -354,7 +356,7 @@ EOF
     echo ""
     echo "%changelog"
     echo "* $(LC_ALL=C date -u -d "@$SOURCE_DATE_EPOCH" '+%a %b %d %Y') $MAINTAINER - $RPM_VERSION-$RPM_RELEASE"
-    echo "- Paquet construit à partir du dépôt ; l'historique est dans CHANGELOG.md."
+    echo "- Paquet construit à partir du dépôt ; l'historique est dans CHANGELOG.md (en anglais) et CHANGELOG.fr.md (en français)."
 } > "$SPEC"
 
 echo ">>> Création du paquet .rpm..."
@@ -382,7 +384,7 @@ else
     echo "$NEW_VERSION" > "$VERSION_FILE"
     echo "   Version enregistrée : $NEW_VERSION"
     if [[ "$NEW_VERSION" != *-* ]]; then
-        echo "   Pensez à ajouter « ## [$NEW_VERSION] » à CHANGELOG.md (voir CONTRIBUTING.md)."
+        echo "   Pensez à ajouter « ## [$NEW_VERSION] » à CHANGELOG.md et à CHANGELOG.fr.md (voir CONTRIBUTING.fr.md)."
     fi
 fi
 echo ""

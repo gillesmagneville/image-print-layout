@@ -14,7 +14,7 @@ import (
 )
 
 // TestHeavyDocument opens a document of 100 000 elements with the real engine
-// (ARCHITECTURE §15, "Documents très lourds"): it must open, be measured and
+// (ARCHITECTURE §15, "Very heavy documents"): it must open, be measured and
 // be drawn, in times a person waits for.
 func TestHeavyDocument(t *testing.T) {
 	if testing.Short() {

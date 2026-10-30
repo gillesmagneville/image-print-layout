@@ -89,20 +89,33 @@ func TestEveryFileHasTheLicenceHeader(t *testing.T) {
 
 var semver = regexp.MustCompile(`^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-[0-9A-Za-z.-]+)?$`)
 
+// The documents of the project exist in two languages: English, the default
+// file that GitHub shows (X.md), and French (X.fr.md). Each language has its
+// own changelog and its own heading for the notes not yet released.
+var changelogs = []struct{ file, unreleased string }{
+	{"CHANGELOG.md", "## [Unreleased]"},
+	{"CHANGELOG.fr.md", "## [Non publié]"},
+}
+
+// architectures are the two languages of ARCHITECTURE.md.
+var architectures = []string{"ARCHITECTURE.md", "ARCHITECTURE.fr.md"}
+
 // VERSION is a Semantic Version, and a version without a pre-release suffix
-// is one the changelog has a section for.
+// is one both changelogs have a section for.
 func TestVersionAndChangelogAgree(t *testing.T) {
 	root := repoRoot(t)
 	version := strings.TrimSpace(read(t, filepath.Join(root, "VERSION")))
 	if !semver.MatchString(version) {
 		t.Fatalf("VERSION %q is not a Semantic Version", version)
 	}
-	changelog := read(t, filepath.Join(root, "CHANGELOG.md"))
-	if !strings.Contains(changelog, "\n## [Non publié]") {
-		t.Error("CHANGELOG.md has no \"## [Non publié]\" section")
-	}
-	if !strings.Contains(version, "-") && !strings.Contains(changelog, "\n## ["+version+"]") {
-		t.Errorf("VERSION is %s but CHANGELOG.md has no \"## [%s]\" section", version, version)
+	for _, c := range changelogs {
+		changelog := read(t, filepath.Join(root, c.file))
+		if !strings.Contains(changelog, "\n"+c.unreleased) {
+			t.Errorf("%s has no %q section", c.file, c.unreleased)
+		}
+		if !strings.Contains(version, "-") && !strings.Contains(changelog, "\n## ["+version+"]") {
+			t.Errorf("VERSION is %s but %s has no \"## [%s]\" section", version, c.file, version)
+		}
 	}
 }
 
@@ -126,20 +139,22 @@ func TestCgoIsLimitedToUIAndEngine(t *testing.T) {
 }
 
 // ARCHITECTURE.md is the canonical contract: its repository layout names
-// every package of internal/.
+// every package of internal/. So does its French version.
 func TestArchitectureNamesEveryPackage(t *testing.T) {
 	root := repoRoot(t)
-	architecture := read(t, filepath.Join(root, "ARCHITECTURE.md"))
 	entries, err := os.ReadDir(filepath.Join(root, "internal"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, e := range entries {
-		if !e.IsDir() {
-			continue
-		}
-		if !strings.Contains(architecture, "── "+e.Name()+"/") {
-			t.Errorf("ARCHITECTURE.md, \"Disposition du dépôt\", does not list internal/%s", e.Name())
+	for _, file := range architectures {
+		architecture := read(t, filepath.Join(root, file))
+		for _, e := range entries {
+			if !e.IsDir() {
+				continue
+			}
+			if !strings.Contains(architecture, "── "+e.Name()+"/") {
+				t.Errorf("%s, \"Repository layout\", does not list internal/%s", file, e.Name())
+			}
 		}
 	}
 }
@@ -147,7 +162,7 @@ func TestArchitectureNamesEveryPackage(t *testing.T) {
 var architectureSection = regexp.MustCompile(`(?m)^## (\d+)\. `)
 
 // lastArchitectureSection is the number of the last numbered section of
-// ARCHITECTURE.md ("Risques et questions ouvertes").
+// ARCHITECTURE.md ("Risks and open questions").
 const lastArchitectureSection = 15
 
 // ARCHITECTURE.md numbers its sections from 1 to the last with no gap, in
@@ -156,15 +171,17 @@ const lastArchitectureSection = 15
 // go unnoticed until someone looks for it.
 func TestArchitectureSectionsAreAllThere(t *testing.T) {
 	root := repoRoot(t)
-	var got []string
-	for _, m := range architectureSection.FindAllStringSubmatch(read(t, filepath.Join(root, "ARCHITECTURE.md")), -1) {
-		got = append(got, m[1])
-	}
 	var want []string
 	for n := 1; n <= lastArchitectureSection; n++ {
 		want = append(want, strconv.Itoa(n))
 	}
-	if strings.Join(got, " ") != strings.Join(want, " ") {
-		t.Errorf("ARCHITECTURE.md has the sections %s, want %s", strings.Join(got, " "), strings.Join(want, " "))
+	for _, file := range architectures {
+		var got []string
+		for _, m := range architectureSection.FindAllStringSubmatch(read(t, filepath.Join(root, file)), -1) {
+			got = append(got, m[1])
+		}
+		if strings.Join(got, " ") != strings.Join(want, " ") {
+			t.Errorf("%s has the sections %s, want %s", file, strings.Join(got, " "), strings.Join(want, " "))
+		}
 	}
 }

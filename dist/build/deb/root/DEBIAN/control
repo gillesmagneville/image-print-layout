@@ -1,0 +1,18 @@
+Package: svgprintlayout
+Version: 0.1.0~dev-1
+Section: graphics
+Priority: optional
+Architecture: amd64
+Maintainer: Gilles MAGNEVILLE <gilles@magneville.fr>
+Installed-Size: 2080
+Depends: libc6 (>= 2.34), libcairo2 (>= 1.15.8), libglib2.0-0t64 (>= 2.12.0), librsvg2-2 (>= 2.52.5)
+Homepage: https://github.com/gillesmagneville/svg-print-layout
+Description: Met en page un dessin SVG sur plusieurs feuilles et l'exporte en PDF
+ SVG Print Layout prépare l'impression d'un document vectoriel SVG de
+ dimensions quelconques sur plusieurs feuilles de papier standard : on choisit
+ le format, les marges et la largeur du dessin, on place les coupures à la
+ souris, puis on exporte un seul PDF multipage vectoriel.
+ .
+ Le dessin garde une échelle unique : aucune page n'est réduite en silence
+ pour faire tenir une portion trop haute. Le fichier SVG d'origine n'est
+ jamais modifié.

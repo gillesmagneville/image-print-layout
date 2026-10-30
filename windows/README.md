@@ -1,88 +1,90 @@
 <!-- SPDX-License-Identifier: GPL-3.0-only -->
 
-# Image Print Layout : paquet Windows
+# Image Print Layout: Windows package
 
-Ce dossier contient ce qu'il faut pour construire le paquet Windows : une **version
-portable** (`.zip`) et un **installeur** (`.exe`), à partir du code du dépôt.
+🇫🇷 [Version française](README.fr.md)
 
-## Utilisation
+This folder contains what is needed to build the Windows package: a **portable
+version** (`.zip`) and an **installer** (`.exe`), from the code of the repository.
 
-Windows bloque par défaut les scripts PowerShell locaux (erreur du type *« l'exécution
-de scripts est désactivée sur ce système »*). Autorisez-les pour la session en cours
-seulement, ce qui ne change rien de façon permanente :
+## Usage
+
+Windows blocks local PowerShell scripts by default (error such as *"running scripts
+is disabled on this system"*). Allow them for the current session
+only, which changes nothing permanently:
 
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 ```
 
-Puis, depuis PowerShell, **à la racine du dépôt** :
+Then, from PowerShell, **at the root of the repository**:
 
 ```powershell
 .\build-windows.ps1
 ```
 
-Le script a les mêmes options que `build-deb.sh` et `build-rpm.sh` (et que le
-`build-windows.ps1` de Planche-Contact) :
+The script has the same options as `build-deb.sh` and `build-rpm.sh` (and as the
+`build-windows.ps1` of Planche-Contact):
 
 ```powershell
-.\build-windows.ps1 -Major             # incrémente le numéro majeur   (1.2.3 -> 2.0.0)
-.\build-windows.ps1 -Minor             # incrémente le numéro mineur   (1.2.3 -> 1.3.0)
-.\build-windows.ps1 -Patch             # incrémente le numéro de patch (1.2.3 -> 1.2.4)
-.\build-windows.ps1 -NoVersionChange   # reconstruit sans changer la version
-.\build-windows.ps1 -Clean             # supprime le dossier de build et les paquets Windows
-.\build-windows.ps1 -Help              # aide
-.\build-windows.ps1 -Oui               # répond « oui » à toutes les questions (sans surveillance)
+.\build-windows.ps1 -Major             # increments the major number   (1.2.3 -> 2.0.0)
+.\build-windows.ps1 -Minor             # increments the minor number   (1.2.3 -> 1.3.0)
+.\build-windows.ps1 -Patch             # increments the patch number   (1.2.3 -> 1.2.4)
+.\build-windows.ps1 -NoVersionChange   # rebuilds without changing the version
+.\build-windows.ps1 -Clean             # deletes the build folder and the Windows packages
+.\build-windows.ps1 -Help              # help
+.\build-windows.ps1 -Oui               # answers "yes" to all the questions (unattended)
 ```
 
-Sans option de version, le script affiche la version actuelle (fichier `VERSION`),
-propose de passer en major, minor ou patch ou de ne rien changer, puis demande
-confirmation avant de construire. **`VERSION` n'est mis à jour qu'une fois les paquets
-construits** : un échec ne laisse pas une version sans paquet. Une version
-d'avant-publication comme `0.1.0-dev` est d'abord publiée : `-Minor` et `-Patch` donnent
-`0.1.0`, `-Major` donne `1.0.0`. Si vous avez déjà construit les paquets Linux de cette
-version, utilisez `-NoVersionChange`, pour ne pas l'incrémenter une seconde fois.
+Without a version option, the script shows the current version (`VERSION` file),
+offers to move to major, minor or patch or to change nothing, then asks for
+confirmation before building. **`VERSION` is only updated once the packages are
+built**: a failure does not leave a version without a package. A pre-release
+version such as `0.1.0-dev` is published first: `-Minor` and `-Patch` give
+`0.1.0`, `-Major` gives `1.0.0`. If you have already built the Linux packages of this
+version, use `-NoVersionChange`, so as not to increment it a second time.
 
-Le script vérifie ses prérequis et propose d'installer ce qui manque (voir ci-dessous).
-À la fin, la racine du dépôt contient :
+The script checks its prerequisites and offers to install what is missing (see below).
+At the end, the root of the repository contains:
 
-- `imageprintlayout_X.Y.Z_windows-portable.zip` : un dossier autonome, à décompresser
-  n'importe où et à lancer sans installation ;
-- `imageprintlayout_X.Y.Z_windows-setup.exe` : l'installeur (menu Démarrer, désinstalleur),
-  si NSIS est disponible.
+- `imageprintlayout_X.Y.Z_windows-portable.zip`: a standalone folder, to unzip
+  anywhere and launch without installation;
+- `imageprintlayout_X.Y.Z_windows-setup.exe`: the installer (Start menu, uninstaller),
+  if NSIS is available.
 
-Le dossier de travail est `%LOCALAPPDATA%\imageprintlayout-build`, hors du dépôt ; `-Clean`
-le supprime.
+The working folder is `%LOCALAPPDATA%\imageprintlayout-build`, outside the repository; `-Clean`
+deletes it.
 
-## Avertissement SmartScreen à l'installation
+## SmartScreen warning at installation
 
-⚠️ **À prévenir auprès des utilisateurs** : au premier lancement de l'installeur (ou du
-programme portable), Windows affiche très probablement un écran bleu **« Windows a
-protégé votre PC »** (SmartScreen). C'est attendu : l'installeur n'est pas signé
-numériquement. Ce n'est pas le signe d'un logiciel malveillant.
+⚠️ **To warn users about**: on the first launch of the installer (or of the
+portable program), Windows will very likely display a blue **"Windows protected your
+PC"** screen (SmartScreen). This is expected: the installer is not digitally
+signed. It is not a sign of malicious software.
 
-Pour continuer : cliquer sur **Informations complémentaires**, puis sur **Exécuter
-quand même**.
+To continue: click **More info**, then **Run
+anyway**.
 
-L'avertissement s'atténue à mesure que l'installeur gagne en réputation auprès de
-SmartScreen, ou disparaît tout de suite avec un certificat de signature de code payant.
-Aucun changement du code ne peut le supprimer.
+The warning fades as the installer gains reputation with
+SmartScreen, or disappears immediately with a paid code-signing certificate.
+No change to the code can remove it.
 
-## Prérequis
+## Prerequisites
 
-⚠️ **Windows 64 bits (x64) uniquement.**
+⚠️ **64-bit Windows (x64) only.**
 
-| Outil | Rôle | Installation proposée par le script |
+| Tool | Role | Installation offered by the script |
 | --- | --- | --- |
-| [MSYS2](https://www.msys2.org) | Fournit, pour Windows, Go, le compilateur C, GTK 4, librsvg et cairo (environnement UCRT64) | Oui, avec `winget` (dans `C:\msys64`) |
-| Paquets MSYS2 : `go`, `gcc`, `pkgconf`, `librsvg`, `gdk-pixbuf2`, `cairo`, `gtk4`, `gobject-introspection`, `adwaita-icon-theme`, `hicolor-icon-theme`, `zip`, `git` | La chaîne de construction, et ce que la fenêtre embarque | Oui, avec `pacman`, après une mise à jour de MSYS2 |
-| [NSIS](https://nsis.sourceforge.io/) | Produit l'installeur `.exe` (facultatif) | Oui, avec `winget` |
+| [MSYS2](https://www.msys2.org) | Provides, for Windows, Go, the C compiler, GTK 4, librsvg and cairo (UCRT64 environment) | Yes, with `winget` (in `C:\msys64`) |
+| MSYS2 packages: `go`, `gcc`, `pkgconf`, `librsvg`, `gdk-pixbuf2`, `cairo`, `gtk4`, `gobject-introspection`, `adwaita-icon-theme`, `hicolor-icon-theme`, `zip`, `git` | The build chain, and what the window bundles | Yes, with `pacman`, after an MSYS2 update |
+| [NSIS](https://nsis.sourceforge.io/) | Produces the `.exe` installer (optional) | Yes, with `winget` |
 
-Sans NSIS, seule la version portable est produite ; ce n'est pas une erreur.
+Without NSIS, only the portable version is produced; this is not an error.
 
-Le script ne touche à rien hors de MSYS2, de son dossier de travail et de la racine du
-dépôt, où il écrit les paquets. Si vous préférez, lancez la construction à la main dans un
-terminal **MSYS2 UCRT64** (et pas MSYS ni MINGW64) ; elle prend la version du fichier
-`VERSION`, ou celle de `--version`, et ne le modifie jamais :
+The script touches nothing outside MSYS2, its working folder and the root of the
+repository, where it writes the packages. If you prefer, run the build by hand in an
+**MSYS2 UCRT64** terminal (and not MSYS nor MINGW64); it takes the version from the
+`VERSION` file, or from `--version`, and never modifies it:
 
 ```sh
 pacman -Syu
@@ -90,162 +92,162 @@ pacman -Syu
 ./windows/build-windows.sh --version 1.2.3
 ```
 
-## Contenu du paquet
+## Contents of the package
 
-Le dossier livré est organisé comme un préfixe, ce que les bibliothèques attendent :
+The delivered folder is organized like a prefix, which is what the libraries expect:
 
 ```
 imageprintlayout-X.Y.Z-windows-x64/
 ├── bin/
-│   ├── imageprintlayout.exe          la fenêtre (sous-système Windows : pas de console derrière)
-│   ├── imageprintlayout-console.exe  le même programme en console : -version, -selftest, messages d'erreur
+│   ├── imageprintlayout.exe          the window (Windows subsystem: no console behind it)
+│   ├── imageprintlayout-console.exe  the same program as a console one: -version, -selftest, error messages
 │   └── *.dll                       GTK 4, cairo, librsvg, pango, glib, fontconfig...
-├── etc/fonts/                      configuration de fontconfig
-├── lib/gdk-pixbuf-2.0/2.10.0/      chargeurs d'images (JPEG, PNG, TIFF, GIF, BMP, WebP, SVG) et leur cache
-├── share/glib-2.0/schemas/         schémas de réglages de GTK (sans eux, GTK s'arrête à l'ouverture d'un sélecteur de fichier)
-├── share/icons/                    thèmes d'icônes Adwaita et hicolor (images des boutons)
-├── share/locale/                   traductions des textes propres à GTK (français, espagnol, allemand)
-├── share/licenses/                 licence de chaque bibliothèque, et COMPOSANTS.txt (liste, versions)
-├── LICENSE, README.md, CHANGELOG.md
+├── etc/fonts/                      fontconfig configuration
+├── lib/gdk-pixbuf-2.0/2.10.0/      image loaders (JPEG, PNG, TIFF, GIF, BMP, WebP, SVG) and their cache
+├── share/glib-2.0/schemas/         GTK settings schemas (without them, GTK stops when a file chooser opens)
+├── share/icons/                    Adwaita and hicolor icon themes (button images)
+├── share/locale/                   translations of GTK's own texts (French, Spanish, German)
+├── share/licenses/                 license of each library, and COMPOSANTS.txt (list, versions)
+├── LICENSE, README.md, README.fr.md, CHANGELOG.md, CHANGELOG.fr.md
 ```
 
-Un programme Windows n'est pas installé sous un préfixe fixe : fontconfig et gdk-pixbuf
-ne savent donc pas où chercher leurs données. Au démarrage, le programme les leur
-indique (`engine.ConfigureRuntime`, qui n'agit que si ce dossier est là). GLib et GTK
-retrouvent leurs schémas, leurs icônes et leurs traductions à partir de l'emplacement de
-leurs DLL, ce qui impose le dossier `bin/` à côté de `share/`. Le programme demande aussi
-à pango d'utiliser fontconfig, comme sous Linux, pour que les polices d'un document
-soient trouvées, ou remplacées, de la même façon partout.
+A Windows program is not installed under a fixed prefix: fontconfig and gdk-pixbuf
+therefore do not know where to look for their data. At startup, the program tells them
+(`engine.ConfigureRuntime`, which only acts if this folder is there). GLib and GTK
+find their schemas, icons and translations from the location of
+their DLLs, which requires the `bin/` folder next to `share/`. The program also asks
+pango to use fontconfig, as on Linux, so that the fonts of a document
+are found, or replaced, in the same way everywhere.
 
-Il y a deux exécutables parce qu'un programme Windows à fenêtre n'écrit nulle part dans
-un terminal, et qu'un programme console ouvre une fenêtre noire derrière ses fenêtres.
-`imageprintlayout.exe` est celui des raccourcis ; dans un terminal, utilisez
-`imageprintlayout-console.exe -version` pour joindre la version à un signalement de problème.
+There are two executables because a Windows program with a window writes nothing to
+a terminal, and a console program opens a black window behind its windows.
+`imageprintlayout.exe` is the one for shortcuts; in a terminal, use
+`imageprintlayout-console.exe -version` to attach the version to a problem report.
 
-Les paquets pèsent plusieurs dizaines de Mo (GTK 4 et ses dépendances) ; la CI donne la
-taille exacte de chaque construction.
+The packages weigh several tens of MB (GTK 4 and its dependencies); the CI gives the
+exact size of each build.
 
-**Langues.** La fenêtre suit la langue de Windows (français, anglais, espagnol ou
-allemand, l'anglais sinon) ; le menu de la fenêtre ou `-lang` en choisit une autre, et
-le choix est enregistré dans `%AppData%\imageprintlayout\settings.json`. L'installeur
-suit lui aussi la langue de Windows.
+**Languages.** The window follows the language of Windows (French, English, Spanish or
+German, English otherwise); the window's menu or `-lang` picks another one, and
+the choice is saved in `%AppData%\imageprintlayout\settings.json`. The installer
+also follows the language of Windows.
 
-Les polices viennent de Windows (`C:\Windows\Fonts`, et les polices installées par
-l'utilisateur) : **le paquet n'en embarque aucune**. Un dessin qui demande IBM Plex
-l'aura si elle est installée ; sinon, une police de remplacement est choisie (voir
+The fonts come from Windows (`C:\Windows\Fonts`, and the fonts installed by the
+user): **the package bundles none**. A drawing that asks for IBM Plex
+will have it if it is installed; otherwise, a replacement font is chosen (see
 `ARCHITECTURE.md`, §12).
 
-## Comment ça marche
+## How it works
 
-`build-windows.ps1` (à la racine, un simple relais) appelle `windows\build-windows.ps1`,
-qui lit `VERSION`, calcule la version à construire, demande confirmation, prépare MSYS2 et
-NSIS, puis lance `windows/build-windows.sh --version X.Y.Z` dans un terminal MSYS2 UCRT64 ;
-quand tout a réussi, il écrit la nouvelle version dans `VERSION`. Le script bash :
+`build-windows.ps1` (at the root, a simple relay) calls `windows\build-windows.ps1`,
+which reads `VERSION`, computes the version to build, asks for confirmation, prepares MSYS2 and
+NSIS, then runs `windows/build-windows.sh --version X.Y.Z` in an MSYS2 UCRT64 terminal;
+when everything has succeeded, it writes the new version to `VERSION`. The bash script:
 
-1. vérifie les paquets MSYS2 (et les installe avec `--install-deps`) ;
-2. fabrique la ressource Windows (icône, propriétés du fichier) avec `windres` ;
-3. compile le programme avec Go et cgo (GTK 4, librsvg et cairo de MSYS2), deux fois : en
-   sous-système Windows (la fenêtre) et en sous-système console, et vérifie le
-   sous-système de chacun ;
-4. prépare le dossier du paquet : les deux programmes, les DLL dont ils dépendent
-   (trouvées avec `ldd`, de proche en proche : les DLL de Windows lui-même sont exclues),
-   les chargeurs d'images et leur cache, la configuration de fontconfig, les schémas,
-   les icônes et les traductions de GTK, les licences ;
-5. **lance le programme console avec `-selftest` et le seul PATH de Windows** : si une DLL, une
-   police ou un chargeur d'images manque, la construction s'arrête là, sans produire de
-   paquet cassé ;
-6. crée le `.zip` (ordre des fichiers et dates fixés), puis l'installeur avec NSIS.
+1. checks the MSYS2 packages (and installs them with `--install-deps`);
+2. makes the Windows resource (icon, file properties) with `windres`;
+3. compiles the program with Go and cgo (GTK 4, librsvg and cairo from MSYS2), twice: as a
+   Windows subsystem program (the window) and as a console subsystem program, and checks the
+   subsystem of each;
+4. prepares the package folder: the two programs, the DLLs they depend on
+   (found with `ldd`, step by step: the DLLs of Windows itself are excluded),
+   the image loaders and their cache, the fontconfig configuration, the schemas,
+   the icons and the translations of GTK, the licenses;
+5. **runs the console program with `-selftest` and only the Windows PATH**: if a DLL, a
+   font or an image loader is missing, the build stops there, without producing a
+   broken package;
+6. creates the `.zip` (file order and dates fixed), then the installer with NSIS.
 
-L'installeur (`installer.nsi`) copie ce même dossier dans `C:\Program Files\SVG Print
-Layout`, ajoute l'entrée de *Paramètres > Applications* et les raccourcis, et se
-désinstalle en supprimant exactement les fichiers qu'il a installés : aucun dossier
-n'est effacé en bloc, au cas où l'utilisateur aurait choisi un dossier qui contient
-autre chose. Une mise à jour retire d'abord la version installée. Une installation de « SVG Print Layout » (le nom du programme jusqu'à la 1.0.x) est retirée de la même façon par l'installeur d'Image Print Layout, avec son propre désinstalleur ; les réglages et les projets restent.
+The installer (`installer.nsi`) copies this same folder into `C:\Program Files\SVG Print
+Layout`, adds the entry in *Settings > Apps* and the shortcuts, and
+uninstalls by deleting exactly the files it installed: no folder
+is erased wholesale, in case the user chose a folder that contains
+something else. An update first removes the installed version. An installation of "SVG Print Layout" (the program's name up to 1.0.x) is removed in the same way by the Image Print Layout installer, with its own uninstaller; the settings and the projects remain.
 
-Installation silencieuse, pour un déploiement :
+Silent installation, for a deployment:
 
 ```powershell
-.\imageprintlayout_X.Y.Z_windows-setup.exe /S /D=C:\Outils\Image Print Layout   # /D= en dernier, sans guillemets
-C:\Outils\Image Print Layout\Uninstall.exe /S
+.\imageprintlayout_X.Y.Z_windows-setup.exe /S /D=C:\Tools\Image Print Layout   # /D= last, without quotes
+C:\Tools\Image Print Layout\Uninstall.exe /S
 ```
 
-## Fichiers de ce dossier
+## Files in this folder
 
-| Fichier | Rôle |
+| File | Role |
 | --- | --- |
-| `build-windows.ps1` | Options et version, prérequis (MSYS2, NSIS, en proposant de les installer), lance la construction |
-| `build-windows.sh` | La construction, dans un terminal MSYS2 UCRT64 |
-| `installer.nsi` | Le script NSIS de l'installeur |
-| `imageprintlayout.ico` | L'icône du programme et de l'installeur |
+| `build-windows.ps1` | Options and version, prerequisites (MSYS2, NSIS, offering to install them), runs the build |
+| `build-windows.sh` | The build, in an MSYS2 UCRT64 terminal |
+| `installer.nsi` | The NSIS script of the installer |
+| `imageprintlayout.ico` | The icon of the program and of the installer |
 
-Les deux fichiers `.ps1` et `installer.nsi` sont en **UTF-8 avec marque d'ordre des
-octets (BOM)** : Windows PowerShell 5.1 et NSIS en ont besoin pour lire les accents.
-Ne les enregistrez pas sans BOM.
+The two `.ps1` files and `installer.nsi` are in **UTF-8 with a byte order mark
+(BOM)**: Windows PowerShell 5.1 and NSIS need it to read accents.
+Do not save them without a BOM.
 
-## Ce qui est vérifié, et par qui
+## What is verified, and by whom
 
-La CI (job `windows-package`, sur `windows-2022` et `windows-latest`) fait exactement ce que
-fait un utilisateur : elle exécute `.\build-windows.ps1 -Patch -Oui` dans Windows PowerShell 5.1 (et vérifie que
-`VERSION` est mis à jour après la construction), puis
-décompresse le `.zip`, lance `imageprintlayout-console.exe -selftest` avec le seul PATH de
-Windows, puis **ouvre la fenêtre** dans les quatre langues (le programme crée un fichier
-avec `-ready-file` quand la fenêtre est affichée et le document dessiné) et en enregistre
-une capture d'écran, déposée en artefact `windows-screenshots-<système>` ; elle installe ensuite en
-silence avec l'installeur, lance `-selftest` et la fenêtre depuis le dossier installé,
-et désinstalle en vérifiant que rien ne reste ; enfin `-Clean` doit retirer les
-paquets. Le rendu logiciel de GTK est demandé pour ces essais (`GSK_RENDERER=cairo`) :
-une machine virtuelle n'a pas de carte graphique.
+The CI (`windows-package` job, on `windows-2022` and `windows-latest`) does exactly what
+a user does: it runs `.\build-windows.ps1 -Patch -Oui` in Windows PowerShell 5.1 (and checks that
+`VERSION` is updated after the build), then
+unzips the `.zip`, runs `imageprintlayout-console.exe -selftest` with only the PATH of
+Windows, then **opens the window** in the four languages (the program creates a file
+with `-ready-file` when the window is displayed and the document drawn) and takes
+a screenshot of it, deposited as a `windows-screenshots-<system>` artifact; it then installs silently
+with the installer, runs `-selftest` and the window from the installed folder,
+and uninstalls, checking that nothing remains; finally `-Clean` must remove the
+packages. GTK's software rendering is requested for these trials (`GSK_RENDERER=cairo`):
+a virtual machine has no graphics card.
 
-L'installeur a aussi été compilé et exécuté sous Wine, sur Linux, avec une arborescence
-d'essai : installation, mise à jour par-dessus une installation, désinstallation.
+The installer has also been compiled and run under Wine, on Linux, with a test
+tree: installation, update over an existing installation, uninstallation.
 
-**Windows 10 et 11.** Les paquets visent les deux, en 64 bits. La CI n'a pas de Windows 10 ni
-de Windows 11, seulement des Windows Server : Windows Server 2022 (le plus ancien proposé) sert
-de repère pour Windows 10, Windows Server 2025 pour Windows 11. Les deux ont été construits et
-essayés, et les paquets de la CI ont été essayés à la main sur une machine Windows réelle
-(recette de M5). Ce sont les mêmes paquets pour les deux versions de Windows : l'installeur
-ne vérifie que le 64 bits.
+**Windows 10 and 11.** The packages target both, in 64-bit. The CI has no Windows 10 nor
+Windows 11, only Windows Server: Windows Server 2022 (the oldest offered) serves
+as the reference for Windows 10, Windows Server 2025 for Windows 11. Both were built and
+tried, and the CI packages were tried by hand on a real Windows machine
+(M5 acceptance run). These are the same packages for both versions of Windows: the installer
+only checks for 64-bit.
 
-**Pas encore vu sur une machine réelle** : la construction par l'utilisateur avec ses propres
-installations de MSYS2 (la CI la fait sur un MSYS2 neuf). Des ajustements seront peut-être
-nécessaires au premier essai.
+**Not yet seen on a real machine**: the build by the user with their own
+MSYS2 installations (the CI does it on a fresh MSYS2). Adjustments may be
+needed on the first trial.
 
-## Dépannage
+## Troubleshooting
 
-**« ce script doit s'exécuter dans un terminal MSYS2 UCRT64 »**
-`build-windows.sh` a été lancé dans un autre terminal (MSYS, MINGW64, Git Bash).
-Lancez `.\build-windows.ps1`, ou ouvrez « MSYS2 UCRT64 » dans le menu Démarrer.
+**"ce script doit s'exécuter dans un terminal MSYS2 UCRT64"** (the script's message, in French: "this script must run in an MSYS2 UCRT64 terminal")
+`build-windows.sh` was run in another terminal (MSYS, MINGW64, Git Bash).
+Run `.\build-windows.ps1`, or open "MSYS2 UCRT64" from the Start menu.
 
-**`pacman` : « target not found » ou erreurs 404 sur les paquets**
-La base de paquets de MSYS2 est périmée. Dans un terminal MSYS2 UCRT64, `pacman -Syu`
-(deux fois si MSYS2 demande de relancer la mise à jour), puis relancez la construction.
+**`pacman`: "target not found" or 404 errors on the packages**
+The MSYS2 package database is out of date. In an MSYS2 UCRT64 terminal, `pacman -Syu`
+(twice if MSYS2 asks to restart the update), then rerun the build.
 
-**« bibliothèques introuvables pour … »**
-`ldd` ne voit pas une DLL de MSYS2 : c'est le signe que le script n'a pas été lancé dans
-un terminal UCRT64, ou qu'un paquet est à moitié installé (`pacman -S --needed` le
-répare).
+**"bibliothèques introuvables pour …"** (the script's message, in French: "libraries not found for …")
+`ldd` does not see an MSYS2 DLL: this is a sign that the script was not run in
+a UCRT64 terminal, or that a package is half installed (`pacman -S --needed` repairs
+it).
 
-**La fenêtre ne s'ouvre pas, ou une ligne de commande n'affiche rien**
-`imageprintlayout.exe` est le programme à fenêtre : lancé depuis un terminal il n'écrit rien.
-Utilisez `imageprintlayout-console.exe` pour voir les messages (`-version`, `-selftest`, ou
-le message d'une erreur de démarrage).
+**The window does not open, or a command line prints nothing**
+`imageprintlayout.exe` is the program with a window: launched from a terminal it writes nothing.
+Use `imageprintlayout-console.exe` to see the messages (`-version`, `-selftest`, or
+the message of a startup error).
 
-**« l'auto-test du programme échoue hors de MSYS2 »**
-Le paquet est incomplet. Le message d'`-selftest`, affiché juste au-dessus, dit ce qui
-manque : une police (« aucune police n'a été incorporée »), une image PNG qui n'apparaît
-pas (chargeurs d'images ou leur cache), ou une DLL (la fenêtre d'erreur de Windows
-nomme la DLL).
+**"l'auto-test du programme échoue hors de MSYS2"** (the script's message, in French: "the program's self-test fails outside MSYS2")
+The package is incomplete. The message of `-selftest`, displayed just above, says what is
+missing: a font ("aucune police n'a été incorporée", i.e. "no font was embedded"), a PNG image that does not appear
+(image loaders or their cache), or a DLL (the Windows error window
+names the DLL).
 
-**NSIS introuvable**
-`winget install NSIS.NSIS`, puis relancez. Le script cherche `makensis.exe` dans
-`C:\Program Files (x86)\NSIS` et `C:\Program Files\NSIS`, ou dans le dossier de la
-variable `NSIS_HOME`.
+**NSIS not found**
+`winget install NSIS.NSIS`, then rerun. The script looks for `makensis.exe` in
+`C:\Program Files (x86)\NSIS` and `C:\Program Files\NSIS`, or in the folder of the
+`NSIS_HOME` variable.
 
-**Les accents sont illisibles dans la console**
-Une console Windows en page de codes ancienne : `chcp 65001`, ou utilisez Windows
+**Accents are unreadable in the console**
+A Windows console with an old code page: `chcp 65001`, or use Windows
 Terminal.
 
-**Un antivirus met l'installeur en quarantaine**
-Un exécutable non signé et peu répandu peut déclencher une alerte. Ce n'est pas un
-indice d'infection ; le code est public, et le paquet se construit soi-même avec ce
+**An antivirus quarantines the installer**
+An unsigned, little-used executable can trigger an alert. This is not an
+indication of infection; the code is public, and you can build the package yourself with this
 script.

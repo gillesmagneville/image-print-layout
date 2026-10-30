@@ -17,7 +17,7 @@ import (
 	"github.com/gillesmagneville/image-print-layout/internal/layout"
 )
 
-// The HTML export (ARCHITECTURE §6, "Page HTML"): the document in one file
+// The HTML export (ARCHITECTURE §6, "HTML page"): the document in one file
 // that a browser opens, with nothing to fetch. The picture is written once, as
 // the background of a style rule; the page shows it whole, or in one piece for
 // each page of the plan, each piece being a box that shows its band of the

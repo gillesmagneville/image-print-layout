@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: GPL-3.0-only
+[Desktop Entry]
+Type=Application
+Name=SVG Print Layout
+GenericName=Mise en page SVG pour l'impression
+Comment=Découpe un dessin SVG en pages et l'exporte en PDF multipage
+Exec=svgprintlayout %f
+Icon=svgprintlayout
+Terminal=false
+Categories=Graphics;2DGraphics;VectorGraphics;
+MimeType=image/svg+xml;
+Keywords=SVG;PDF;impression;print;pages;coupures;

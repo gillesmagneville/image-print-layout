@@ -3,10 +3,16 @@
 *.exe
 *.test
 
-# Packages built by build-deb.sh, build-rpm.sh and build-windows.ps1 at the root
+# Packages built by build-deb.sh, build-rpm.sh and build-windows.ps1 at the root,
+# and their checksum files (one .sha256 per package)
 /*.deb
 /*.rpm
 /*.zip
+/*.sha256
+
+# Build folders (the scripts build in $HOME/deb-build and $HOME/rpm-build; dist/ is
+# only a leftover of older builds)
+/dist/
 
 # Go tooling
 coverage.out

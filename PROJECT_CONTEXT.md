@@ -2,207 +2,209 @@
 
 # PROJECT_CONTEXT.md
 
+🇫🇷 [Version française](PROJECT_CONTEXT.fr.md)
+
 # Image Print Layout
 
-**Image Print Layout** est une application de bureau, écrite en **Go**, qui prépare un
-document de dimensions quelconques, dessin vectoriel SVG ou image (JPEG, PNG, TIFF, WebP,
-BMP, GIF), pour l'impression sur plusieurs feuilles de papier standard : on choisit le
-papier et la largeur du document, on place les coupures entre les pages sur un aperçu,
-puis on exporte **un seul PDF multipage** (vectoriel pour un SVG).
+**Image Print Layout** is a desktop application, written in **Go**, that prepares a
+document of any dimensions, SVG vector drawing or image (JPEG, PNG, TIFF, WebP,
+BMP, GIF), for printing on several sheets of standard paper: you choose the
+paper and the width of the document, place the breaks between pages on a preview,
+then export **a single multi-page PDF** (vector for an SVG).
 
-Elle s'adresse à toute personne qui doit imprimer un grand dessin (un schéma, par exemple)
-sans connaître les coordonnées SVG, la programmation ou la géométrie.
+It is aimed at anyone who has to print a large drawing (a diagram, for example)
+without knowing SVG coordinates, programming or geometry.
 
-> **Auteur :** Image Print Layout est développé par Gilles MAGNEVILLE, et conçu avec l'aide de claude.ai.
+> **Author:** Image Print Layout is developed by Gilles MAGNEVILLE, and designed with the help of claude.ai.
 
-> **Note sur ce document :** PROJECT_CONTEXT.md dit *pourquoi* le projet existe et *ce qu'il
-> valorise*. Il ne répète ni les formules, ni les interfaces, ni les formats de fichier :
-> ceux-ci vivent une seule fois, de façon canonique, dans `ARCHITECTURE.md`, pour que les
-> deux documents ne puissent pas diverger en silence. Les exigences détaillées sont celles du
-> cahier des charges (version 1.0).
+> **Note on this document:** PROJECT_CONTEXT.md says *why* the project exists and *what it
+> values*. It repeats neither the formulas, nor the interfaces, nor the file formats:
+> these live once, canonically, in `ARCHITECTURE.md`, so that the
+> two documents cannot silently diverge. The detailed requirements are those of the
+> specification (version 1.0).
 
 ---
 
 # Vision
 
-Imprimer un grand dessin sur plusieurs feuilles pose toujours la même question :
+Printing a large drawing on several sheets always raises the same question:
 
-> **« Où couper, à quelle largeur, et le résultat sera-t-il exactement ce que je vois ? »**
+> **"Where to cut, at what width, and will the result be exactly what I see?"**
 
-Image Print Layout répond à cette question avec un aperçu interactif : le dessin entier, les
-limites de chaque page, des lignes de coupure que l'on déplace à la souris, et pour chaque
-page ses dimensions, son échelle et son état. Le PDF exporté est celui que l'aperçu montrait.
+Image Print Layout answers this question with an interactive preview: the whole drawing, the
+limits of each page, cut lines that you move with the mouse, and for each
+page its dimensions, its scale and its status. The exported PDF is the one the preview showed.
 
-Le nombre de pages découle des dimensions du dessin, du format du papier, de la largeur
-choisie et des positions des coupures. Il n'est jamais imposé.
+The number of pages follows from the dimensions of the drawing, the paper size, the chosen
+width and the positions of the cuts. It is never imposed.
 
 ---
 
-# Principes du projet
+# Project principles
 
-Image Print Layout suit cinq principes.
+Image Print Layout follows five principles.
 
-## 1. Jamais de déformation silencieuse
+## 1. Never a silent distortion
 
-Le dessin a **une seule échelle**, la même pour toutes les pages. Les proportions sont
-conservées, sauf demande explicite de l'utilisateur. Ajouter ou déplacer une coupure, ou
-changer un alignement, ne modifie jamais la largeur du dessin.
+The drawing has **a single scale**, the same for all pages. Proportions are
+kept, unless the user explicitly asks otherwise. Adding or moving a cut, or
+changing an alignment, never changes the width of the drawing.
 
-Quand une portion est trop haute pour une feuille, le logiciel ne réduit **pas** le dessin
-pour la faire tenir : il le dit, et propose.
+When a portion is too tall for a sheet, the software does **not** shrink the drawing
+to make it fit: it says so, and offers options.
 
-Mauvais :
+Bad:
 
 ```
-La page 3 a été réduite à 95 % pour tenir sur la feuille.
+Page 3 was reduced to 95% to fit on the sheet.
 ```
 
-Bon :
+Good:
 
 ```
-La page 3 dépasse de 14 mm la hauteur utile (277 mm). Rien n'a été modifié.
+Page 3 exceeds the usable height (277 mm) by 14 mm. Nothing was changed.
 
-Vous pouvez : ajouter une coupure, déplacer la coupure voisine,
-réduire l'échelle à 95 % (largeur 190 mm), ou choisir un format plus grand.
+You can: add a cut, move the neighboring cut,
+reduce the scale to 95% (width 190 mm), or choose a larger format.
 ```
 
-Aucune de ces propositions n'est appliquée sans un clic.
+None of these proposals is applied without a click.
 
 ---
 
-## 2. Le fichier source n'est jamais modifié
+## 2. The source file is never modified
 
-Le fichier d'origine (SVG ou image) n'est jamais ouvert en écriture. Toute transformation (remplacer ou
-supprimer le fond, par exemple) s'applique à une copie de travail, et le projet n'en garde
-que l'instruction, rejouée à chaque chargement.
-
----
-
-## 3. L'aperçu est le PDF
-
-L'aperçu est la fonction centrale de l'application. Aperçu et export dessinent à partir du
-même plan de pages : ce que l'utilisateur voit, ce sont les coupures, l'échelle et les
-positions que le PDF reproduira.
-
-Ce qui ne peut pas être reproduit fidèlement (effet rastérisé, police absente, fonction SVG
-non prise en charge) est **signalé avant l'export**, jamais reconstitué en silence.
+The original file (SVG or image) is never opened for writing. Any transformation (replacing or
+removing the background, for example) is applied to a working copy, and the project keeps
+only the instruction, replayed on each load.
 
 ---
 
-## 4. L'utilisateur garde le contrôle
+## 3. The preview is the PDF
 
-Les coupures automatiques, les corrections et les réglages détectés (comme le rectangle de
-fond) sont des **propositions**. L'utilisateur peut toujours les déplacer, les refuser ou les
-annuler.
+The preview is the central function of the application. Preview and export draw from the
+same page plan: what the user sees are the cuts, the scale and the
+positions that the PDF will reproduce.
 
-Les opérations courantes se font dans la fenêtre principale, sans enchaîner les boîtes de
-dialogue. Chaque message d'erreur dit ce qui a échoué, pourquoi, et ce que l'on peut faire.
-
----
-
-## 5. Déterministe et hors ligne
-
-À paramètres identiques, le résultat est identique (à versions de bibliothèques et à polices
-égales : les limites exactes sont dans `ARCHITECTURE.md`). L'application ne recourt à aucun
-service en ligne et n'envoie aucune donnée.
+What cannot be faithfully reproduced (rasterized effect, missing font, unsupported
+SVG feature) is **reported before the export**, never silently reconstructed.
 
 ---
 
-# Périmètre
+## 4. The user stays in control
 
-Image Print Layout couvre, pour la version 1.0 :
+Automatic cuts, corrections and detected settings (such as the background
+rectangle) are **proposals**. The user can always move them, refuse them or
+undo them.
 
-* l'import de SVG 1.1 et de SVG compatibles Inkscape ;
-* depuis la version 1.2, l'import d'images matricielles (JPEG, PNG, TIFF, WebP, BMP, GIF), qui se
-  découpent et s'impriment comme un SVG ;
-* les formats A0 à A5, Letter, Legal, Tabloid et un format personnalisé, en portrait ou en
-  paysage, avec quatre marges indépendantes ;
-* trois modes d'échelle : ajustement à la largeur, à la hauteur, ou échelle manuelle ;
-* l'aperçu interactif, les coupures manuelles et la proposition de coupures automatiques ;
-* le calcul des pages et de leur état (conforme ou dépassement) ;
-* la gestion du fond : détection, remplacement par du blanc, suppression, conservation ;
-* le positionnement du dessin sur chaque feuille ;
-* l'export en un seul PDF multipage, avec vérifications avant et après ;
-* l'enregistrement et la réouverture d'un projet de mise en page.
-
-Image Print Layout **n'est pas**, dans la version 1.0 :
-
-* un éditeur de dessin : la seule modification du contenu est le réglage du fond ;
-* un outil d'impression en mosaïque avec chevauchement, ni de marques de raccord ;
-* un outil de numérotation ou de pied de page ;
-* un convertisseur : l'entrée est un SVG ou une image, jamais un PDF, et le programme ne
-  retouche pas les pixels (pas de recadrage, de rééchantillonnage ni de correction de couleur) ;
-* un outil qui tient compte des marges non imprimables propres à une imprimante.
-
-Ces fonctions sont listées au §14 du cahier des charges comme possibles ultérieurement.
+Everyday operations are done in the main window, without chaining dialog
+boxes. Each error message says what failed, why, and what can be done.
 
 ---
 
-# Plateformes visées
+## 5. Deterministic and offline
 
-* Linux, notamment Ubuntu ;
-* Windows 10 et Windows 11.
-
-Langage : Go. Format de sortie principal : PDF multipage vectoriel.
-
-Les versions d'Ubuntu à prendre en charge ne sont pas encore fixées : elles dépendent de la
-version de librsvg fournie (voir « Questions ouvertes » dans `ARCHITECTURE.md`).
+With identical parameters, the result is identical (given equal library versions and
+fonts: the exact limits are in `ARCHITECTURE.md`). The application uses no online
+service and sends no data.
 
 ---
 
-# Critère de réussite
+# Scope
 
-Le logiciel est considéré comme fonctionnel lorsque les 14 tests d'acceptation du cahier des
-charges réussissent : du schéma Mini-CAD (1 280 × 5 479 unités SVG) importé sur A4 portrait à
-200 mm de largeur jusqu'à la réouverture du projet.
+For version 1.0, Image Print Layout covers:
 
-> Le test est réussi si le PDF final est fidèle à l'aperçu et si aucune page ne subit de
-> redimensionnement silencieux.
+* import of SVG 1.1 and of Inkscape-compatible SVG;
+* since version 1.2, import of raster images (JPEG, PNG, TIFF, WebP, BMP, GIF), which are
+  cut and printed like an SVG;
+* the formats A0 to A5, Letter, Legal, Tabloid and a custom format, in portrait or
+  landscape, with four independent margins;
+* three scale modes: fit to width, to height, or manual scale;
+* the interactive preview, manual cuts and the proposal of automatic cuts;
+* the computation of the pages and of their status (compliant or overflow);
+* background handling: detection, replacement by white, removal, keeping;
+* the positioning of the drawing on each sheet;
+* export to a single multi-page PDF, with checks before and after;
+* saving and reopening a layout project.
 
-La correspondance entre ces 14 tests et leur vérification automatique est dans
-`ARCHITECTURE.md` (« Stratégie de tests »).
+In version 1.0, Image Print Layout **is not**:
 
----
+* a drawing editor: the only change to the content is the background setting;
+* a tiled printing tool with overlap, nor does it provide alignment marks;
+* a numbering or footer tool;
+* a converter: the input is an SVG or an image, never a PDF, and the program does not
+  touch up the pixels (no cropping, resampling or color correction);
+* a tool that takes into account the non-printable margins specific to a printer.
 
-# Principes de code
-
-* Go ; la bibliothèque standard d'abord, une dépendance seulement quand elle se justifie.
-* La logique de calcul (modèle, unités, mise en page, projet) ne dépend ni de l'interface ni
-  de cgo : elle se teste partout, sans bibliothèque graphique.
-* Une seule échelle dans le modèle : aucune fonction n'accepte deux facteurs séparés pour la
-  largeur et la hauteur.
-* Aucun horodatage, aucun identifiant aléatoire, aucun ordre dépendant d'une table de hachage
-  dans ce que l'application écrit (PDF, projet).
-
----
-
-# Évolutions possibles
-
-Après la version 1.0 (cahier des charges, §14) :
-
-* impression en mosaïque avec chevauchement pour assemblage ;
-* traits de repérage et marques de raccord ;
-* numérotation et pied de page ;
-* rotation automatique des pages ;
-* import de PDF (les images matricielles sont lues depuis la version 1.2) ;
-* détection avancée des groupes logiques du SVG ;
-* prévisualisation des marges non imprimables propres à l'imprimante.
-
-Aucune n'est nécessaire pour que la version 1.0 soit utile.
+These functions are listed in §14 of the specification as possible later additions.
 
 ---
 
-# Valeurs
+# Target platforms
 
-Image Print Layout valorise :
+* Linux, notably Ubuntu;
+* Windows 10 and Windows 11.
 
-* la fidélité à l'aperçu
-* la clarté
-* le contrôle de l'utilisateur
-* la reproductibilité
-* la transparence sur ce qui n'est pas pris en charge
-* la portabilité
+Language: Go. Main output format: vector multi-page PDF.
 
-Avant tout :
+The Ubuntu versions to support are not yet fixed: they depend on the
+version of librsvg provided (see "Open questions" in `ARCHITECTURE.md`).
 
-**Aucune page ne subit de redimensionnement silencieux.**
+---
+
+# Success criterion
+
+The software is considered functional when the 14 acceptance tests of the
+specification pass: from the Mini-CAD diagram (1,280 × 5,479 SVG units) imported on A4 portrait at
+200 mm width to the reopening of the project.
+
+> The test passes if the final PDF is faithful to the preview and if no page undergoes
+> silent resizing.
+
+The correspondence between these 14 tests and their automatic verification is in
+`ARCHITECTURE.md` ("Test strategy").
+
+---
+
+# Code principles
+
+* Go; the standard library first, a dependency only when it is justified.
+* The computation logic (model, units, layout, project) depends neither on the interface nor
+  on cgo: it is tested everywhere, without a graphics library.
+* A single scale in the model: no function accepts two separate factors for the
+  width and the height.
+* No timestamp, no random identifier, no order depending on a hash table
+  in what the application writes (PDF, project).
+
+---
+
+# Possible future developments
+
+After version 1.0 (specification, §14):
+
+* tiled printing with overlap for assembly;
+* registration lines and alignment marks;
+* numbering and footer;
+* automatic page rotation;
+* PDF import (raster images have been read since version 1.2);
+* advanced detection of the logical groups of the SVG;
+* preview of the non-printable margins specific to the printer.
+
+None is needed for version 1.0 to be useful.
+
+---
+
+# Values
+
+Image Print Layout values:
+
+* fidelity to the preview
+* clarity
+* user control
+* reproducibility
+* transparency about what is not supported
+* portability
+
+Above all:
+
+**No page undergoes silent resizing.**

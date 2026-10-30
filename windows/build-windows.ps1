@@ -378,7 +378,7 @@ try {
     $rc = Invoke-Msys "bash $BuildScript$installDeps --version $NewVersion"
     if ($rc -ne 0) {
         Write-Host ""
-        Write-Host "La construction a échoué (code $rc). Voir windows\README.md, section Dépannage." -ForegroundColor Red
+        Write-Host "La construction a échoué (code $rc). Voir windows\README.fr.md, section Dépannage." -ForegroundColor Red
         exit $rc
     }
 } finally {
@@ -413,7 +413,7 @@ if ($NoVersionChange) {
     [System.IO.File]::WriteAllText($VersionFile, "$NewVersion`n")
     Write-Host "   Version enregistrée : $NewVersion"
     if ($NewVersion -notmatch '-') {
-        Write-Host "   Pensez à ajouter « ## [$NewVersion] » à CHANGELOG.md (voir CONTRIBUTING.md)."
+        Write-Host "   Pensez à ajouter « ## [$NewVersion] » à CHANGELOG.md et à CHANGELOG.fr.md (voir CONTRIBUTING.fr.md)."
     }
 }
 exit 0

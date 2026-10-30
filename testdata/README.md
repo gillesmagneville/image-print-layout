@@ -1,10 +1,12 @@
 <!-- SPDX-License-Identifier: GPL-3.0-only -->
 
-# Jeux de test
+# Test data
 
-Ce dossier accueille les documents de référence (SVG). Les images d'essai ne sont pas
-versionnées : le paquet `internal/testimg` les fabrique à la demande.
+🇫🇷 [Version française](README.fr.md)
 
-Le schéma **Mini-CAD** (1 280 × 5 479 unités SVG) utilisé par les tests
-d'acceptation 1 à 14 du cahier des charges n'est pas encore versionné ici :
-à ajouter dès que le fichier est disponible.
+This folder holds the reference documents (SVG). The sample images are not
+versioned: the `internal/testimg` package builds them on demand.
+
+The **Mini-CAD** diagram (1,280 × 5,479 SVG units) used by acceptance
+tests 1 to 14 of the specification is not versioned here yet:
+to be added as soon as the file is available.

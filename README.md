@@ -2,224 +2,228 @@
 
 # Image Print Layout
 
-Application de bureau (Linux — Debian, Ubuntu, Red Hat et leurs dérivés —, Windows 10 et 11, écrite en Go) pour **mettre en page, découper et imprimer un document SVG ou une image (JPEG, PNG, TIFF…) sur plusieurs feuilles de papier standard**, puis l'exporter en **PDF multipage** (vectoriel pour un SVG) ou en **page HTML unique**, image entière ou découpée aux coupures.
+🇫🇷 [Version française](README.fr.md)
 
-Développé par Gilles MAGNEVILLE, conçu avec l'aide de [claude.ai](https://claude.ai).
+Desktop application (Linux — Debian, Ubuntu, Red Hat and their derivatives —, Windows 10 and 11, written in Go) to **lay out, cut and print an SVG document or an image (JPEG, PNG, TIFF…) on several sheets of standard paper**, then export it as a **multi-page PDF** (vector for an SVG) or as a **single HTML page**, the whole image or cut at the breaks.
 
-> **Image Print Layout s'appelait « SVG Print Layout » jusqu'à la version 1.0.x.** Le nom a changé parce que le programme ouvre aussi des images (JPEG, PNG, TIFF…), ce qu'il fait depuis la 1.2.0. Les projets `.svgpl` de la 1.0.x s'ouvrent toujours, la langue choisie est reprise et installer un paquet remplace l'ancien (voir le [CHANGELOG](CHANGELOG.md)).
+Developed by Gilles MAGNEVILLE, designed with the help of [claude.ai](https://claude.ai).
 
-> **État : version 1.3.0, toutes les fonctions du cahier des charges sont là (jalons M1 à M5), et la recette a été faite à la main sous Ubuntu et sous Windows.** La fenêtre GTK4, en **français, anglais, espagnol et allemand**, ouvre un SVG ou une image (JPEG, PNG, TIFF, WebP, BMP, GIF), l'analyse (fonctions non prises en charge, polices absentes, images introuvables ; pour une image, sa résolution, un fichier tronqué ou de plusieurs pages), calcule ses pages avec les réglages de papier, de marges, d'échelle et de positionnement, et montre l'aperçu avec les limites et les numéros de page, la liste des pages et les corrections proposées quand une page dépasse. On y ajoute, déplace et supprime les coupures à la souris (double-clic, glisser, aimantation aux vides, clavier) ou on demande des coupures automatiques, sans jamais changer l'échelle. On y choisit le fond du document (le garder, le remplacer par du blanc, le supprimer, avec l'aperçu immédiat) et celui de la page (blanc opaque ou transparent), on voit chaque feuille telle qu'elle sera imprimée, puis on exporte un PDF multipage que le programme relit et vérifie avant de le livrer, ou une page HTML unique (Ctrl+Maj+E), relue elle aussi. On enregistre le projet (réglages, coupures, fond, positions) et on le rouvre plus tard : le fichier d'origine n'est jamais modifié, un document déplacé se localise, et une astérisque dans le titre signale les changements non enregistrés. Les 14 tests d'acceptation du cahier des charges sont automatisés (`internal/acceptance`). Le dépôt contient aussi le prototype du moteur (librsvg + cairo : rendu d'une fenêtre et export PDF multipage, validé sur le Mini-CAD, voir [`docs/M0.md`](docs/M0.md)), les scripts qui construisent les paquets `.deb`, `.rpm` et Windows (voir [Paquets](#paquets)) et la CI.
+> **Image Print Layout was called "SVG Print Layout" up to version 1.0.x.** The name changed because the program also opens images (JPEG, PNG, TIFF…), which it has done since 1.2.0. The `.svgpl` projects of 1.0.x still open, the chosen language is kept and installing a package replaces the old one (see the [CHANGELOG](CHANGELOG.md)).
 
-## Principe
+> **Status: version 1.3.0, all the functions of the specification are there (milestones M1 to M5), and the acceptance run was done by hand on Ubuntu and on Windows.** The GTK4 window, in **French, English, Spanish and German**, opens an SVG or an image (JPEG, PNG, TIFF, WebP, BMP, GIF), analyzes it (unsupported features, missing fonts, missing images; for an image, its resolution, a truncated file or a multi-page one), computes its pages with the paper, margin, scale and positioning settings, and shows the preview with the page limits and numbers, the list of pages and the corrections offered when a page overflows. You add, move and delete the cuts with the mouse (double-click, drag, snapping to empty areas, keyboard) or ask for automatic cuts, without ever changing the scale. You choose the background of the document (keep it, replace it with white, remove it, with an immediate preview) and that of the page (opaque white or transparent), you see each sheet as it will be printed, then you export a multi-page PDF that the program rereads and checks before delivering it, or a single HTML page (Ctrl+Shift+E), also reread. You save the project (settings, cuts, background, positions) and reopen it later: the original file is never modified, a moved document can be relocated, and an asterisk in the title flags unsaved changes. The 14 acceptance tests of the specification are automated (`internal/acceptance`). The repository also contains the engine prototype (librsvg + cairo: rendering of a window and multi-page PDF export, validated on the Mini-CAD, see [`docs/M0.md`](docs/M0.md)), the scripts that build the `.deb`, `.rpm` and Windows packages (see [Packages](#packages)) and the CI.
 
-1. On ouvre un SVG de dimensions quelconques (par exemple un schéma de 1 280 × 5 479 unités) ou une image (une photo, un scan, une longue capture).
-2. On choisit le format papier, l'orientation, les marges et la largeur du dessin (ex. 200 mm sur A4 portrait).
-3. On place les coupures à la souris sur l'aperçu, ou on accepte une proposition automatique.
-4. On vérifie le résultat page par page, puis on exporte un seul PDF, ou une seule page HTML (voir [Page HTML](#page-html)).
+## Principle
 
-Règles fondamentales, reprises du cahier des charges :
+1. You open an SVG of any dimensions (for example a diagram of 1,280 × 5,479 units) or an image (a photo, a scan, a long screenshot).
+2. You choose the paper format, the orientation, the margins and the width of the drawing (e.g. 200 mm on A4 portrait).
+3. You place the cuts with the mouse on the preview, or accept an automatic proposal.
+4. You check the result page by page, then export a single PDF, or a single HTML page (see [HTML page](#html-page)).
 
-- **Une seule échelle pour tout le dessin** : les proportions ne sont jamais modifiées, et aucune page n'est réduite en silence pour « faire tenir » une portion trop haute — l'utilisateur est averti et choisit (ajouter une coupure, déplacer une coupure, changer l'échelle ou le papier).
-- **Le nombre de pages découle des dimensions et des coupures** ; il n'est jamais imposé.
-- **Le fichier d'origine n'est jamais modifié** : toutes les transformations (fond blanc, suppression du fond d'un SVG…) s'appliquent à une copie de travail.
-- **Le PDF est fidèle à l'aperçu** et déterministe : mêmes paramètres, même résultat.
-- **Aucun service en ligne**.
+Fundamental rules, taken from the specification:
 
-## Formats ouverts
+- **A single scale for the whole drawing**: proportions are never modified, and no page is silently shrunk to "make a portion that is too tall fit" — the user is warned and chooses (add a cut, move a cut, change the scale or the paper).
+- **The number of pages follows from the dimensions and the cuts**; it is never imposed.
+- **The original file is never modified**: all transformations (white background, removal of an SVG's background…) are applied to a working copy.
+- **The PDF is faithful to the preview** and deterministic: same parameters, same result.
+- **No online service**.
 
-Le format est reconnu au contenu du fichier, jamais à son extension. Une image se découpe et s'imprime comme un SVG : même échelle unique, mêmes coupures, même aperçu, même PDF.
+## Formats it opens
 
-| Format | Ce que le programme en fait |
+The format is recognized from the content of the file, never from its extension. An image is cut and printed like an SVG: same single scale, same cuts, same preview, same PDF.
+
+| Format | What the program does with it |
 | --- | --- |
-| SVG | Rendu vectoriel par librsvg ; le PDF garde les tracés et le texte. |
-| JPEG | Résolution (JFIF, à défaut Exif) et orientation (EXIF) lues. Le JPEG entre dans le PDF avec ses octets d'origine, sans recompression, quand le PDF sait le lire (8 bits, gris ou YCbCr). |
-| PNG | Résolution et transparence lues ; le fond de page se voit à travers les parties transparentes. |
-| TIFF | Première page ; résolution et orientation lues ; un fichier de plusieurs pages est signalé. |
-| WebP | Lu quand le chargeur gdk-pixbuf de WebP est installé (`webp-pixbuf-loader` sous Linux, que les paquets recommandent). Sinon, le fichier est refusé en le disant. |
-| BMP, GIF | Lus ; pour un GIF animé, seule la première image. |
+| SVG | Vector rendering by librsvg; the PDF keeps the paths and the text. |
+| JPEG | Resolution (JFIF, otherwise Exif) and orientation (EXIF) read. The JPEG goes into the PDF with its original bytes, without recompression, when the PDF can read it (8 bits, gray or YCbCr). |
+| PNG | Resolution and transparency read; the page background shows through the transparent parts. |
+| TIFF | First page; resolution and orientation read; a multi-page file is flagged. |
+| WebP | Read when the gdk-pixbuf WebP loader is installed (`webp-pixbuf-loader` on Linux, which the packages recommend). Otherwise, the file is refused, with a message saying so. |
+| BMP, GIF | Read; for an animated GIF, only the first frame. |
 
-La taille d'une image sur le papier est celle que son fichier indique : ses pixels divisés par sa résolution (une photo de 3 000 pixels à 300 points par pouce fait 254 mm à 100 %). Sans résolution, elle est comptée à 96 points par pouce, comme un écran, et le programme le dit. Une image fait au plus 100 millions de pixels : au-delà, elle est refusée avant d'être décodée. Une image n'a pas de fond à part à remplacer : seul le fond de page agit, à travers ses parties transparentes. Ses coupures automatiques tombent entre ses blocs quand elle a un fond uni (une capture, un schéma, une page numérisée) et se répartissent également quand elle n'en a pas (une photographie).
+The size of an image on paper is the one its file states: its pixels divided by its resolution (a 3,000-pixel photo at 300 dots per inch is 254 mm at 100%). Without a resolution, it is counted at 96 dots per inch, like a screen, and the program says so. An image is at most 100 million pixels: beyond that, it is refused before being decoded. An image has no separate background to replace: only the page background acts, through its transparent parts. Its automatic cuts fall between its blocks when it has a plain background (a screenshot, a diagram, a scanned page) and are spread evenly when it has none (a photograph).
 
-## Page HTML
+## HTML page
 
-Le bouton « Exporter en page HTML… » de la section Export (Ctrl+Maj+E) écrit la mise en page en **un seul fichier `.html`**, qui s'ouvre dans n'importe quel navigateur, hors connexion, sans dossier d'accompagnement : l'image y est écrite une seule fois.
+The "Export as HTML page…" button of the Export section (Ctrl+Shift+E) writes the layout as **a single `.html` file**, which opens in any browser, offline, without an accompanying folder: the image is written only once.
 
-- **Découpée aux coupures** (case cochée par défaut) : un morceau par page du plan, les uns sous les autres, avec leur légende (« Page 2 sur 4 »). Ce sont exactement les bandes de l'aperçu. Le navigateur imprime un morceau par feuille.
-- **Entière** (case décochée) : l'image d'un seul tenant, à la largeur du plan.
-- Un SVG reste vectoriel dans la page (son texte prend les polices de l'ordinateur qui ouvre la page) et ses images liées y sont incorporées. Un JPEG ou un PNG est écrit tel quel ; un TIFF, un GIF, un WebP ou un BMP, tel que l'aperçu le montre, en PNG.
-- Comme le PDF, la page est relue après l'écriture et comparée au plan ; si elle ne correspond pas, rien n'est livré. Au-delà de 256 Mo, l'export est refusé.
+- **Cut at the breaks** (box checked by default): one piece per page of the plan, one below the other, with their caption ("Page 2 of 4"). These are exactly the strips of the preview. The browser prints one piece per sheet.
+- **Whole** (box unchecked): the image in one piece, at the width of the plan.
+- An SVG stays vector in the page (its text uses the fonts of the computer opening the page) and its linked images are embedded in it. A JPEG or a PNG is written as is; a TIFF, a GIF, a WebP or a BMP, as the preview shows it, as a PNG.
+- Like the PDF, the page is reread after writing and compared with the plan; if it does not match, nothing is delivered. Beyond 256 MB, the export is refused.
 
-## Organisation du code
+## Code organization
 
 ```
-cmd/imageprintlayout/   point d'entrée : la fenêtre, ou -version, -selftest, -lang
-build-deb.sh, build-rpm.sh, build-windows.ps1   construisent les paquets (voir Paquets)
-debian/, metainfo/, icons/, windows/   fichiers qu'ils empaquettent ; docs/imageprintlayout.1 (+ fr/, es/, de/) : pages de manuel
+cmd/imageprintlayout/   entry point: the window, or -version, -selftest, -lang
+build-deb.sh, build-rpm.sh, build-windows.ps1   build the packages (see Packages)
+debian/, metainfo/, icons/, windows/   files they package; docs/imageprintlayout.1 (+ fr/, es/, de/): manual pages
 internal/
-  units/     conversions SVG / px / pt / mm, formats papier, marges      (Go pur, testé)
-  model/     types de données partagés                                    (Go pur)
-  layout/    calcul des pages, bandes, états, coupures automatiques       (Go pur)
-  project/   fichier projet .imgpl (JSON versionné, écriture déterministe) (Go pur)
-  svgdoc/    lecture du SVG : constats, polices, blocs, fond, copie de travail   (Go pur)
-  engine/    moteur de rendu : interface Document, librsvg (SVG) + gdk-pixbuf (images) + cairo + fontconfig par cgo
-  export/    exports PDF multipage et page HTML : contrôles avant, relecture et vérification du fichier écrit   (Go pur)
-  app/       session (projet, plan, historique), ouverture d'un document     (Go pur)
-  viewport/  arithmétique de la vue : zoom, déplacement, fenêtre à dessiner   (Go pur)
-  diag/      avertissements et erreurs destinés à l'utilisateur (un code et des valeurs)
-  i18n/      traduction : français, anglais, espagnol, allemand ; nombres  (Go pur, testé)
-  ui/        interface graphique : GTK4 via gotk4 (bouchon sans cgo)
-  testsvg/   générateur de SVG d'essai déterministe                      (Go pur)
-  testimg/   générateur d'images d'essai déterministe (PNG, TIFF, JPEG)   (Go pur)
-  acceptance/ les tests d'acceptation du cahier des charges sur toute la chaîne
-  repocheck/ tests sur le dépôt lui-même (en-têtes de licence, versions, documentation)
-docs/        rapports de jalon (M0.md)
-testdata/    documents de référence
+  units/     SVG / px / pt / mm conversions, paper formats, margins      (pure Go, tested)
+  model/     shared data types                                           (pure Go)
+  layout/    page computation, strips, statuses, automatic cuts          (pure Go)
+  project/   .imgpl project file (versioned JSON, deterministic writing) (pure Go)
+  svgdoc/    SVG reading: findings, fonts, blocks, background, working copy   (pure Go)
+  engine/    rendering engine: Document interface, librsvg (SVG) + gdk-pixbuf (images) + cairo + fontconfig through cgo
+  export/    multi-page PDF and HTML page exports: checks before, rereading and verification of the written file   (pure Go)
+  app/       session (project, plan, history), opening a document        (pure Go)
+  viewport/  view arithmetic: zoom, panning, window to draw              (pure Go)
+  diag/      warnings and errors meant for the user (a code and values)
+  i18n/      translation: French, English, Spanish, German; numbers     (pure Go, tested)
+  ui/        graphical interface: GTK4 through gotk4 (stub without cgo)
+  testsvg/   deterministic test SVG generator                           (pure Go)
+  testimg/   deterministic test image generator (PNG, TIFF, JPEG)       (pure Go)
+  acceptance/ the acceptance tests of the specification over the whole chain
+  repocheck/ tests on the repository itself (licence headers, versions, documentation)
+docs/        milestone reports (M0.md, M0.fr.md)
+testdata/    reference documents
 ```
 
-Le sens des dépendances va de `ui` vers `app` et `viewport`, puis de `app` vers `layout`, `project`, `svgdoc` et `export` ; `app` n'appelle `engine` que par son interface `Document`. Seuls `ui` et `engine` utilisent cgo : tous les autres paquets se testent partout, sans bibliothèque graphique installée.
+Dependencies point from `ui` to `app` and `viewport`, then from `app` to `layout`, `project`, `svgdoc` and `export`; `app` only calls `engine` through its `Document` interface. Only `ui` and `engine` use cgo: all the other packages are tested everywhere, without any graphics library installed.
 
 ## Documentation
 
-- [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md) : pourquoi le projet existe, ses principes et son périmètre.
-- [`ARCHITECTURE.md`](ARCHITECTURE.md) : le contrat technique (paquets, interfaces, formules, format de projet, vérifications, plan de livraison). Il fait foi pour tout ce qui est concret.
-- [`CONTRIBUTING.md`](CONTRIBUTING.md) : signaler un bug, proposer une amélioration, contribuer du code.
-- [`docs/M0.md`](docs/M0.md) : rapport du prototype du moteur de rendu (mesures, découvertes, ce qui reste à valider).
-- [`CHANGELOG.md`](CHANGELOG.md) : l'historique des changements.
+Every document exists in two languages: English (the default file, `X.md`) and French (`X.fr.md`), each linking to the other at the top of the file.
 
-## Développement
+- [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md): why the project exists, its principles and its scope.
+- [`ARCHITECTURE.md`](ARCHITECTURE.md): the technical contract (packages, interfaces, formulas, project format, checks, delivery plan). It is authoritative for everything concrete.
+- [`CONTRIBUTING.md`](CONTRIBUTING.md): report a bug, propose an improvement, contribute code.
+- [`docs/M0.md`](docs/M0.md): report on the rendering engine prototype (measurements, discoveries, what remains to be validated).
+- [`CHANGELOG.md`](CHANGELOG.md): the history of changes.
 
-Prérequis : Go 1.24 ou plus récent.
+## Development
+
+Prerequisite: Go 1.24 or newer.
 
 ```sh
-gofmt -l .          # ne doit rien afficher
+gofmt -l .          # must print nothing
 go vet ./...
 go test ./...
 go run ./cmd/imageprintlayout -version
 ```
 
-La CI (GitHub Actions) exécute ces commandes sous Ubuntu et Windows, avec `CGO_ENABLED=0`.
+The CI (GitHub Actions) runs these commands on Ubuntu and Windows, with `CGO_ENABLED=0`.
 
-Le moteur de rendu (`internal/engine`) demande cgo, librsvg, gdk-pixbuf et cairo, et ses tests lisent des PDF avec poppler. Sous Ubuntu 24.04 :
+The rendering engine (`internal/engine`) requires cgo, librsvg, gdk-pixbuf and cairo, and its tests read PDFs with poppler. On Ubuntu 24.04:
 
 ```sh
 sudo apt-get install librsvg2-dev libgdk-pixbuf-2.0-dev libfontconfig-dev poppler-utils fonts-ibm-plex
 CGO_ENABLED=1 go test ./internal/engine ./internal/testsvg ./internal/testimg
 ```
 
-Sans `CGO_ENABLED=1`, le paquet `engine` est vide et le reste se compile et se teste sans bibliothèque graphique. Un outil de poppler absent fait sauter le test concerné, sauf quand la variable `CI` est définie.
+Without `CGO_ENABLED=1`, the `engine` package is empty and the rest builds and is tested without any graphics library. A missing poppler tool makes the test concerned skip, except when the `CI` variable is set.
 
-La fenêtre (`internal/ui`) demande en plus GTK 4.14 ou plus récent (gotk4 v0.3.1) : sans cgo, `ui` est un bouchon et le programme dit qu'il a été construit sans interface graphique. Sous Ubuntu 24.04 :
+The window (`internal/ui`) additionally requires GTK 4.14 or newer (gotk4 v0.3.1): without cgo, `ui` is a stub and the program says it was built without a graphical interface. On Ubuntu 24.04:
 
 ```sh
 sudo apt-get install librsvg2-dev libgdk-pixbuf-2.0-dev libfontconfig-dev libgtk-4-dev libgirepository1.0-dev poppler-utils fonts-ibm-plex
-go run ./cmd/imageprintlayout                       # la fenêtre
-go run ./cmd/imageprintlayout -lang de plan.svg     # dans une langue, avec un document (SVG ou image)
+go run ./cmd/imageprintlayout                       # the window
+go run ./cmd/imageprintlayout -lang de plan.svg     # in a given language, with a document (SVG or image)
 ```
 
-Les tests de la fenêtre ouvrent de vraies fenêtres : sans écran (terminal, CI), ils se lancent sur un écran virtuel, avec `sudo apt-get install xvfb xauth` :
+The window tests open real windows: without a display (terminal, CI), they run on a virtual display, with `sudo apt-get install xvfb xauth`:
 
 ```sh
 xvfb-run -a go test ./internal/ui ./cmd/imageprintlayout
 ```
 
-La première compilation de gotk4 dure plusieurs minutes ; les suivantes utilisent le cache de Go. À chaque compilation de gotk4, gcc affiche des avertissements sur `free` (`-Wbuiltin-declaration-mismatch`) : ils viennent de la bibliothèque, et les scripts de paquets les masquent. Pour les masquer aussi en développement : `export CGO_CFLAGS="-O2 -g -Wno-builtin-declaration-mismatch"`. Pour Windows (MSYS2 UCRT64), voir [`windows/README.md`](windows/README.md).
+The first compilation of gotk4 takes several minutes; later ones use Go's cache. On each compilation of gotk4, gcc prints warnings about `free` (`-Wbuiltin-declaration-mismatch`): they come from the library, and the package scripts hide them. To hide them in development too: `export CGO_CFLAGS="-O2 -g -Wno-builtin-declaration-mismatch"`. For Windows (MSYS2 UCRT64), see [`windows/README.md`](windows/README.md).
 
-## Systèmes pris en charge
+## Supported systems
 
-| Famille | Systèmes | Paquet |
+| Family | Systems | Package |
 | --- | --- | --- |
-| Debian et dérivés | Debian 13 et suivantes, Ubuntu 24.04 LTS et suivantes, et leurs dérivés (Linux Mint 22, Pop!_OS 24.04, elementary OS 8…) | `.deb` |
-| Red Hat et dérivés | RHEL 10 et ses clones (CentOS Stream 10, AlmaLinux 10, Rocky Linux 10…), Fedora | `.rpm` |
-| Windows | Windows 10 et 11, 64 bits | `.zip` portable ou installeur `.exe` |
+| Debian and derivatives | Debian 13 and later, Ubuntu 24.04 LTS and later, and their derivatives (Linux Mint 22, Pop!_OS 24.04, elementary OS 8…) | `.deb` |
+| Red Hat and derivatives | RHEL 10 and its clones (CentOS Stream 10, AlmaLinux 10, Rocky Linux 10…), Fedora | `.rpm` |
+| Windows | Windows 10 and 11, 64-bit | portable `.zip` or `.exe` installer |
 
-Sous Linux, ce qui compte est la version des bibliothèques : GTK 4.14, GLib 2.80 et librsvg 2.52
-au moins. **Debian 12, Ubuntu 22.04 (et Linux Mint 21) et RHEL 9 (et ses clones) sont trop
-anciens** : les scripts de construction le disent au lieu de compiler. La CI construit et
-installe le paquet dans un conteneur de chacun des systèmes pris en charge et lance le
-programme installé (détails dans [`ARCHITECTURE.md`](ARCHITECTURE.md), §4 « Plateformes prises
-en charge »).
+On Linux, what matters is the version of the libraries: GTK 4.14, GLib 2.80 and librsvg 2.52
+at least. **Debian 12, Ubuntu 22.04 (and Linux Mint 21) and RHEL 9 (and its clones) are too
+old**: the build scripts say so instead of compiling. The CI builds and
+installs the package in a container of each of the supported systems and runs the
+installed program (details in [`ARCHITECTURE.md`](ARCHITECTURE.md), §4 "Supported
+platforms").
 
-## Paquets
+## Packages
 
-Trois scripts, à la racine, construisent les paquets (comme dans Planche-Contact) :
+Three scripts, at the root, build the packages (as in Planche-Contact):
 
 ```sh
-./build-deb.sh              # Debian, Ubuntu et dérivés : imageprintlayout_<version>_amd64.deb
-./build-rpm.sh              # Fedora, RHEL et dérivés : imageprintlayout-<version>-<release>.x86_64.rpm
+./build-deb.sh              # Debian, Ubuntu and derivatives: imageprintlayout_<version>_amd64.deb
+./build-rpm.sh              # Fedora, RHEL and derivatives: imageprintlayout-<version>-<release>.x86_64.rpm
 ```
 
 ```powershell
-.\build-windows.ps1         # Windows 10 et 11 : un .zip portable et un installeur .exe
+.\build-windows.ps1         # Windows 10 and 11: a portable .zip and an .exe installer
 ```
 
-Les paquets de chaque version sont aussi joints à sa [release GitHub](https://github.com/gillesmagneville/image-print-layout/releases) (`.deb`, `.rpm`, installeur et version portable Windows, avec leurs empreintes SHA-256).
+The packages of each version are also attached to its [GitHub release](https://github.com/gillesmagneville/image-print-layout/releases) (`.deb`, `.rpm`, Windows installer and portable version, with their SHA-256 checksums).
 
-Les paquets sont écrits à la racine du dépôt (non versionnés). Les trois scripts ont les
-mêmes options et gèrent le fichier `VERSION` de la même façon :
+The packages are written at the root of the repository (not versioned). The three scripts have the
+same options and handle the `VERSION` file the same way:
 
-| Option (PowerShell) | Effet |
+| Option (PowerShell) | Effect |
 | --- | --- |
-| `--major` (`-Major`) | incrémente le numéro majeur (1.2.3 → 2.0.0) |
-| `--minor` (`-Minor`) | incrémente le numéro mineur (1.2.3 → 1.3.0) |
-| `--patch` (`-Patch`) | incrémente le numéro de patch (1.2.3 → 1.2.4) |
-| `--no-version-change` (`-NoVersionChange`) | reconstruit sans changer la version |
-| `--clean` (`-Clean`) | supprime le dossier de build et les paquets déjà construits |
-| `--help`, `-h` (`-Help`) | affiche l'aide |
+| `--major` (`-Major`) | increments the major number (1.2.3 → 2.0.0) |
+| `--minor` (`-Minor`) | increments the minor number (1.2.3 → 1.3.0) |
+| `--patch` (`-Patch`) | increments the patch number (1.2.3 → 1.2.4) |
+| `--no-version-change` (`-NoVersionChange`) | rebuilds without changing the version |
+| `--clean` (`-Clean`) | deletes the build folder and the packages already built |
+| `--help`, `-h` (`-Help`) | prints the help |
 
-Sans option, le script affiche la version actuelle, propose de passer en major, minor ou
-patch ou de ne rien changer, puis demande confirmation (`o`) avant de construire. **Le
-fichier `VERSION` n'est mis à jour qu'une fois le paquet construit** : un échec ne laisse
-jamais une version sans paquet. Sous PowerShell, `-Oui` répond « oui » à toutes les
-questions (pour un usage sans surveillance).
+Without an option, the script shows the current version, offers to move to major, minor or
+patch or to change nothing, then asks for confirmation (`o`, for the French "oui") before building. **The
+`VERSION` file is only updated once the package is built**: a failure never
+leaves a version without a package. Under PowerShell, `-Oui` answers "yes" to all
+the questions (for unattended use).
 
-Une version d'avant-publication comme `0.1.0-dev` est d'abord publiée : `--minor` et
-`--patch` la font passer à `0.1.0`, `--major` à `1.0.0`. Les versions ordinaires
-s'incrémentent comme d'habitude. Quand on construit les trois formats d'une même version,
-on incrémente avec le premier script et on relance les deux autres avec
-`--no-version-change` (`-NoVersionChange`) :
+A pre-release version such as `0.1.0-dev` is published first: `--minor` and
+`--patch` turn it into `0.1.0`, `--major` into `1.0.0`. Ordinary versions
+are incremented as usual. When building the three formats of the same version,
+increment with the first script and rerun the other two with
+`--no-version-change` (`-NoVersionChange`):
 
 ```sh
 ./build-deb.sh --minor
 ./build-rpm.sh --no-version-change
 ```
 
-Après une version sans suffixe, mettez à jour tous les fichiers qui la portent : section
-`## [X.Y.Z]` de `CHANGELOG.md`, `<release>` de la fiche AppStream, ligne `.TH` des quatre
-pages de manuel, états du README et d'`ARCHITECTURE.md` (voir `CONTRIBUTING.md` ; un test
-de `repocheck` échoue tant que l'un d'eux est en retard).
+After a version without a suffix, update all the files that carry it: the
+`## [X.Y.Z]` section of `CHANGELOG.md` (and of `CHANGELOG.fr.md`), the `<release>` of the AppStream file, the `.TH` line of the four
+manual pages, the statuses of the README and of `ARCHITECTURE.md` (see `CONTRIBUTING.md`; a `repocheck` test
+fails as long as one of them is behind).
 
-Chaque script vérifie ses prérequis, dont la version des bibliothèques. Un paquet est lié aux
-bibliothèques de la machine qui l'a construit : on le construit sur le système où il sera
-installé. Les paquets Linux s'installent avec `apt install ./…deb` ou `dnf install ./…rpm`.
-Sous Debian et Ubuntu, les prérequis de construction sont :
+Each script checks its prerequisites, including the version of the libraries. A package is tied to the
+libraries of the machine that built it: build it on the system where it will be
+installed. Linux packages are installed with `apt install ./…deb` or `dnf install ./…rpm`.
+On Debian and Ubuntu, the build prerequisites are:
 
 ```sh
 sudo apt install golang-go build-essential pkg-config librsvg2-dev libgdk-pixbuf-2.0-dev libfontconfig-dev libgtk-4-dev libgirepository1.0-dev dpkg-dev rpm
 ```
 
-Sous Fedora et la famille RHEL 10 (`golang` est dans AppStream ; `-devel` est dans CRB, à
-activer avec `sudo dnf config-manager --set-enabled crb`) :
+On Fedora and the RHEL 10 family (`golang` is in AppStream; `-devel` is in CRB, to be
+enabled with `sudo dnf config-manager --set-enabled crb`):
 
 ```sh
 sudo dnf install golang gcc make pkgconf-pkg-config librsvg2-devel gdk-pixbuf2-devel cairo-devel fontconfig-devel gtk4-devel gobject-introspection-devel rpm-build
 ```
 
-Go 1.24 ou plus récent est nécessaire (`go.mod`) : si la version de la distribution est plus
-ancienne, installez celle de <https://go.dev/dl/>.
+Go 1.24 or newer is required (`go.mod`): if the distribution's version is older,
+install the one from <https://go.dev/dl/>.
 
-L'organisation des paquets (contenu, numéros de version `0.1.0~dev` / `0.1.dev`,
-construction reproductible, dépendances) est décrite dans `ARCHITECTURE.md`, §4 « Paquets » ;
-la construction Windows (MSYS2, NSIS, SmartScreen, dépannage) dans
+The organization of the packages (contents, version numbers `0.1.0~dev` / `0.1.dev`,
+reproducible build, dependencies) is described in `ARCHITECTURE.md`, §4 "Packages";
+the Windows build (MSYS2, NSIS, SmartScreen, troubleshooting) in
 [`windows/README.md`](windows/README.md).
 
-Le programme installé sait s'auto-vérifier : `imageprintlayout -selftest` contrôle le
-moteur de rendu (bibliothèques, polices, images incorporées, lecture d'un JPEG, d'un PNG et d'un TIFF, export PDF) sur la machine
-où il tourne. C'est la première commande à lancer en cas de problème.
+The installed program can check itself: `imageprintlayout -selftest` checks the
+rendering engine (libraries, fonts, embedded images, reading a JPEG, a PNG and a TIFF, PDF export) on the machine
+where it runs. It is the first command to run in case of a problem.
 
-## Auteur
+## Author
 
-Image Print Layout est développé par **Gilles MAGNEVILLE**, et conçu avec l'aide de [claude.ai](https://claude.ai). La fenêtre « À propos » du programme (menu principal) le dit aussi, dans la langue de l'interface, de même que la section AUTEUR de la page de manuel.
+Image Print Layout is developed by **Gilles MAGNEVILLE**, and designed with the help of [claude.ai](https://claude.ai). The program's "About" window (main menu) says so too, in the interface language, as does the AUTHOR section of the manual page.
 
-## Licence
+## License
 
-Ce projet est distribué sous la licence [GNU General Public License v3.0](LICENSE) (GPL-3.0-only).
+This project is distributed under the [GNU General Public License v3.0](LICENSE) (GPL-3.0-only).

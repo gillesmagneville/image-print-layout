@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-// The program speaks four languages (ARCHITECTURE.md, "Langues"), and so do
+// The program speaks four languages (ARCHITECTURE.md, "Languages"), and so do
 // the files the system reads to present it: the menu entry, the software
 // centre page and the manual. English is the fallback of each; the others must
 // not be forgotten when a text changes.

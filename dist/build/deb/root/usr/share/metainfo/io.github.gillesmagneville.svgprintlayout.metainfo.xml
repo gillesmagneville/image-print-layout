@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-only -->
+<!--
+  Métadonnées AppStream de SVG Print Layout, pour les gestionnaires de logiciels
+  (GNOME Logiciels, App Center, KDE Discover).
+
+  L'<id> doit correspondre au nom de ce fichier (io.github.gillesmagneville.svgprintlayout.metainfo.xml)
+  et le <launchable> au nom du fichier .desktop installé (io.github.gillesmagneville.svgprintlayout.desktop). Le nom
+  de domaine inversé est celui que demande AppStream pour un projet hébergé sur GitHub.
+-->
+<component type="desktop-application">
+  <id>io.github.gillesmagneville.svgprintlayout</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-only</project_license>
+
+  <name>SVG Print Layout</name>
+  <summary>Met en page un dessin SVG sur plusieurs feuilles et l'exporte en PDF</summary>
+
+  <description>
+    <p>
+      SVG Print Layout prépare l'impression d'un document vectoriel SVG de
+      dimensions quelconques sur plusieurs feuilles de papier standard : on
+      choisit le format, les marges et la largeur du dessin, on place les
+      coupures à la souris, puis on exporte un seul PDF multipage vectoriel.
+    </p>
+    <p>
+      Le dessin garde une échelle unique : aucune page n'est réduite en
+      silence pour faire tenir une portion trop haute. Le fichier SVG d'origine
+      n'est jamais modifié.
+    </p>
+  </description>
+
+  <launchable type="desktop-id">io.github.gillesmagneville.svgprintlayout.desktop</launchable>
+
+  <url type="homepage">https://github.com/gillesmagneville/svg-print-layout</url>
+  <url type="bugtracker">https://github.com/gillesmagneville/svg-print-layout/issues</url>
+
+  <provides>
+    <binary>svgprintlayout</binary>
+  </provides>
+
+  <categories>
+    <category>Graphics</category>
+    <category>VectorGraphics</category>
+  </categories>
+
+  <content_rating type="oars-1.1"/>
+
+  <developer id="io.github.gillesmagneville">
+    <name>Gilles MAGNEVILLE</name>
+  </developer>
+</component>

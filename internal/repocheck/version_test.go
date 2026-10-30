@@ -38,6 +38,17 @@ func TestVersionIsInEveryFileThatNamesIt(t *testing.T) {
 	}
 	date := releases[0][2]
 
+	// CHANGELOG.fr.md: the same version, the same date.
+	french := changelogRelease.FindStringSubmatch(read(t, filepath.Join(root, "CHANGELOG.fr.md")))
+	switch {
+	case french == nil:
+		t.Error(`CHANGELOG.fr.md has no "## [X.Y.Z] - AAAA-MM-JJ" section`)
+	case french[1] != version:
+		t.Errorf("VERSION is %s but the newest section of CHANGELOG.fr.md is %s", version, french[1])
+	case french[2] != date:
+		t.Errorf("CHANGELOG.fr.md dates %s on %s but CHANGELOG.md says %s", version, french[2], date)
+	}
+
 	// AppStream: the first <release> is the current version, with the same date.
 	appstream := appstreamRelease.FindStringSubmatch(read(t, filepath.Join(root, "metainfo", "io.github.gillesmagneville.imageprintlayout.metainfo.xml")))
 	switch {
@@ -61,6 +72,26 @@ func TestVersionIsInEveryFileThatNamesIt(t *testing.T) {
 		case man[1] != date:
 			t.Errorf("%s is dated %s but CHANGELOG.md says %s", page, man[1], date)
 		}
+	}
+}
+
+// The two changelogs say the same thing in two languages: the same releases,
+// in the same order, with the same dates. A release added to one and not to the
+// other (or dated differently) is a mistake the reader of the other language
+// cannot see.
+func TestChangelogsListTheSameReleases(t *testing.T) {
+	root := repoRoot(t)
+	english := changelogRelease.FindAllStringSubmatch(read(t, filepath.Join(root, "CHANGELOG.md")), -1)
+	french := changelogRelease.FindAllStringSubmatch(read(t, filepath.Join(root, "CHANGELOG.fr.md")), -1)
+	var en, fr []string
+	for _, m := range english {
+		en = append(en, m[1]+" "+m[2])
+	}
+	for _, m := range french {
+		fr = append(fr, m[1]+" "+m[2])
+	}
+	if strings.Join(en, ", ") != strings.Join(fr, ", ") {
+		t.Errorf("CHANGELOG.md lists the releases %s but CHANGELOG.fr.md lists %s", strings.Join(en, ", "), strings.Join(fr, ", "))
 	}
 }
 

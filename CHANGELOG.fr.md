@@ -1,0 +1,572 @@
+<!-- SPDX-License-Identifier: GPL-3.0-only -->
+
+# Changelog
+
+🇬🇧 [English version](CHANGELOG.md)
+
+Toutes les modifications notables de ce projet sont documentées dans ce fichier.
+
+Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
+et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
+
+## [Non publié]
+
+### Modifié
+
+- **La documentation est désormais bilingue.** Chaque document du projet (`README`,
+  `ARCHITECTURE`, `CONTRIBUTING`, `PROJECT_CONTEXT`, `CHANGELOG`, `docs/M0`, `windows/README`
+  et `testdata/README`) existe en anglais, le fichier par défaut que GitHub affiche, et en
+  français (`X.fr.md`), chacun renvoyant à l'autre en tête de fichier. Les textes français sont
+  inchangés, à leurs liens près, qui pointent maintenant vers les versions `.fr.md`.
+- **Les paquets et le texte des releases suivent.** Les paquets `.deb`, `.rpm` et Windows
+  embarquent le README et le CHANGELOG dans les deux langues ; le texte de la release GitHub
+  donne la section du CHANGELOG en anglais, puis en français ; les tests de `repocheck`
+  vérifient les deux CHANGELOG et les deux ARCHITECTURE, et que chaque document existe dans les deux langues avec les mêmes sections.
+
+## [1.3.0] - 2026-10-21
+
+Le programme exporte aussi en **page HTML unique** : un seul fichier, qu'un navigateur ouvre sans
+rien télécharger, avec l'image entière ou découpée aux coupures. Le PDF est inchangé.
+
+### Ajouté
+
+- **Exporter en page HTML** : le bouton « Exporter en page HTML… » du bloc « Page HTML » de la
+  section Export, ou Ctrl+Maj+E. Même déroulement que le PDF : contrôles avant l'export (erreurs
+  qui bloquent, avertissements qui demandent confirmation), sélecteur de fichier (`<nom>.html`
+  proposé), écriture à côté de la destination sous un nom temporaire, **relecture depuis le
+  disque**, comparaison avec le plan, puis seulement le remplacement du fichier : un export
+  refusé ou raté ne laisse rien à moitié écrit et n'écrase pas un bon fichier.
+- **Découpée ou entière.** La case « Découper l'image aux coupures » (cochée par défaut) écrit un
+  morceau par page du plan, les uns sous les autres, chacun avec sa légende (« Page 2 sur 4 ») :
+  ce sont les bandes de l'aperçu, donc les coupures posées à la souris. Décochée, la page montre
+  l'image d'un seul tenant. Le navigateur imprime un morceau par feuille, sans les légendes.
+- **Un fichier, une seule copie de l'image.** L'image est écrite une fois, en base64, dans la
+  page ; chaque morceau n'est qu'une boîte qui en montre une bande, si bien que la page ne grossit
+  pas avec le nombre de morceaux. La colonne a la largeur du plan en millimètres et rétrécit avec
+  la fenêtre sans jamais déformer l'image. Le fond de page du projet (blanc opaque ou transparent)
+  est repris, comme le fond du document d'un SVG.
+- **Ce que la page contient.** Un SVG reste vectoriel (la page porte la copie de travail, jamais le
+  fichier source) ; son texte est dessiné avec les polices de l'ordinateur qui ouvre la page, ce
+  que la section Export dit. Les images qu'il lie par un chemin relatif sont incorporées dans la
+  page (PNG, JPEG, GIF, WebP, BMP, SVG), faute de quoi une page lue ailleurs ne les retrouverait
+  pas. Un JPEG ou un PNG est écrit tel que le fichier est ; un TIFF, un GIF, un WebP, un BMP, un
+  PNG animé ou une image à tourner est dessiné par le moteur (redressé, première image,
+  transparence gardée) et écrit en PNG.
+- **Vérification.** `export.VerifyHTML` relit la page avec les seuls nombres qu'elle contient et
+  retrouve le haut et la hauteur de chaque bande, la hauteur du document, la largeur de la colonne
+  et l'image elle-même ; un écart est refusé avec le numéro du morceau. Au-delà de 256 Mo, la page
+  est refusée avant d'être écrite, avec la taille qu'elle aurait.
+- Les messages sont traduits en français, anglais, espagnol et allemand, y compris la langue de
+  la page et la légende « Page n sur total ».
+- **Tests** : unitaires (morceaux, déterminisme, simulation de la règle de style, relecture qui
+  échoue quand une bande, la largeur ou l'image change, `ImageSource`), de `svgdoc` (images
+  liées), d'acceptation sur un dessin, une image tournée par son étiquette et une image découpée,
+  et de la fenêtre (page découpée en quatre morceaux, page entière).
+
+### Corrigé
+
+- **L'export PDF garde son thread système du début à la fin.** Pango, avec lequel librsvg dessine
+  le texte, garde sa table de polices par thread, et cairo écrit dans le PDF un sous-ensemble de
+  polices propre à chaque table : quand Go reprenait un export sur un autre thread entre deux pages,
+  les mêmes polices étaient embarquées deux fois. Le PDF était plus gros (jusqu'à la moitié de plus
+  sur le jeu d'essai) et deux exports du même projet n'avaient pas les mêmes octets, ce qui
+  contredit le déterminisme demandé. Constaté sous Windows, de temps en temps (des échecs
+  intermittents du test 14 et du test de déterminisme dans la CI), et jamais sous Linux. Les tests
+  d'export notent maintenant le thread de chaque page et échouent si l'export en change ; ils disent
+  aussi, quand deux PDF devraient être identiques, en quoi ils diffèrent.
+
+## [1.2.0] - 2026-10-21
+
+Le programme ouvre des **images** : JPEG, PNG, TIFF, WebP, BMP et GIF. Une image se découpe et
+s'imprime comme un SVG : même échelle unique, mêmes coupures à la souris ou automatiques, même
+aperçu, même PDF multipage relu et vérifié. C'est la suite annoncée par le changement de nom de
+la 1.1.0 ; rien n'est changé pour les SVG.
+
+### Ajouté
+
+- **Ouvrir une image comme un document.** Ouvrir (Ctrl+O, ou un fichier donné au programme sur
+  la ligne de commande) accepte les SVG et les images ; le sélecteur de fichiers propose « Images et documents SVG », les SVG seuls et les images seules, avec les
+  seuls formats que cette installation sait lire. Le type est reconnu au **contenu** du
+  fichier, jamais à son nom : un `.png` qui est un JPEG s'ouvre comme un JPEG. Un fichier qui
+  n'est ni une image connue ni un SVG est refusé, avec la raison.
+- **Taille sur le papier d'après la résolution du fichier** : les pixels divisés par les points
+  par pouce que le fichier indique (densité JFIF d'un JPEG, à défaut sa résolution Exif ; `pHYs` d'un PNG ;
+  étiquettes de résolution d'un TIFF), sur chaque axe, lus par le programme dans le fichier
+  lui-même (les décodeurs récents de gdk-pixbuf ne les rapportent pas). Sans résolution valable, 96 points par pouce, et
+  la section Fichier source le dit (une photo de 3 000 pixels à 300 points par pouce fait 254 mm
+  à 100 %). L'échelle reste unique, et l'image ne se déforme jamais.
+- **Orientation** : l'étiquette d'orientation d'un JPEG (EXIF) ou d'un TIFF est appliquée, aux
+  huit valeurs, à l'aperçu comme au PDF.
+- **JPEG incorporé tel quel dans le PDF** quand le PDF sait le lire (JPEG de base ou progressif,
+  8 bits, gris ou YCbCr) : pas de recompression, pas de perte, et le fichier n'est pas plus gros
+  que la photo. Une image n'est écrite **qu'une fois** dans le PDF, chaque page la référence :
+  le fichier ne grossit pas avec le nombre de pages.
+- **Transparence** : un PNG, un TIFF, un WebP ou un GIF transparent reste transparent ; le fond
+  de page (blanc opaque ou transparent) se voit à travers.
+- **Coupures automatiques pour une image** : le programme lit les pixels pour trouver les blocs
+  d'une image à fond uni (une capture, un schéma, une page numérisée) : le fond est la couleur
+  qui borde la moitié de l'image, et une suite de lignes qui en diffèrent est un bloc. Les
+  coupures tombent entre eux, et le bruit d'un JPEG ou la poussière d'un scan n'y change rien.
+  Une photographie, sans fond uni, n'a pas de blocs : les coupures se répartissent également et
+  aucune n'est dite traverser quelque chose.
+- **Garde-fous, dits à l'utilisateur** : plus de 100 millions de pixels (refusé **avant** de
+  décoder, la taille étant lue à l'en-tête, si bien qu'une image énorme ne fait pas de mémoire) ;
+  fichier PNG ou JPEG dont la fin manque (ouvert tel qu'on a pu le lire, avec un avertissement,
+  ou refusé avec la raison du décodeur quand celui-ci, comme avec gdk-pixbuf 2.44, ne rend rien) ;
+  TIFF de plusieurs pages et GIF animé (seule la première image est lue, avec un avertissement) ;
+  image illisible ou format sans décodeur sur cette installation (le WebP sans son chargeur, sous
+  Linux), avec un message qui dit lequel.
+- **Projets sur une image** : un projet `.imgpl` décrit une image comme un SVG (chemin relatif,
+  empreinte, taille) et se rouvre de la même façon, avec les mêmes avertissements si le fichier a
+  changé. Le format du projet n'a pas changé (version 1) : les projets des versions précédentes
+  s'ouvrent comme avant.
+- **Vérification de l'export** : `export.Verify` relit aussi, dans le PDF, la matrice qui place
+  l'image et la compare au plan, comme il le fait pour le clip de chaque page.
+- **`-selftest`** lit un JPEG, un PNG et un TIFF intégrés et compare leurs pixels, en plus du SVG ;
+  le paquet Windows embarque le chargeur TIFF de gdk-pixbuf.
+- **Indépendance vis-à-vis de la version de gdk-pixbuf** : la résolution, les pages d'un TIFF et
+  l'animation (GIF, WebP, PNG animé) sont lues dans les octets du fichier, car gdk-pixbuf 2.44
+  (glycin : Ubuntu 26.04, Fedora 44) ne les rapporte plus, et les messages d'erreur du décodeur
+  sont débarrassés de leur jargon. Mêmes résultats avec la 2.42 (Debian 13, Ubuntu 24.04, RHEL 10).
+- **Jeu d'essai** : le paquet `internal/testimg` fabrique des images de référence déterministes
+  (PNG, TIFF, JPEG, avec résolution et orientation), et les 14 tests d'acceptation passent aussi
+  sur une image, pour chaque format et chacune des huit orientations.
+
+### Modifié
+
+- Le bouton de la barre de titre s'appelle **Ouvrir…** (il s'appelait « Ouvrir un SVG »), et les
+  messages disent « le fichier d'origine » là où ils disaient « le SVG d'origine ».
+- **Fond du document** : pour une image, la section Fond explique qu'elle n'a pas de fond à part
+  (ses pixels sont imprimés tels quels) au lieu de proposer des choix grisés ; seul le fond de
+  page agit.
+- **Paquets** : le moteur lit les images avec gdk-pixbuf, que GTK 4 exige déjà (aucune
+  dépendance de plus à l'installation). Les paquets `.deb` et `.rpm` recommandent
+  `webp-pixbuf-loader` pour le WebP, et l'entrée de menu annonce les types MIME des images, pour
+  « Ouvrir avec » dans le gestionnaire de fichiers. Les scripts de construction vérifient la
+  présence des bibliothèques de développement de gdk-pixbuf.
+- La description du paquet, les fiches AppStream, l'entrée de menu et les quatre pages de manuel
+  parlent de documents SVG **et d'images**. Le sous-titre de la fenêtre « À propos » aussi (il disait
+  « documents vectoriels », comme au temps de SVG Print Layout).
+
+### Corrigé
+
+- **L'icône du programme manquait dans la vue d'ensemble des fenêtres** de GNOME (un engrenage à
+  sa place) : GTK annonçait au bureau le nom de l'exécutable, `imageprintlayout`, au lieu de
+  l'identifiant `io.github.gillesmagneville.imageprintlayout`, qui est le nom de l'entrée de menu.
+  Depuis le changement de nom de la 1.1.0, la fenêtre ne retrouvait donc plus son entrée de menu.
+  Le programme annonce maintenant son identifiant (sous Wayland comme sous X11), et l'entrée de
+  menu porte `StartupWMClass`. Un test le vérifie.
+
+## [1.1.0] - 2026-10-21
+
+Le programme change de nom : **Image Print Layout** remplace « SVG Print Layout ». Le programme va
+bientôt prendre aussi des images matricielles (JPEG, PNG, TIFF…) : « SVG » dans son nom ne
+dirait plus ce qu'il fait, alors qu'« image » couvre les deux (le SVG est une image vectorielle). Cette version ne change que le nom et la façon de reprendre l'existant ; le
+fonctionnement est celui de la 1.0.0. Les entrées plus bas gardent le nom qu'avait le
+programme à leur date.
+
+### Modifié
+
+- **Nouveau nom : Image Print Layout.** La commande est `imageprintlayout`, les paquets s'appellent
+  `imageprintlayout` (`imageprintlayout_1.1.0_amd64.deb`, `imageprintlayout-1.1.0-1.x86_64.rpm`,
+  `imageprintlayout_1.1.0_windows-setup.exe`…), le dossier d'installation Windows est `Image Print Layout`,
+  l'identifiant d'application est `io.github.gillesmagneville.imageprintlayout`, la page de manuel
+  est `man imageprintlayout`, et le module Go est `github.com/gillesmagneville/image-print-layout`. L'icône, la
+  fenêtre « À propos », les textes en quatre langues et les documents disent Image Print Layout.
+- **Les projets s'enregistrent en `.imgpl`** (format `imageprintlayout-project`, toujours en
+  version 1 : seul le nom change).
+- **Release : un fichier `.sha256` par paquet**, joint à côté de lui, au lieu d'un seul
+  `SHA256SUMS`. `sha256sum -c paquet.sha256` le vérifie quand les deux sont dans le même dossier.
+  Le texte de la release dit quel fichier vérifie quel paquet.
+
+### Ajouté
+
+- **Reprise de l'existant**, pour que le changement de nom ne coûte rien à personne :
+  - les projets `.svgpl` de la 1.0.x s'ouvrent (le sélecteur de fichiers les propose) et
+    s'enregistrent ensuite en `.imgpl`, sans toucher au fichier d'origine ;
+  - la langue choisie est reprise depuis les réglages de la 1.0.x (`~/.config/svgprintlayout`,
+    `%AppData%\svgprintlayout`), une seule fois, sans les effacer ;
+  - installer le `.deb` ou le `.rpm` retire l'ancien paquet `svgprintlayout`
+    (`Conflicts`/`Replaces` pour Debian, `Obsoletes` pour RPM) ;
+  - l'installeur Windows désinstalle d'abord une installation de « SVG Print Layout » (fichiers,
+    raccourcis, clés de registre), avec son propre désinstalleur.
+
+## [1.0.0] - 2026-10-21
+
+Première version stable. Le programme fait tout ce que demande le cahier des charges (jalons M1
+à M5), les 14 tests d'acceptation sont automatisés et s'exécutent dans la CI sur sept
+distributions Linux et sous Windows, et la recette a été faite à la main sous Ubuntu et sous
+Windows, avec le Mini-CAD. Le code du programme est celui de la 0.3.1 : cette version ne change
+que le numéro, la documentation et la façon de publier.
+
+### Ajouté
+
+- **Les paquets sont joints à la release GitHub** : le `.deb` (Ubuntu 24.04 et suivants, Debian
+  13), le `.rpm` (RHEL 10 et ses clones, Fedora), l'installeur et la version portable Windows
+  (10 et 11, 64 bits), avec leurs empreintes SHA-256.
+- **Workflow de release** (`.github/workflows/release.yml`) : un tag `vX.Y.Z` sur main construit
+  ces paquets sans changer `VERSION`, les essaie comme la CI (installation, programme installé,
+  14 tests d'acceptation sous Linux ; version portable, installeur et désinstallation sous
+  Windows), puis crée la release avec cette section du CHANGELOG pour texte. Il refuse un tag qui
+  n'est pas celui de `VERSION` ou qui n'est pas sur main, et il se lance, sans rien publier,
+  quand on le modifie dans une pull request.
+
+### Modifié
+
+- Le README, `ARCHITECTURE.fr.md`, `windows/README.fr.md` et la CI ne disent plus que la recette sur
+  une machine Windows réelle reste à faire.
+- Reste ouvert, sans empêcher la 1.0.0 : la construction des paquets Windows par un utilisateur
+  avec ses propres installations de MSYS2 (la CI la fait sur un MSYS2 neuf).
+
+## [0.3.1] - 2026-10-20
+
+Corrections sur le fond du document, la saisie des nombres et la fenêtre « À propos », et mention
+de l'auteur partout où elle a sa place.
+
+### Corrigé
+
+- **Saisie d'un nombre (facteur d'échelle, largeur, marges…) : le curseur retournait au début de
+  la ligne** après chaque chiffre tapé. Le champ réécrivait son texte quand le programme lui
+  redonnait la valeur qu'il venait d'appliquer, et GTK place alors le curseur au début : le
+  chiffre suivant s'insérait devant le premier (taper 12 donnait 21). Le test de focus qui devait
+  l'empêcher ne voyait jamais le focus (le focus d'un GtkEntry est dans le GtkText qu'il
+  contient). Le champ ne réécrit plus ce qu'il montre déjà ; la notation canonique est écrite
+  quand on le quitte, et le curseur reste à la fin quand le texte est réécrit.
+- **Fenêtre « À propos » : le nom était affiché sélectionné (en rouge) et l'icône du programme
+  manquait.** Le GtkAboutDialog donne le focus à son étiquette de titre, qui est sélectionnable,
+  et cherche son logo dans le thème d'icônes sous l'identifiant complet de l'application, alors
+  que les paquets installent l'icône sous le nom `svgprintlayout`. C'est maintenant une fenêtre du
+  programme : l'icône est embarquée dans l'exécutable (paquet `icons`), aucun texte n'est
+  sélectionnable, le bouton Fermer a le focus, et les textes sont dans la langue choisie dans le
+  programme et non dans celle du système. Les fenêtres de compte rendu et d'erreur ne
+  s'ouvrent plus avec un texte sélectionné non plus.
+- **Icône des fenêtres** : le programme la demande sous le nom `svgprintlayout`, celui des paquets,
+  et non sous l'identifiant complet de l'application.
+- **Fond du document : « Remplacer par du blanc » et « Supprimer le fond » ne se voyaient pas sur
+  la dernière page.** L'aperçu « Document » teintait en bleu pâle une page sur deux (les pages
+  2, 4…) par-dessus le dessin, d'un gris presque identique à celui du fond d'origine : la
+  dernière page, quand elle était paire, restait grisâtre alors que le fond était blanc. Rien
+  n'est plus peint par-dessus le dessin ; l'étendue de chaque page est donnée par une barre le
+  long du dessin, à l'extérieur.
+- **Export avec « Supprimer le fond » refusé.** Sans rectangle de fond, cairo n'écrivait aucun
+  clip pour la bande de la page, et le contrôle du PDF relu refusait l'export (« Le recadrage de
+  cette page dans le PDF ne correspond pas à la coupure de l'aperçu », sur chaque page). Avec une
+  page blanche, le moteur peint du blanc sur la bande, dans le clip (sans effet sur l'image),
+  si bien que le clip est écrit en entier ; avec une page transparente, `export.Verify` vérifie
+  que le clip de chaque élément qui franchit une coupure reste dans la bande.
+- **Aperçu des feuilles : une feuille gardait l'ancien dessin** quand le fond du document
+  changeait pendant qu'elle était en cours de dessin ; rien n'en demandait un nouveau. La feuille
+  est redessinée dès que le dessin en cours est revenu.
+- **Tests** : le test d'acceptation 9 regarde toutes les pages, pour « remplacer » comme pour
+  « supprimer » ; l'export est essayé avec chaque fond de document et chaque fond de page ; le test
+  8 mesure le haut de la bande par le fond conservé (le vrai Mini-CAD ne dessine rien dans ses
+  43 premières unités) ; la fenêtre est essayée sur les marques des pages (rien sur le dessin) et
+  sur les feuilles quand le fond change.
+
+### Modifié
+
+- **Le bouton « Exporter en PDF… » de la barre de titre est retiré** : il doublait celui de la
+  section Export du panneau de gauche. Ctrl+E reste.
+- **L'auteur est nommé** : « Développé par Gilles MAGNEVILLE » et « Conçu avec l'aide de
+  claude.ai » dans la fenêtre « À propos » (en français, anglais, espagnol et allemand), le
+  README, `PROJECT_CONTEXT.fr.md`, `CONTRIBUTING.fr.md`, la section AUTEUR des quatre pages de manuel,
+  `debian/copyright` et les propriétés de l'exécutable et de l'installeur Windows.
+- Le dépôt ne contient plus `err.txt`, un fichier vide ajouté par erreur.
+
+## [0.3.0] - 2026-10-20
+
+Première version qui fait tout ce que demande le cahier des charges : on ouvre un SVG, on règle
+le papier, les marges, l'échelle et le positionnement, on place les coupures à la souris (ou on
+les fait proposer), on choisit le fond, on voit chaque feuille, on exporte un PDF multipage que
+le programme relit avant de le livrer, et on enregistre le projet pour le rouvrir plus tard. Les
+14 tests d'acceptation sont automatisés (`internal/acceptance`) et s'exécutent dans la CI sur
+chaque distribution Linux essayée et sous Windows. Reste, avant la 1.0.0, la recette sur des
+machines Windows 10 et 11 réelles et celle, à la main, des gestes de la souris (test 5).
+
+### Ajouté
+
+- **Cœur de la mise en page, en Go pur (jalon M1)**, essayé par des tests sans cgo, dont des
+  tests de propriétés tirés au hasard (graine fixe) :
+  - `internal/model` : les réglages d'un projet (papier, marges, échelle, positionnement, fond,
+    coupures, surcharges par page), valeurs immuables copiées par chaque commande ;
+  - `internal/layout` : la feuille et sa zone utile (formats A0 à A5, Letter, Legal, Tabloid,
+    personnalisé en mm ; portrait ou paysage ; quatre marges indépendantes), l'échelle unique en
+    trois modes (largeur, hauteur, manuel par largeur ou par pourcentage), le plan des pages
+    (bandes qui couvrent le document sans trou, même largeur partout, positionnement horizontal et
+    vertical indépendant de l'échelle, surcharges par page, états Conforme, Dépassement de marge,
+    Dépassement de feuille, page vide), les coupures (ajout, déplacement, suppression, bornes d'un
+    glisser, écart minimal de 0,5 mm, identifiants stables), les vides entre blocs, la détection
+    des coupures qui traversent un bloc, l'aimantation aux vides, les quatre corrections proposées
+    quand une page dépasse (jamais appliquées seules) et les coupures automatiques
+    (programmation dynamique : moins de blocs traversés, puis moins de pages, puis pages
+    équilibrées) ;
+  - `internal/project` : le fichier de projet `.svgpl` (JSON lisible, écriture déterministe et
+    atomique, version avec migrations, lecture stricte, chemin relatif au projet avec repli sur
+    le chemin absolu, empreinte SHA-256 et avertissements quand le SVG a changé) ;
+  - `internal/diag` : les diagnostics, par code et valeurs, avec leurs textes en quatre langues ;
+    un test vérifie que chaque code a un texte dans chaque langue et que le code n'en produit pas
+    d'autre.
+- **Tests d'acceptation 2, 3, 4, 6, 7 et 14 au niveau logique** : zone utile de 200 × 277 mm en A4
+  portrait, échelle 0,15625 mm par unité pour 200 mm de large, proportions conservées, ajout et
+  déplacement d'une coupure sans changement d'échelle, enregistrement et réouverture d'un projet.
+- **Document, analyse et fenêtre (jalon M2)** : la fenêtre ouvre un SVG, l'analyse, calcule ses
+  pages avec le cœur de M1 et en montre le plan.
+  - `internal/svgdoc` (Go pur) : lecture du SVG sans le dessiner, avec la position de chaque
+    élément dans le texte source ; constats traduits en quatre langues (filtre, script,
+    animation, police SVG, `foreignObject`, `flowRoot`, police web, image liée introuvable ou
+    distante, `use` vers un autre fichier, images incorporées, taille inconnue, XML mal formé ;
+    25 constats au plus par catégorie, le reste compté) ; polices demandées ; blocs de premier
+    niveau, en descendant dans les calques d'Inkscape ; rectangle de fond, rectangle ou chemin
+    de quatre segments qui couvre le cadre ; copie de travail (fond blanchi ou supprimé, un
+    identifiant sur chaque bloc) faite en remplaçant quelques octets du texte, sans réécrire le
+    reste, et toujours identique pour les mêmes entrées. Le fichier source n'est jamais écrit.
+  - `internal/engine` : l'interface `Document` (en Go pur, remplaçable par un faux moteur dans
+    les tests), le chargement par chemin pour que les images liées soient trouvées à côté du
+    SVG, et la résolution des polices par fontconfig (`MatchFont`) : une police absente est
+    signalée avec celle qui la remplace, au lieu de l'être en silence.
+  - `internal/app` : la session (projet, plan, historique). Chaque réglage est une commande qui
+    donne un nouvel état ; le plan est calculé avant d'accepter un changement, si bien qu'un
+    changement refusé ne laisse aucune trace ; annuler et rétablir ; les frappes successives
+    dans un même champ ne font qu'une entrée d'historique ; un glisser n'en fait qu'une ;
+    l'indicateur de modification se déduit de l'encodage du projet.
+  - `internal/viewport` (Go pur) : zoom autour d'un point, déplacement, bornes, fenêtre du
+    dessin à demander au moteur, besoin de redessiner ; testé sans écran.
+  - Fenêtre : panneau gauche (Fichier source avec le rapport d'analyse, Papier, Marges liables,
+    Échelle en trois modes, Positionnement), liste des pages à droite (largeur et hauteur du
+    contenu, échelle, début et fin dans le document, état, corrections proposées sur le bouton
+    même), aperçu au centre (zoom, déplacement, limites et numéros de page, page teintée selon
+    son état, rendu de la seule partie visible à l'échelle de l'écran, HiDPI compris), boutons
+    Annuler et Rétablir. Les panneaux Fond et Export, les coupures à la souris et l'export
+    restent annoncés comme à venir.
+  - **Documents lourds** : au-delà de 3 000 blocs, les vides sont lus sur une seule image du
+    dessin et non bloc par bloc, car mesurer un élément oblige librsvg à parcourir tout le
+    dessin (100 000 éléments : plus de six minutes mesurés un à un, quatre secondes ainsi).
+    Un constat le dit à l'utilisateur.
+- **Coupures à la souris et coupures automatiques (jalon M3)** :
+  - `internal/app` : les commandes de la session sur les coupures (ajouter, glisser, saisir une
+    position, pousser d'un pas, supprimer, coupures automatiques). Chacune est une entrée
+    d'historique (un glisser n'en fait qu'une, les pas successifs sur une même coupure non plus),
+    aucune ne lit ni n'écrit l'échelle (tests d'acceptation 6 et 7), et le plan est calculé avant
+    d'accepter un changement. Un glisser s'arrête contre la coupure voisine au lieu d'échouer ;
+    une position saisie qui n'est pas permise est refusée avec son motif, jamais corrigée en
+    silence. Pour chaque coupure : son rang, sa position, le nombre de blocs qu'elle traverse et
+    leurs noms ; les vides entre blocs servent à l'aimantation.
+  - Aperçu : double-clic pour ajouter une coupure, glisser une ligne (poignée, pastille en mm et
+    en unités, aimantation aux vides, Alt pour la désactiver), flèches (1 unité, Maj 10, Ctrl
+    0,1 mm), Suppr, Échap, clic droit (saisir une position précise ou supprimer), clic sur une
+    page pour la sélectionner. Pendant un glisser, seul le calque des coupures est redessiné.
+  - Panneau de droite : boutons « Ajouter une coupure » et « Coupures automatiques » (la
+    proposition remplace les coupures, en une entrée d'historique qu'on peut annuler), liste des
+    coupures avec leurs blocs traversés, sélection partagée entre l'aperçu et les listes.
+  - Tests : commandes de `app` (dont ceux de l'échelle), scénarios de la fenêtre sous Xvfb qui
+    pilotent les gestes (ajout, glisser, aimantation, clavier, menu, sélection) en quatre langues.
+- **Fond, export PDF vérifié et aperçu des feuilles (jalon M4)** :
+  - `internal/export` (Go pur) : les pages du plan données au moteur ; les contrôles avant
+    l'export (coupures en ordre, bandes qui couvrent le document, largeur identique partout,
+    contenu dans la feuille, dépassement de marge, fond de page demandé comparé au fond
+    détecté) ; la relecture du PDF écrit, sans bibliothèque PDF, qui compare le nombre de pages,
+    leur taille (0,02 mm), le rectangle de clip et le décalage du dessin de chaque page au plan,
+    à 1/256 de point près ; l'écriture atomique (fichier temporaire synchronisé, relu, puis
+    renommé : un export refusé, annulé ou raté ne laisse rien). Treize diagnostics `export.*`
+    traduits en quatre langues.
+  - `internal/engine` : une seule fonction dessine une page, pour le PDF comme pour l'aperçu
+    des feuilles (`RenderPage`) ; progression page par page et annulation.
+  - `internal/app` : `SetDocBackground`, `SetPageBackground` (une entrée d'historique chacun),
+    `DocumentBackground`, `CheckExport`, et `Rebuild`, qui recharge la copie de travail avec le
+    fond choisi.
+  - Fenêtre : sections Fond (trois fonds distincts, choix grisés sans rectangle de fond
+    détecté) et Export (résumé, état prêt, à confirmer ou bloqué, progression annulable), vue
+    Feuilles à côté de la vue Document, bouton « Aperçu » sur chaque carte de page, Ctrl+E et
+    bouton de la barre de titre. Le fond se change hors du fil de l'interface, l'ancienne image
+    reste affichée jusqu'à la nouvelle ; annuler et rétablir suivent le projet. Une page
+    transparente est peinte sur un damier. Une erreur de contrôle ouvre un compte rendu par
+    page, un avertissement demande une confirmation.
+  - `internal/acceptance` : les tests d'acceptation 8 à 13 sur la chaîne entière (Mini-CAD de
+    1 280 × 5 479 unités à 200 mm, pages à 10 mm du haut, fond gris remplacé par du blanc, PDF
+    rastérisé par poppler), le déterminisme de l'export et l'intégrité du SVG source.
+  - Tests : scénario de la fenêtre sous Xvfb (fond, annulation, feuilles, export refusé puis
+    écrit puis annulé, textes en quatre langues).
+- **Projet dans la fenêtre et recette (jalon M5)** :
+  - `internal/app` : `ReadProject`, `Session.SaveProject` et `Session.OpenProject`. Le projet
+    enregistre où est le document (relatif au fichier projet, absolu en repli), l'empreinte du
+    fichier tel qu'il a été lu et sa taille ; la réouverture rend les avertissements qui ne
+    bloquent rien (document modifié, taille changée, coupures hors du document, fond de projet
+    introuvable : `project.background_lost`), retire les coupures hors du document et pose
+    document et réglages d'un seul bloc, sans rien changer si le projet est refusé. L'état
+    « modifié » se compare au dernier enregistrement ou à la dernière ouverture.
+  - Fenêtre : menu **Projet** (Ouvrir un projet, Enregistrer, Enregistrer sous ; Ctrl+Maj+O,
+    Ctrl+S, Ctrl+Maj+S), document déplacé à localiser sans perdre les réglages, question avant
+    de retirer des coupures, compte rendu des avertissements, astérisque devant le nom dans le
+    titre, question « Enregistrer, ne pas enregistrer, annuler » avant de fermer ou d'ouvrir un
+    autre document. `svgprintlayout fichier.svgpl` ouvre un projet.
+  - `internal/acceptance` : les tests 1 à 7 et 14 s'ajoutent aux tests 8 à 13 ; le test 14
+    exporte avant l'enregistrement et après la réouverture : les deux PDF ont les mêmes octets.
+  - CI : les 14 tests s'exécutent dans le job du moteur, sur chaque distribution Linux essayée
+    et sous MSYS2 sur Windows (poppler installé).
+  - Tests : scénario de la fenêtre (enregistrer, rouvrir, document manquant, document modifié,
+    coupures hors du document, fichier qui n'est pas un projet, fermeture).
+- **Dépendance de construction** : `libfontconfig-dev` (Debian et Ubuntu), `fontconfig-devel`
+  (Fedora, RHEL), `mingw-w64-ucrt-x86_64-fontconfig` (MSYS2), ajoutés aux scripts, à la CI et à
+  la documentation.
+
+### Modifié
+
+- **Nom du `.deb`** : `svgprintlayout_<version>_amd64.deb`, sans révision Debian (`-1`),
+  comme les paquets de Planche-Contact et de LinuxDoctor ; la version du paquet (`Version:`
+  du `control`) est celle de `VERSION`. La 0.2.0 s'appelait `svgprintlayout_0.2.0-1_amd64.deb`.
+  Les versions suivantes (0.2.1, 0.3.0…) se classent après elle, mais un `.deb` 0.2.0
+  reconstruit avec ce script se classe avant celui qui est déjà installé : `sudo dpkg -i`
+  l'installe quand même, `apt install` demande `--allow-downgrades`. Le `.rpm` garde sa
+  release : `svgprintlayout-<version>-1.x86_64.rpm`.
+- **Unité du document** : c'est le pixel CSS de la taille déclarée du SVG, celle que lit et
+  dessine le moteur (ARCHITECTURE §5). Mode B : la portion ajustée à la hauteur d'une feuille est
+  un réglage, pour que déplacer une coupure ne change jamais l'échelle.
+
+## [0.2.0] - 2026-10-20
+
+Première version avec une interface graphique : une fenêtre GTK4 à trois panneaux, en
+français, en anglais, en espagnol et en allemand, qui ouvre un SVG et l'affiche en entier.
+Les paramètres de page, les coupures et l'export ne sont pas encore dans la fenêtre. Le
+programme est pris en charge, et essayé par la CI, sur Debian 13, Ubuntu 24.04 et suivantes,
+RHEL 10 et ses clones, Fedora, Windows 10 et 11 (voir « Systèmes pris en charge » dans le
+README).
+
+### Ajouté
+
+- **Quatre langues** : le paquet `internal/i18n` traduit l'interface en français, en anglais,
+  en espagnol et en allemand (clés, paramètres nommés, pluriels, nombres avec virgule ou
+  point, lecture d'un nombre tapé dans l'une ou l'autre notation), détecte la langue du
+  système (Linux : `LANGUAGE`, `LC_ALL`, `LC_MESSAGES`, `LANG` ; Windows : langue de
+  l'utilisateur) et ajoute l'option `-lang`. Des tests vérifient que les quatre catalogues ont
+  les mêmes clés, les mêmes paramètres et aucun texte vide, et que le code ne demande que des
+  clés qui existent.
+- **Première fenêtre** (`internal/ui`, GTK4 par gotk4 v0.3.1) : trois panneaux (paramètres,
+  aperçu, liste des pages), barre de titre avec « Ouvrir un SVG » et menu (langue, À propos,
+  Quitter). Un SVG s'ouvre sans bloquer la fenêtre (le moteur tourne dans sa propre goroutine)
+  et s'affiche en entier, ajusté à la vue ; un fichier qui n'est pas un SVG est refusé avec un
+  message, le document ouvert reste. La langue se change à chaud (automatique, français,
+  anglais, espagnol, allemand) ; le choix est enregistré dans `settings.json` du dossier de
+  configuration (`internal/app`), hors des projets. Sans cgo, `ui` est un bouchon : le reste du
+  dépôt se construit et se teste comme avant. Les paramètres de page, les coupures et l'export
+  ne sont pas encore dans la fenêtre.
+- **Fichiers du système en quatre langues** : l'entrée de menu (`.desktop`), la fiche AppStream
+  et la page de manuel, en anglais (langue de repli), français, espagnol et allemand ; les
+  pages de manuel traduites sont installées dans le dossier de leur langue. Des tests de
+  `repocheck` vérifient que chaque langue a ses lignes et que les quatre pages de manuel portent
+  la version.
+- **Option `-ready-file`** : crée un fichier quand la fenêtre est affichée et le document
+  dessiné (essais et documentation).
+- **Systèmes pris en charge** : la famille Debian (Debian 13 et suivantes, Ubuntu 24.04 et
+  suivantes, leurs dérivés), la famille Red Hat (RHEL 10 et ses clones, Fedora) et Windows 10
+  et 11. Le critère est la version des bibliothèques (GTK 4.14, GLib 2.80, librsvg 2.52 au
+  moins, imposées par gotk4 v0.3.1) ; Debian 12, Ubuntu 22.04 et RHEL 9 sont trop anciens.
+  `build-deb.sh` et `build-rpm.sh` vérifient ces versions avant de compiler et le disent en
+  français. Tableau dans le README et dans `ARCHITECTURE.fr.md` (§4).
+- **CI des distributions** : le job `distributions` construit le paquet dans un conteneur de
+  Debian 13, Ubuntu 24.04, Ubuntu 26.04, Fedora, CentOS Stream 10, AlmaLinux 10 et Rocky Linux
+  10, l'installe avec `apt` ou `dnf`, lance `-selftest` puis la fenêtre dans les quatre
+  langues, et vérifie sur Debian 12, Ubuntu 22.04 et AlmaLinux 9 que la construction est
+  refusée avec un message clair. Le résultat de chaque système est dans l'annotation de
+  l'exécution. Le paquet Windows est essayé sur `windows-2022` et `windows-latest`.
+- **CI** : un job `ui` (GTK4 sous Xvfb : tests de la fenêtre, captures dans les quatre langues
+  en artefact), l'ouverture de la fenêtre du programme installé dans le job `linux-packages`, et
+  dans le job `windows-package` l'ouverture de la fenêtre du paquet portable dans les quatre
+  langues puis de celle du programme installé, avec captures d'écran.
+
+### Modifié
+
+- **Paquets** : les `.deb` et `.rpm` dépendent de GTK 4 (`libgtk-4-1`) ; leurs scripts
+  vérifient la présence de GTK 4 à la construction (Ubuntu 24.04 ou plus récent, GTK 4.14).
+  Le paquet Windows embarque GTK 4 et ce qu'il lui faut (schémas de réglages, thèmes d'icônes
+  Adwaita et hicolor, traductions de GTK) et contient deux programmes : `svgprintlayout.exe`
+  (la fenêtre, sans console) et `svgprintlayout-console.exe` (`-version`, `-selftest`). Le
+  script de construction vérifie le sous-système de chacun. L'installeur NSIS parle les quatre
+  langues.
+
+### Corrigé
+
+- **Avertissements à la construction** : les trois avertissements de gcc sur `free`, que
+  gotk4 déclare autrement que `<stdlib.h>`, ne s'affichent plus pendant la construction des
+  paquets (les autres avertissements restent visibles) ; `dpkg-shlibdeps` n'affiche plus
+  « les binaires à analyser devraient déjà être présents… » sur un système qui n'est pas en
+  anglais (le filtre cherchait le message anglais). Les scripts préviennent aussi que la
+  première compilation de GTK dure plusieurs minutes sans rien afficher.
+
+## [0.1.0] - 2026-10-19
+
+Première version. Le dépôt contient le squelette, les documents de référence, la bibliothèque
+d'unités et de formats papier, le prototype du moteur de rendu (M0a), les scripts qui
+construisent les paquets `.deb`, `.rpm` et Windows, et la CI. Le programme n'a pas encore
+d'interface graphique : il n'offre que `-version` et `-selftest`. Le prototype de l'interface
+GTK4 et le build de celle-ci sous Windows (M0b) sont la prochaine étape.
+
+### Ajouté
+
+- **Paquets** : `./build-deb.sh`, `./build-rpm.sh` et `.\build-windows.ps1` construisent à la
+  racine du dépôt un `.deb`, un `.rpm`, une version portable (`.zip`) et un installeur NSIS de
+  Windows, avec les outils natifs de chaque plate-forme (`dpkg-deb`, `rpmbuild`, MSYS2 et
+  NSIS). Ils ont les options et la gestion de `VERSION` de ceux de Planche-Contact :
+  `--major`, `--minor`, `--patch`, `--no-version-change`, `--clean`, `--help` (`-Major`… sous
+  PowerShell), menu interactif sans option, confirmation avant de construire, `VERSION`
+  écrit une fois le paquet construit. Une version `0.1.0-dev` est d'abord publiée (`--patch`
+  et `--minor` donnent `0.1.0`). Les paquets Linux contiennent le programme, l'entrée de
+  menu, les métadonnées AppStream, l'icône et la page de manuel, avec des dépendances
+  déduites du binaire ; le paquet Windows embarque aussi les DLL de cairo et de librsvg,
+  fontconfig, les chargeurs d'images et la licence de chaque bibliothèque. Les constructions
+  sont reproductibles. Même organisation des dossiers que Planche-Contact : `debian/`,
+  `metainfo/`, `icons/`, `windows/`. Voir le README, « Paquets », et `ARCHITECTURE.fr.md`.
+- **`-version` et `-selftest`** : le programme affiche sa version et celles de librsvg et de
+  cairo, et vérifie son moteur de rendu sur la machine où il tourne (chargement, mesure,
+  rendu, image PNG incorporée, police incorporée au PDF, export déterministe). Les paquets
+  s'en servent comme test de fumée.
+- **`engine.ConfigureRuntime`** : sous Windows, oriente fontconfig, gdk-pixbuf et pango vers
+  les données livrées à côté du programme.
+- **CI** : un job `linux-packages` (construction, lintian, AppStream, installation et
+  désinstallation du `.deb`, essai du `.rpm`, constructions identiques, gestion de `VERSION`
+  par les scripts) et un job `windows-package` (construction par `build-windows.ps1 -Patch`,
+  essai de la version portable avec le seul PATH de Windows, installation et désinstallation
+  silencieuses, `-Clean`).
+- **`repocheck`** : l'en-tête de licence est aussi exigé dans les scripts PowerShell, les
+  scripts NSIS et les fichiers d'empaquetage ; les trois scripts de construction doivent avoir
+  les mêmes options, le même calcul de version, et n'écrire `VERSION` qu'après la
+  construction ; la version de `VERSION` doit être dans le journal des modifications, dans les
+  métadonnées AppStream et dans la page de manuel ; `ARCHITECTURE.fr.md` doit garder ses sections
+  numérotées de 1 à 15 sans trou ; les fichiers sont lus avec des fins de ligne Unix, comme ils
+  le sont dans une copie de travail Windows.
+- **`engine` (prototype M0a)** : chargement d'un SVG par librsvg (résolution imposée à 96 dpi),
+  taille du document, boîte d'un élément dans le repère du document, rendu d'une fenêtre en
+  image, et export PDF multipage : chaque page redessine le document sous un clip
+  rectangulaire, à une échelle unique, avec dates fixes (deux exports sont identiques à
+  l'octet), polices incorporées et texte sélectionnable. Écrit en cgo (`librsvg-2.0`,
+  `cairo`) ; sans cgo, le paquet est vide et le reste du dépôt se compile.
+- **`testsvg`** : générateur déterministe d'un SVG d'essai de 1 280 × 5 479 unités (fond gris,
+  bandeau, blocs avec texte, rectangle transformé), équivalent public du Mini-CAD.
+- **Tests du moteur** : taille exacte des pages du PDF, exports identiques, texte et polices,
+  taille du fichier indépendante du nombre de pages, et test de couture en deux contrôles — la
+  géométrie lue dans le PDF (clip et décalage de chaque page, exacts à 1/256 de point) et les
+  pixels par carrés de 16 × 16 — qui échouent tous deux quand une page est décalée. Le vrai
+  Mini-CAD, qui n'est pas dans le dépôt, passe les mêmes tests avec `SVGPL_MINICAD`.
+- **`docs/M0.fr.md`** : rapport du volet M0a. Verdict : le moteur librsvg + cairo est retenu ;
+  la surface d'enregistrement cairo, qui vidait les pages 2 à 4, est abandonnée au profit
+  d'un rendu direct par page ; une police absente est remplacée sans avertissement, ce qui
+  rend la détection du §12 d'`ARCHITECTURE.fr.md` indispensable.
+- **Intégration continue** : un job `engine` sous Ubuntu (`librsvg2-dev`, `poppler-utils`,
+  `fonts-ibm-plex`, cgo activé) pour `engine` et `testsvg`.
+- **Squelette du dépôt** : module Go `github.com/gillesmagneville/svg-print-layout`, point
+  d'entrée `svgprintlayout` (qui n'affiche encore que sa version avec `-version`), un paquet
+  par rôle dans `internal/` (`model`, `units`, `diag`, `layout`, `project`, `svgdoc`,
+  `engine`, `export`, `app`, `ui`).
+- **`units`** : conversions millimètres, points et pixels CSS ; lecture des longueurs SVG
+  (`mm`, `cm`, `in`, `pt`, `pc`, `px`, sans unité), avec une erreur explicite pour `%`, `em` et
+  `ex` ; formats A0 à A5, Letter, Legal, Tabloid et personnalisé, portrait et paysage ;
+  marges indépendantes et zone utile ; échelle en millimètres par unité du document. Les
+  chiffres du test d'acceptation du Mini-CAD (200 mm pour 1 280 unités : 856,09375 mm de
+  haut, 4 pages A4 au minimum) sont vérifiés par un test.
+- **Documents de référence** : `PROJECT_CONTEXT.fr.md` (vision, principes, périmètre),
+  `ARCHITECTURE.fr.md` (contrat technique, tiré du document de conception), `CONTRIBUTING.fr.md`,
+  licence GPL-3.0 (`LICENSE`).
+- **`repocheck`** : tests sur le dépôt lui-même — en-tête SPDX dans chaque fichier, `VERSION`
+  cohérente avec ce fichier, cgo limité à `ui` et `engine`, chaque paquet de `internal/`
+  décrit dans `ARCHITECTURE.fr.md`.
+- **Intégration continue** (GitHub Actions) : `gofmt`, `go vet` et `go test` sous Ubuntu et
+  Windows, avec `CGO_ENABLED=0`.

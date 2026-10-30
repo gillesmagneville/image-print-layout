@@ -364,7 +364,9 @@ stage_windows() {
 
     install -m 0644 "$PROJECT_DIR/LICENSE" "$root/LICENSE"
     install -m 0644 "$PROJECT_DIR/README.md" "$root/README.md"
+    install -m 0644 "$PROJECT_DIR/README.fr.md" "$root/README.fr.md"
     install -m 0644 "$PROJECT_DIR/CHANGELOG.md" "$root/CHANGELOG.md"
+    install -m 0644 "$PROJECT_DIR/CHANGELOG.fr.md" "$root/CHANGELOG.fr.md"
 }
 
 # write_licenses RACINE FICHIER... : pour chaque paquet MSYS2 dont vient un des

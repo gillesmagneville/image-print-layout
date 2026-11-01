@@ -8,6 +8,18 @@ Files: *
 Copyright: 2026 Gilles MAGNEVILLE
 License: GPL-3
 
+Files: CODE_OF_CONDUCT.md CODE_OF_CONDUCT.fr.md
+Copyright: The Contributor Covenant authors (stewarded by the Organization for Ethical Source)
+           2026 Gilles MAGNEVILLE (adaptation)
+License: CC-BY-SA-4.0
+Comment: Contributor Covenant 3.0, adapted for this project (reporting contact and
+ enforcement note filled in).
+
+License: CC-BY-SA-4.0
+ This work is licensed under the Creative Commons Attribution-ShareAlike 4.0
+ International License. To view a copy of this license, visit
+ <https://creativecommons.org/licenses/by-sa/4.0/legalcode>.
+
 License: GPL-3
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by

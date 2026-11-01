@@ -209,8 +209,8 @@ dépendances des paquets sont ensuite déduites du binaire (§« Paquets »).
 
 **Non pris en charge : Debian 12, Ubuntu 22.04 (et Linux Mint 21), RHEL 9 et ses clones.** Ils ont
 GTK 4.8, 4.6 et 4.12, GLib 2.74, 2.72 et 2.68, et RHEL 9 une librsvg 2.50. `build-deb.sh` et
-`build-rpm.sh` le constatent avant de compiler et le disent en français ; la CI vérifie ce refus
-sur ces trois systèmes (jobs « refus attendu »). Ils pourraient être servis plus tard par un
+`build-rpm.sh` le constatent avant de compiler et le disent ; la CI vérifie ce refus
+sur ces trois systèmes (jobs « refusal expected », c'est-à-dire « refus attendu »). Ils pourraient être servis plus tard par un
 paquet qui embarque GTK (Flatpak ou AppImage), ce qui change la distribution du logiciel ;
 cela reste hors de la v1 (§15, question 7).
 
@@ -254,7 +254,7 @@ versionnés : `.gitignore`).
   fonction de calcul (`next_version`, identique dans les deux scripts shell), que `VERSION`
   est écrit une seule fois après la construction, et la CI exécute les scénarios
   (`.github/scripts/test-version-handling.sh` pour Linux, `windows-package.ps1` pour Windows).
-  Le script Windows a une option de plus, `-Oui`, qui répond « oui » à ses questions : la CI
+  Le script Windows a une option de plus, `-Yes`, qui répond « oui » à ses questions : la CI
   ne peut pas répondre à un `Read-Host`.
 - **Outils natifs.** `dpkg-deb` et `rpmbuild` sont sur toute machine de la famille, sans
   Ruby ni dépôt de modules (fpm et nfpm ne sont pas utilisés, alors que Planche-Contact

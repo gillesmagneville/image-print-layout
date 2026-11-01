@@ -1,35 +1,35 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-3.0-only
 #
-# Étapes du job « distributions » de la CI (.github/workflows/ci.yml), qui
-# s'exécute dans un conteneur de la distribution à essayer. Le script installe
-# les outils de construction avec le gestionnaire de paquets de la distribution,
-# construit le paquet de sa famille (.deb ou .rpm) avec le script du dépôt,
-# l'installe comme le ferait une personne (apt ou dnf, qui tirent GTK 4 et les
-# autres dépendances), puis lance le programme installé : -version, -selftest et
-# la fenêtre sur un écran virtuel.
+# Steps of the "distributions" job of the CI (.github/workflows/ci.yml), which
+# runs in a container of the distribution to try. The script installs
+# the build tools with the distribution's package manager,
+# builds the package of its family (.deb or .rpm) with the script of the repository,
+# installs it as a person would (apt or dnf, which pull in GTK 4 and the
+# other dependencies), then runs the installed program: -version, -selftest and
+# the window on a virtual screen.
 #
-# Un paquet est lié aux bibliothèques de la machine qui l'a construit : on le
-# construit donc sur la distribution où on l'installe.
+# A package is tied to the libraries of the machine that built it: it is
+# therefore built on the distribution where it is installed.
 #
-# La fin du journal est recopiée dans une annotation de l'exécution, que l'on
-# lit sans télécharger les journaux : en erreur si une étape échoue, en simple
-# note sinon (versions des bibliothèques, dépendances du paquet).
+# The end of the log is copied into an annotation of the run, which can be
+# read without downloading the logs: as an error if a step fails, as a plain
+# note otherwise (library versions, package dependencies).
 #
-# Avec « refus » en second argument, la distribution est connue pour être trop
-# ancienne (GTK < 4.14, GLib < 2.80) : le test vérifie que le script de
-# construction refuse de compiler, avec un message qui dit pourquoi, au lieu
-# des centaines d'erreurs de cgo.
+# With "refusal" as second argument, the distribution is known to be too
+# old (GTK < 4.14, GLib < 2.80): the test checks that the build script
+# refuses to compile, with a message saying why, instead of the hundreds
+# of cgo errors.
 #
-# Usage : test-distribution.sh debian|redhat [refus]
+# Usage: test-distribution.sh debian|redhat [refusal]
 
 set -euo pipefail
 
 family="${1:-}"
 expectation="${2:-}"
 
-# Après setup-go, le lanceur de la CI donne à certains conteneurs (Rocky Linux
-# 10) un PATH sans les dossiers système : on les remet, derrière le reste.
+# After setup-go, the CI runner gives some containers (Rocky Linux
+# 10) a PATH without the system folders: we put them back, after the rest.
 PATH="$PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
 
@@ -37,10 +37,10 @@ cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 log="${RUNNER_TEMP:-/tmp}/distribution.log"
 screenshots="$PWD/screenshots"
 
-# Écrit la fin du journal dans une annotation GitHub (%, retours chariot et
-# sauts de ligne y sont codés). GitHub n'affiche qu'environ 4 000 caractères
-# d'une annotation : on garde la fin du journal, en erreur, et le résumé seul
-# quand tout a réussi.
+# Writes the end of the log into a GitHub annotation (%, carriage returns and
+# line feeds are encoded in it). GitHub only shows about 4,000 characters
+# of an annotation: we keep the end of the log, on error, and the summary alone
+# when everything succeeded.
 annotate() {
     local text
     if [ "$1" = notice ]; then
@@ -60,22 +60,22 @@ install_debian() {
     apt-get install -y --no-install-recommends build-essential pkg-config dpkg-dev git ca-certificates \
         librsvg2-dev libgdk-pixbuf-2.0-dev libfontconfig-dev libgtk-4-dev libgirepository1.0-dev \
         fonts-dejavu-core adwaita-icon-theme xvfb xauth imagemagick poppler-utils
-    # IBM Plex est la police du jeu d'essai, mais Debian ne la fournit pas
-    # partout ; le test n'en dépend pas (une police de remplacement suffit).
-    apt-get install -y --no-install-recommends fonts-ibm-plex || echo "(fonts-ibm-plex absent de cette distribution)"
+    # IBM Plex is the font of the test set, but Debian does not provide it
+    # everywhere; the test does not depend on it (a replacement font is enough).
+    apt-get install -y --no-install-recommends fonts-ibm-plex || echo "(fonts-ibm-plex not available in this distribution)"
 }
 
 build_install_debian() {
-    echo o | ./build-deb.sh --no-version-change
+    echo y | ./build-deb.sh --no-version-change
     note "Depends : $(dpkg-deb -f ./imageprintlayout_*.deb Depends)"
     apt-get install -y ./imageprintlayout_*.deb
 }
 
-# Un miroir d'EPEL défaillant (certificat ou somme de contrôle fausse) fait
-# échouer toute transaction dnf, et ce n'est pas le programme qu'on essaie : si
-# l'échec vient du téléchargement des métadonnées, on repart de métadonnées
-# neuves, pour qu'un autre miroir soit choisi, avant de conclure. Un paquet
-# simplement absent des dépôts échoue tout de suite, sans nouvel essai.
+# A faulty EPEL mirror (wrong certificate or checksum) makes every dnf
+# transaction fail, and it is not the program we are trying: if the failure
+# comes from downloading the metadata, we start again from fresh metadata,
+# so that another mirror is chosen, before concluding. A package that is
+# simply absent from the repositories fails right away, without a new attempt.
 dnf_retry() {
     local try log status
     log=$(mktemp)
@@ -88,7 +88,7 @@ dnf_retry() {
             return 0
         fi
         grep -q 'downloading metadata\|download metadata\|Cannot download' "$log" || break
-        note "dnf $1 : métadonnées indisponibles (essai $try sur 3), nouvel essai"
+        note "dnf $1: metadata unavailable (attempt $try of 3), trying again"
         dnf clean metadata > /dev/null 2>&1 || true
         sleep 5
     done
@@ -97,32 +97,32 @@ dnf_retry() {
 }
 
 install_redhat() {
-    # Les paquets de développement de GTK et de GObject Introspection sont dans
-    # le dépôt CRB (« PowerTools » avant la version 9) des clones de RHEL ; ni
-    # CRB ni EPEL n'existent chez Fedora, d'où les « || true ».
+    # The GTK and GObject Introspection development packages are in the CRB
+    # repository ("PowerTools" before version 9) of the RHEL clones; neither
+    # CRB nor EPEL exists on Fedora, hence the "|| true".
     dnf_retry install dnf-plugins-core epel-release || true
     dnf config-manager --set-enabled crb || dnf config-manager --set-enabled powertools || true
     dnf_retry install gcc make pkgconf-pkg-config git tar gzip findutils which rpm-build \
         librsvg2-devel gdk-pixbuf2-devel cairo-devel fontconfig-devel gtk4-devel gobject-introspection-devel \
         dejavu-sans-fonts adwaita-icon-theme poppler-utils
-    # L'écran virtuel est nécessaire pour essayer la fenêtre ; l'outil de
-    # capture est facultatif. Un par un, pour que le journal dise lequel manque.
+    # The virtual screen is needed to try the window; the capture tool is
+    # optional. One by one, so that the log says which one is missing.
     local package
     for package in xorg-x11-server-Xvfb xorg-x11-xauth ImageMagick; do
-        dnf_retry install "$package" || note "paquet introuvable dans les dépôts : $package"
+        dnf_retry install "$package" || note "package not found in the repositories: $package"
     done
-    # RHEL 10 et ses clones n'ont plus Xvfb : un compositeur Wayland sans écran
-    # (weston, lancé par wlheadless-run) en tient lieu, sans capture.
-    command -v xvfb-run > /dev/null || dnf_retry install xwayland-run weston || note "xwayland-run ou weston introuvable dans les dépôts"
+    # RHEL 10 and its clones no longer have Xvfb: a headless Wayland compositor
+    # (weston, started by wlheadless-run) replaces it, without a capture.
+    command -v xvfb-run > /dev/null || dnf_retry install xwayland-run weston || note "xwayland-run or weston not found in the repositories"
 }
 
 build_install_redhat() {
-    echo o | ./build-rpm.sh --no-version-change
+    echo y | ./build-rpm.sh --no-version-change
     note "Requires : $(rpm -qpR ./imageprintlayout-*.rpm | grep -v 'GLIBC\|^rpmlib\|^rtld\|^/bin/sh' | sed 's/()(64bit)//' | sort -u | tr '\n' ' ')"
     dnf -y install ./imageprintlayout-*.rpm
 }
 
-# Les lignes du résumé, relues à la fin pour que l'annotation les montre.
+# The summary lines, read again at the end so that the annotation shows them.
 summary="${RUNNER_TEMP:-/tmp}/distribution-summary.txt"
 : > "$summary"
 note() { echo "$*" | tee -a "$summary"; }
@@ -133,52 +133,52 @@ versions() {
     note "gtk4 $(pkg-config --modversion gtk4), glib $(pkg-config --modversion glib-2.0), pango $(pkg-config --modversion pango), librsvg $(pkg-config --modversion librsvg-2.0), cairo $(pkg-config --modversion cairo)"
 }
 
-# Distribution trop ancienne : le script de construction doit refuser.
+# Distribution too old: the build script must refuse.
 expect_refusal() {
     local script out status=0
     case "$family" in
         debian) script=./build-deb.sh ;;
         *) script=./build-rpm.sh ;;
     esac
-    out="$(echo o | "$script" --no-version-change 2>&1)" || status=$?
+    out="$(echo y | "$script" --no-version-change 2>&1)" || status=$?
     echo "$out"
-    if [ "$status" -ne 0 ] && grep -q "trop anciennes" <<< "$out"; then
-        note "construction refusée, comme prévu :"
-        note "$(grep -A2 "trop anciennes" <<< "$out")"
+    if [ "$status" -ne 0 ] && grep -q "too old" <<< "$out"; then
+        note "build refused, as expected:"
+        note "$(grep -A2 "too old" <<< "$out")"
     else
-        note "ERREUR : la construction devait être refusée pour bibliothèques trop anciennes (code $status)"
+        note "ERROR: the build should have been refused because of libraries that are too old (code $status)"
         return 1
     fi
 }
 
-# Le programme installé, comme le lancerait une personne.
+# The installed program, as a person would run it.
 run_installed() {
-    echo "--- programme installé"
+    echo "--- installed program"
     imageprintlayout -version
     imageprintlayout -selftest
-    note "-selftest : réussi"
+    note "-selftest: passed"
     if command -v xvfb-run > /dev/null || command -v wlheadless-run > /dev/null; then
         mkdir -p "$screenshots"
         for lang in en fr es de; do
             .github/scripts/screenshot.sh /usr/bin/imageprintlayout "$lang" "$screenshots/$lang.png"
         done
         if command -v xvfb-run > /dev/null; then
-            note "fenêtre : ouverte dans les quatre langues, sur Xvfb ($(command -v import > /dev/null && echo "avec captures" || echo "sans capture : ImageMagick absent"))"
+            note "window: opened in the four languages, on Xvfb ($(command -v import > /dev/null && echo "with captures" || echo "without capture: ImageMagick missing"))"
         else
-            note "fenêtre : ouverte dans les quatre langues, sur un compositeur Wayland sans écran (weston) : pas de capture"
+            note "window: opened in the four languages, on a headless Wayland compositor (weston): no capture"
         fi
     else
-        note "fenêtre : NON ESSAYÉE (ni xvfb-run ni wlheadless-run sur cette distribution)"
+        note "window: NOT TRIED (neither xvfb-run nor wlheadless-run on this distribution)"
     fi
 }
 
-# Les 14 tests d'acceptation du cahier des charges (§13), sur cette
-# distribution : le Mini-CAD synthétique, A4 portrait, 200 mm, des coupures, un
-# fond blanc, le PDF rastérisé par poppler, puis le projet rouvert.
+# The 14 acceptance tests of the specification (§13), on this
+# distribution: the synthetic Mini-CAD, A4 portrait, 200 mm, cuts, a
+# white background, the PDF rasterised by poppler, then the project reopened.
 run_acceptance() {
-    echo "--- tests d'acceptation"
+    echo "--- acceptance tests"
     go test -count=1 ./internal/acceptance
-    note "tests d'acceptation 1 à 14 : réussis"
+    note "acceptance tests 1 to 14: passed"
 }
 
 main() {
@@ -186,7 +186,7 @@ main() {
         debian)
             install_debian
             versions
-            if [ "$expectation" = refus ]; then
+            if [ "$expectation" = refusal ]; then
                 expect_refusal
                 return
             fi
@@ -195,14 +195,14 @@ main() {
         redhat)
             install_redhat
             versions
-            if [ "$expectation" = refus ]; then
+            if [ "$expectation" = refusal ]; then
                 expect_refusal
                 return
             fi
             build_install_redhat
             ;;
         *)
-            echo "usage : $0 debian|redhat" >&2
+            echo "usage: $0 debian|redhat" >&2
             exit 2
             ;;
     esac
@@ -211,12 +211,12 @@ main() {
 }
 
 everything() {
-    # Le sous-shell du tube hérite de « set +e » ci-dessous : on remet l'arrêt à
-    # la première erreur ici. « main » est appelée seule (pas dans un « && »,
-    # qui désactiverait « set -e » dans toute la fonction).
+    # The subshell of the pipe inherits the "set +e" below: we restore stopping at
+    # the first error here. "main" is called alone (not in a "&&",
+    # which would disable "set -e" in the whole function).
     set -euo pipefail
     main
-    echo "=== RÉSUMÉ ==="
+    echo "=== SUMMARY ==="
     cat "$summary"
 }
 
@@ -226,8 +226,8 @@ status="${PIPESTATUS[0]}"
 set -e
 
 if [ "$status" -eq 0 ]; then
-    annotate notice "Distribution essayée"
+    annotate notice "Distribution tried"
 else
-    annotate error "Distribution en échec"
+    annotate error "Distribution failed"
 fi
 exit "$status"

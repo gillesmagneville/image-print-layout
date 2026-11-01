@@ -1,27 +1,27 @@
 ﻿; SPDX-License-Identifier: GPL-3.0-only
 ;
-; installer.nsi - Installeur Windows d'Image Print Layout.
+; installer.nsi - Windows installer of Image Print Layout.
 ;
-; Appelé par build-windows.sh, qui copie ce fichier dans son dossier de travail
-; avec deux fichiers générés, puis lance makensis dessus :
-;   build-vars.nsh        les valeurs de cette construction (!define) :
-;                           APP_VERSION          version affichée (0.1.0-dev)
-;                           APP_VERSION_NUMERIC  version à quatre nombres (0.1.0.0)
-;                           STAGE_DIR            dossier du programme à installer
-;                           OUTPUT_FILE          installeur à produire
-;                           APP_ICON             icône (.ico)
-;   uninstall-files.nsh   la liste exacte des fichiers à supprimer (Delete,
-;                         RMDir) : le désinstalleur n'efface jamais un dossier
-;                         entier, au cas où l'utilisateur aurait choisi un
-;                         dossier d'installation qui contient autre chose.
+; Called by build-windows.sh, which copies this file into its working folder
+; with two generated files, then runs makensis on it:
+;   build-vars.nsh        the values of this build (!define):
+;                           APP_VERSION          displayed version (0.1.0-dev)
+;                           APP_VERSION_NUMERIC  four-number version (0.1.0.0)
+;                           STAGE_DIR            folder of the program to install
+;                           OUTPUT_FILE          installer to produce
+;                           APP_ICON             icon (.ico)
+;   uninstall-files.nsh   the exact list of the files to delete (Delete,
+;                         RMDir): the uninstaller never erases a whole
+;                         folder, in case the user chose an install
+;                         folder that contains something else.
 ;
-; L'installeur parle les quatre langues du programme. NSIS choisit celle de
-; Windows ; l'anglais, déclaré en premier, sert quand Windows est dans une autre
-; langue. Le désinstalleur choisit de la même façon : ses raccourcis sont donc
-; supprimés sous leurs quatre noms possibles.
+; The installer speaks the four languages of the program. NSIS picks that of
+; Windows; English, declared first, is used when Windows is in another
+; language. The uninstaller picks the same way: its shortcuts are therefore
+; deleted under their four possible names.
 ;
-; Ce fichier est en UTF-8 avec marque d'ordre des octets (BOM), que NSIS exige
-; pour lire les accents ; ne pas l'enregistrer sans BOM.
+; This file is UTF-8 with a byte order mark (BOM), which NSIS requires
+; to read accents; do not save it without a BOM.
 
 Unicode true
 
@@ -35,15 +35,15 @@ SetCompressor /SOLID lzma
 BrandingText "Image Print Layout ${APP_VERSION}"
 
 !include "MUI2.nsh"
-!include "FileFunc.nsh"  ; ${GetSize}, pour EstimatedSize
+!include "FileFunc.nsh"  ; ${GetSize}, for EstimatedSize
 !include "x64.nsh"       ; ${RunningX64}
 
 !define MUI_ABORTWARNING
 !define MUI_ICON "${APP_ICON}"
 !define MUI_UNICON "${APP_ICON}"
-; Pas de case « Lancer le programme » à la fin : l'installeur s'exécute en
-; administrateur, et le programme lancé d'ici le serait aussi. Le raccourci du
-; menu Démarrer le lance avec les droits de la personne.
+; No "Run the program" box at the end: the installer runs as
+; administrator, and the program started from here would too. The Start
+; menu shortcut starts it with the person's rights.
 
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_DIRECTORY
@@ -53,13 +53,13 @@ BrandingText "Image Print Layout ${APP_VERSION}"
 !insertmacro MUI_UNPAGE_CONFIRM
 !insertmacro MUI_UNPAGE_INSTFILES
 
-; L'anglais d'abord : c'est la langue de repli.
+; English first: it is the fallback language.
 !insertmacro MUI_LANGUAGE "English"
 !insertmacro MUI_LANGUAGE "French"
 !insertmacro MUI_LANGUAGE "Spanish"
 !insertmacro MUI_LANGUAGE "German"
 
-; Textes de l'installeur, dans chaque langue.
+; Texts of the installer, in each language.
 LangString MSG_NEEDS_X64 ${LANG_ENGLISH} "Image Print Layout requires 64-bit Windows (x64)."
 LangString MSG_NEEDS_X64 ${LANG_FRENCH}  "Image Print Layout nécessite Windows 64 bits (x64)."
 LangString MSG_NEEDS_X64 ${LANG_SPANISH} "Image Print Layout necesita Windows de 64 bits (x64)."
@@ -101,8 +101,8 @@ VIProductVersion "${APP_VERSION_NUMERIC}"
 
 !define UNINSTALL_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\ImagePrintLayout"
 !define APP_KEY "Software\ImagePrintLayout"
-; Le programme s'appelait « SVG Print Layout » jusqu'à la version 1.0.x : ses
-; clés de registre, que l'installeur retire (voir SecMain).
+; The program was called "SVG Print Layout" up to version 1.0.x: its
+; registry keys, which the installer removes (see SecMain).
 !define OLD_APP_KEY "Software\SVGPrintLayout"
 
 Function .onInit
@@ -110,13 +110,13 @@ Function .onInit
         MessageBox MB_OK|MB_ICONSTOP "$(MSG_NEEDS_X64)"
         Abort
     ${EndIf}
-    ; Écrire dans la base de registre 64 bits, et non dans la vue 32 bits de
-    ; cet installeur.
+    ; Write to the 64-bit registry, not to the 32-bit view of
+    ; this installer.
     SetRegView 64
     SetShellVarContext all
 
-    ; Mise à jour : on propose le dossier de l'installation précédente, sauf si
-    ; l'utilisateur a donné le sien (/D=...), qui est alors déjà dans $INSTDIR.
+    ; Update: we offer the folder of the previous installation, unless
+    ; the user gave their own (/D=...), which is then already in $INSTDIR.
     StrCmp $INSTDIR "$PROGRAMFILES64\Image Print Layout" 0 instdir_done
     ReadRegStr $0 HKLM "${APP_KEY}" "InstallDir"
     StrCmp $0 "" instdir_done 0
@@ -132,10 +132,10 @@ FunctionEnd
 Section "$(SEC_MAIN)" SecMain
     SectionIn RO
 
-    ; Renommage : une installation de « SVG Print Layout » (jusqu'à la version
-    ; 1.0.x) est désinstallée par son propre désinstalleur, qui retire ses
-    ; fichiers, ses raccourcis et ses clés. Les réglages et les projets de
-    ; l'utilisateur ne sont pas dans son dossier : ils restent.
+    ; Renaming: an installation of "SVG Print Layout" (up to version
+    ; 1.0.x) is uninstalled by its own uninstaller, which removes its
+    ; files, its shortcuts and its keys. The user's settings and projects
+    ; are not in its folder: they stay.
     ReadRegStr $0 HKLM "${OLD_APP_KEY}" "InstallDir"
     StrCmp $0 "" old_done 0
     IfFileExists "$0\Uninstall.exe" 0 old_done
@@ -144,8 +144,8 @@ Section "$(SEC_MAIN)" SecMain
         RMDir "$0"
     old_done:
 
-    ; Mise à jour : on retire d'abord la version installée, pour qu'il ne reste
-    ; aucun fichier de l'ancienne (une DLL périmée, par exemple).
+    ; Update: we first remove the installed version, so that no file
+    ; of the old one remains (an outdated DLL, for example).
     IfFileExists "$INSTDIR\Uninstall.exe" 0 fresh
         ExecWait '"$INSTDIR\Uninstall.exe" /S _?=$INSTDIR'
         Delete "$INSTDIR\Uninstall.exe"
@@ -166,9 +166,9 @@ Section "$(SEC_MAIN)" SecMain
     WriteRegDWORD HKLM "${UNINSTALL_KEY}" "NoModify" 1
     WriteRegDWORD HKLM "${UNINSTALL_KEY}" "NoRepair" 1
 
-    ; Taille installée, affichée dans Paramètres > Applications. À calculer une
-    ; fois les fichiers copiés. IntFmt demande un format de type printf : avec
-    ; "0xX" il ne convertit rien et la taille retombe à 0 sans erreur.
+    ; Installed size, shown in Settings > Apps. To be computed once
+    ; the files are copied. IntFmt wants a printf-type format: with
+    ; "0xX" it converts nothing and the size falls back to 0 without error.
     ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
     IntFmt $0 "0x%X" $0
     WriteRegDWORD HKLM "${UNINSTALL_KEY}" "EstimatedSize" "$0"
@@ -192,8 +192,8 @@ Section "Uninstall"
     RMDir "$INSTDIR"
 
     Delete "$SMPROGRAMS\Image Print Layout\Image Print Layout.lnk"
-    ; Le raccourci du désinstalleur porte le nom de la langue de l'installation,
-    ; peut-être pas celle de Windows aujourd'hui : on supprime les quatre.
+    ; The uninstaller shortcut bears the name of the language of the installation,
+    ; perhaps not that of Windows today: we delete all four.
     Delete "$SMPROGRAMS\Image Print Layout\Uninstall.lnk"
     Delete "$SMPROGRAMS\Image Print Layout\Désinstaller.lnk"
     Delete "$SMPROGRAMS\Image Print Layout\Desinstalar.lnk"

@@ -11,6 +11,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.3.2] - 2026-10-31
+
+Maintenance release: the program itself does not change.
+
+### Added
+
+- **A Code of Conduct** ([`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md), in English and in
+  French), based on the Contributor Covenant 3.0, with the maintainer as the contact for
+  reports. The packages ship it: in `/usr/share/doc/imageprintlayout/` for the `.deb` and
+  the `.rpm`, and in the root folder of the Windows packages.
+
+### Changed
+
+- **The build scripts and the CI are now in English**, like the documentation:
+  `build-deb.sh`, `build-rpm.sh`, `build-windows.ps1`, `windows/build-windows.sh`, the
+  scripts of `.github/scripts` and the workflows. Their confirmation questions are now
+  answered with `y` (`[y/N]`) instead of `o`, and the PowerShell option `-Oui` is now `-Yes`.
+- The list of the libraries shipped in the Windows packages is now
+  `share/licenses/COMPONENTS.txt` (it was `COMPOSANTS.txt`), in English.
+
 ## [1.3.1] - 2026-10-30
 
 Documentation release: the program itself does not change.

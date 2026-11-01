@@ -11,6 +11,26 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+## [1.3.2] - 2026-10-31
+
+Version de maintenance : le programme lui-même ne change pas.
+
+### Ajouté
+
+- **Un code de conduite** ([`CODE_OF_CONDUCT.fr.md`](CODE_OF_CONDUCT.fr.md), en français et
+  en anglais), fondé sur le Contributor Covenant 3.0, avec le mainteneur pour contact des
+  signalements. Les paquets l'embarquent : dans `/usr/share/doc/imageprintlayout/` pour le
+  `.deb` et le `.rpm`, et à la racine du dossier des paquets Windows.
+
+### Modifié
+
+- **Les scripts de construction et la CI sont désormais en anglais**, comme la documentation :
+  `build-deb.sh`, `build-rpm.sh`, `build-windows.ps1`, `windows/build-windows.sh`, les
+  scripts de `.github/scripts` et les workflows. Leurs questions de confirmation reçoivent
+  maintenant la réponse `y` (`[y/N]`) au lieu de `o`, et l'option PowerShell `-Oui` devient `-Yes`.
+- La liste des bibliothèques livrées dans les paquets Windows est maintenant
+  `share/licenses/COMPONENTS.txt` (elle s'appelait `COMPOSANTS.txt`), en anglais.
+
 ## [1.3.1] - 2026-10-30
 
 Version de documentation : le programme lui-même ne change pas.

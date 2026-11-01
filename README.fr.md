@@ -10,7 +10,7 @@ Développé par Gilles MAGNEVILLE, conçu avec l'aide de [claude.ai](https://cla
 
 > **Image Print Layout s'appelait « SVG Print Layout » jusqu'à la version 1.0.x.** Le nom a changé parce que le programme ouvre aussi des images (JPEG, PNG, TIFF…), ce qu'il fait depuis la 1.2.0. Les projets `.svgpl` de la 1.0.x s'ouvrent toujours, la langue choisie est reprise et installer un paquet remplace l'ancien (voir le [CHANGELOG](CHANGELOG.fr.md)).
 
-> **État : version 1.3.1, toutes les fonctions du cahier des charges sont là (jalons M1 à M5), et la recette a été faite à la main sous Ubuntu et sous Windows.** La fenêtre GTK4, en **français, anglais, espagnol et allemand**, ouvre un SVG ou une image (JPEG, PNG, TIFF, WebP, BMP, GIF), l'analyse (fonctions non prises en charge, polices absentes, images introuvables ; pour une image, sa résolution, un fichier tronqué ou de plusieurs pages), calcule ses pages avec les réglages de papier, de marges, d'échelle et de positionnement, et montre l'aperçu avec les limites et les numéros de page, la liste des pages et les corrections proposées quand une page dépasse. On y ajoute, déplace et supprime les coupures à la souris (double-clic, glisser, aimantation aux vides, clavier) ou on demande des coupures automatiques, sans jamais changer l'échelle. On y choisit le fond du document (le garder, le remplacer par du blanc, le supprimer, avec l'aperçu immédiat) et celui de la page (blanc opaque ou transparent), on voit chaque feuille telle qu'elle sera imprimée, puis on exporte un PDF multipage que le programme relit et vérifie avant de le livrer, ou une page HTML unique (Ctrl+Maj+E), relue elle aussi. On enregistre le projet (réglages, coupures, fond, positions) et on le rouvre plus tard : le fichier d'origine n'est jamais modifié, un document déplacé se localise, et une astérisque dans le titre signale les changements non enregistrés. Les 14 tests d'acceptation du cahier des charges sont automatisés (`internal/acceptance`). Le dépôt contient aussi le prototype du moteur (librsvg + cairo : rendu d'une fenêtre et export PDF multipage, validé sur le Mini-CAD, voir [`docs/M0.fr.md`](docs/M0.fr.md)), les scripts qui construisent les paquets `.deb`, `.rpm` et Windows (voir [Paquets](#paquets)) et la CI.
+> **État : version 1.3.2, toutes les fonctions du cahier des charges sont là (jalons M1 à M5), et la recette a été faite à la main sous Ubuntu et sous Windows.** La fenêtre GTK4, en **français, anglais, espagnol et allemand**, ouvre un SVG ou une image (JPEG, PNG, TIFF, WebP, BMP, GIF), l'analyse (fonctions non prises en charge, polices absentes, images introuvables ; pour une image, sa résolution, un fichier tronqué ou de plusieurs pages), calcule ses pages avec les réglages de papier, de marges, d'échelle et de positionnement, et montre l'aperçu avec les limites et les numéros de page, la liste des pages et les corrections proposées quand une page dépasse. On y ajoute, déplace et supprime les coupures à la souris (double-clic, glisser, aimantation aux vides, clavier) ou on demande des coupures automatiques, sans jamais changer l'échelle. On y choisit le fond du document (le garder, le remplacer par du blanc, le supprimer, avec l'aperçu immédiat) et celui de la page (blanc opaque ou transparent), on voit chaque feuille telle qu'elle sera imprimée, puis on exporte un PDF multipage que le programme relit et vérifie avant de le livrer, ou une page HTML unique (Ctrl+Maj+E), relue elle aussi. On enregistre le projet (réglages, coupures, fond, positions) et on le rouvre plus tard : le fichier d'origine n'est jamais modifié, un document déplacé se localise, et une astérisque dans le titre signale les changements non enregistrés. Les 14 tests d'acceptation du cahier des charges sont automatisés (`internal/acceptance`). Le dépôt contient aussi le prototype du moteur (librsvg + cairo : rendu d'une fenêtre et export PDF multipage, validé sur le Mini-CAD, voir [`docs/M0.fr.md`](docs/M0.fr.md)), les scripts qui construisent les paquets `.deb`, `.rpm` et Windows (voir [Paquets](#paquets)) et la CI.
 
 ## Principe
 
@@ -87,6 +87,7 @@ Chaque document existe en deux langues : l'anglais (le fichier par défaut, `X.m
 - [`PROJECT_CONTEXT.fr.md`](PROJECT_CONTEXT.fr.md) : pourquoi le projet existe, ses principes et son périmètre.
 - [`ARCHITECTURE.fr.md`](ARCHITECTURE.fr.md) : le contrat technique (paquets, interfaces, formules, format de projet, vérifications, plan de livraison). Il fait foi pour tout ce qui est concret.
 - [`CONTRIBUTING.fr.md`](CONTRIBUTING.fr.md) : signaler un bug, proposer une amélioration, contribuer du code.
+- [`CODE_OF_CONDUCT.fr.md`](CODE_OF_CONDUCT.fr.md) : le code de conduite de la communauté (Contributor Covenant 3.0).
 - [`docs/M0.fr.md`](docs/M0.fr.md) : rapport du prototype du moteur de rendu (mesures, découvertes, ce qui reste à valider).
 - [`CHANGELOG.fr.md`](CHANGELOG.fr.md) : l'historique des changements.
 
@@ -171,9 +172,9 @@ mêmes options et gèrent le fichier `VERSION` de la même façon :
 | `--help`, `-h` (`-Help`) | affiche l'aide |
 
 Sans option, le script affiche la version actuelle, propose de passer en major, minor ou
-patch ou de ne rien changer, puis demande confirmation (`o`) avant de construire. **Le
+patch ou de ne rien changer, puis demande confirmation (`y`) avant de construire. **Le
 fichier `VERSION` n'est mis à jour qu'une fois le paquet construit** : un échec ne laisse
-jamais une version sans paquet. Sous PowerShell, `-Oui` répond « oui » à toutes les
+jamais une version sans paquet. Sous PowerShell, `-Yes` répond « oui » à toutes les
 questions (pour un usage sans surveillance).
 
 Une version d'avant-publication comme `0.1.0-dev` est d'abord publiée : `--minor` et

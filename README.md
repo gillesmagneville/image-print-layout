@@ -10,7 +10,7 @@ Developed by Gilles MAGNEVILLE, designed with the help of [claude.ai](https://cl
 
 > **Image Print Layout was called "SVG Print Layout" up to version 1.0.x.** The name changed because the program also opens images (JPEG, PNG, TIFF…), which it has done since 1.2.0. The `.svgpl` projects of 1.0.x still open, the chosen language is kept and installing a package replaces the old one (see the [CHANGELOG](CHANGELOG.md)).
 
-> **Status: version 1.3.1, all the functions of the specification are there (milestones M1 to M5), and the acceptance run was done by hand on Ubuntu and on Windows.** The GTK4 window, in **French, English, Spanish and German**, opens an SVG or an image (JPEG, PNG, TIFF, WebP, BMP, GIF), analyzes it (unsupported features, missing fonts, missing images; for an image, its resolution, a truncated file or a multi-page one), computes its pages with the paper, margin, scale and positioning settings, and shows the preview with the page limits and numbers, the list of pages and the corrections offered when a page overflows. You add, move and delete the cuts with the mouse (double-click, drag, snapping to empty areas, keyboard) or ask for automatic cuts, without ever changing the scale. You choose the background of the document (keep it, replace it with white, remove it, with an immediate preview) and that of the page (opaque white or transparent), you see each sheet as it will be printed, then you export a multi-page PDF that the program rereads and checks before delivering it, or a single HTML page (Ctrl+Shift+E), also reread. You save the project (settings, cuts, background, positions) and reopen it later: the original file is never modified, a moved document can be relocated, and an asterisk in the title flags unsaved changes. The 14 acceptance tests of the specification are automated (`internal/acceptance`). The repository also contains the engine prototype (librsvg + cairo: rendering of a window and multi-page PDF export, validated on the Mini-CAD, see [`docs/M0.md`](docs/M0.md)), the scripts that build the `.deb`, `.rpm` and Windows packages (see [Packages](#packages)) and the CI.
+> **Status: version 1.3.2, all the functions of the specification are there (milestones M1 to M5), and the acceptance run was done by hand on Ubuntu and on Windows.** The GTK4 window, in **French, English, Spanish and German**, opens an SVG or an image (JPEG, PNG, TIFF, WebP, BMP, GIF), analyzes it (unsupported features, missing fonts, missing images; for an image, its resolution, a truncated file or a multi-page one), computes its pages with the paper, margin, scale and positioning settings, and shows the preview with the page limits and numbers, the list of pages and the corrections offered when a page overflows. You add, move and delete the cuts with the mouse (double-click, drag, snapping to empty areas, keyboard) or ask for automatic cuts, without ever changing the scale. You choose the background of the document (keep it, replace it with white, remove it, with an immediate preview) and that of the page (opaque white or transparent), you see each sheet as it will be printed, then you export a multi-page PDF that the program rereads and checks before delivering it, or a single HTML page (Ctrl+Shift+E), also reread. You save the project (settings, cuts, background, positions) and reopen it later: the original file is never modified, a moved document can be relocated, and an asterisk in the title flags unsaved changes. The 14 acceptance tests of the specification are automated (`internal/acceptance`). The repository also contains the engine prototype (librsvg + cairo: rendering of a window and multi-page PDF export, validated on the Mini-CAD, see [`docs/M0.md`](docs/M0.md)), the scripts that build the `.deb`, `.rpm` and Windows packages (see [Packages](#packages)) and the CI.
 
 ## Principle
 
@@ -87,6 +87,7 @@ Every document exists in two languages: English (the default file, `X.md`) and F
 - [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md): why the project exists, its principles and its scope.
 - [`ARCHITECTURE.md`](ARCHITECTURE.md): the technical contract (packages, interfaces, formulas, project format, checks, delivery plan). It is authoritative for everything concrete.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md): report a bug, propose an improvement, contribute code.
+- [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md): the code of conduct of the community (Contributor Covenant 3.0).
 - [`docs/M0.md`](docs/M0.md): report on the rendering engine prototype (measurements, discoveries, what remains to be validated).
 - [`CHANGELOG.md`](CHANGELOG.md): the history of changes.
 
@@ -171,9 +172,9 @@ same options and handle the `VERSION` file the same way:
 | `--help`, `-h` (`-Help`) | prints the help |
 
 Without an option, the script shows the current version, offers to move to major, minor or
-patch or to change nothing, then asks for confirmation (`o`, for the French "oui") before building. **The
+patch or to change nothing, then asks for confirmation (`y`) before building. **The
 `VERSION` file is only updated once the package is built**: a failure never
-leaves a version without a package. Under PowerShell, `-Oui` answers "yes" to all
+leaves a version without a package. Under PowerShell, `-Yes` answers "yes" to all
 the questions (for unattended use).
 
 A pre-release version such as `0.1.0-dev` is published first: `--minor` and

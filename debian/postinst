@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: GPL-3.0-only
 set -e
 
-# Met à jour les caches de l'icône et du menu pour que l'application apparaisse
-# tout de suite. Ce n'est qu'un confort : un échec ne doit jamais faire
-# échouer l'installation.
+# Updates the icon and menu caches so that the application shows up
+# right away. It is only a convenience: a failure must never make
+# the installation fail.
 if command -v gtk-update-icon-cache >/dev/null 2>&1; then
     gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor || true
 fi

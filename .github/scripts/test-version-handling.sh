@@ -2,15 +2,15 @@
 # SPDX-License-Identifier: GPL-3.0-only
 set -euo pipefail
 
-# Vérifie, pour build-deb.sh et build-rpm.sh, la gestion du fichier VERSION :
-#   - le calcul de la version suivante (le même que build-windows.ps1) ;
-#   - une confirmation refusée ne change rien ;
-#   - le menu interactif et les options --minor / --patch écrivent la nouvelle
-#     version dans VERSION, une fois le paquet construit, et nommé d'après elle.
-# Les paquets et VERSION sont remis dans leur état d'origine à la fin.
+# Checks, for build-deb.sh and build-rpm.sh, the handling of the VERSION file:
+#   - the computation of the next version (the same as build-windows.ps1);
+#   - a refused confirmation changes nothing;
+#   - the interactive menu and the --minor / --patch options write the new
+#     version into VERSION, once the package is built, and named after it.
+# The packages and VERSION are put back in their original state at the end.
 #
-# À lancer à la racine du dépôt, après les autres vérifications : le script
-# reconstruit et supprime les paquets du dépôt.
+# To be run at the root of the repository, after the other checks: the script
+# rebuilds and deletes the packages of the repository.
 
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 
@@ -22,16 +22,16 @@ restore() {
 }
 trap restore EXIT
 
-fail() { echo "ÉCHEC : $*" >&2; exit 1; }
+fail() { echo "FAILED: $*" >&2; exit 1; }
 
-# --- 1. Calcul de la version suivante -------------------------------------
-# La fonction est lue dans build-deb.sh : un test de repocheck garantit
-# qu'elle est identique dans build-rpm.sh.
+# --- 1. Computation of the next version -----------------------------------
+# The function is read from build-deb.sh: a repocheck test guarantees that
+# it is identical in build-rpm.sh.
 eval "$(sed -n '/^next_version() {/,/^}/p' build-deb.sh)"
 check() {
     local got
     got="$(next_version "$1" "$2")"
-    [ "$got" = "$3" ] || fail "next_version $1 $2 donne $got, attendu $3"
+    [ "$got" = "$3" ] || fail "next_version $1 $2 gives $got, expected $3"
 }
 check 1.2.3 major 2.0.0
 check 1.2.3 minor 1.3.0
@@ -47,33 +47,33 @@ check 0.1.2-dev minor 0.2.0
 check 1.0.0-rc.1 major 1.0.0
 check 1.0.0-rc.1 minor 1.0.0
 check 10.9.99 patch 10.9.100
-echo "ok  calcul des versions"
+echo "ok  version computation"
 
-# --- 2. Confirmation refusée : rien ne change -----------------------------
+# --- 2. Refused confirmation: nothing changes -----------------------------
 packages_before="$(cat ./*.deb ./*.rpm | sha256sum)"
 echo n | ./build-deb.sh --minor > /dev/null
 echo n | ./build-rpm.sh --patch > /dev/null
-[ "$(tr -d '[:space:]' < VERSION)" = "$before" ] || fail "VERSION a changé malgré le refus"
-[ "$(cat ./*.deb ./*.rpm | sha256sum)" = "$packages_before" ] || fail "les paquets ont changé malgré le refus"
-echo "ok  confirmation refusée"
+[ "$(tr -d '[:space:]' < VERSION)" = "$before" ] || fail "VERSION changed despite the refusal"
+[ "$(cat ./*.deb ./*.rpm | sha256sum)" = "$packages_before" ] || fail "the packages changed despite the refusal"
+echo "ok  confirmation refused"
 
-# --- 3. Option --patch : VERSION écrite après la construction du .deb ------
+# --- 3. --patch option: VERSION written after the .deb is built -----------
 expected="$(next_version "$before" patch)"
-echo o | ./build-deb.sh --patch > /dev/null
-[ "$(cat VERSION)" = "$expected" ] || fail "VERSION vaut « $(cat VERSION) » après --patch, attendu « $expected »"
-[ "$(wc -l < VERSION)" -eq 1 ] || fail "VERSION doit tenir sur une ligne"
-ls ./imageprintlayout_"$expected"_*.deb > /dev/null || fail "paquet .deb de la version $expected introuvable"
+echo y | ./build-deb.sh --patch > /dev/null
+[ "$(cat VERSION)" = "$expected" ] || fail "VERSION is '$(cat VERSION)' after --patch, expected '$expected'"
+[ "$(wc -l < VERSION)" -eq 1 ] || fail "VERSION must be on one line"
+ls ./imageprintlayout_"$expected"_*.deb > /dev/null || fail ".deb package of version $expected not found"
 echo "ok  --patch (deb) : $before -> $expected"
 
-# --- 4. Menu interactif : choix 2 (minor) puis confirmation ---------------
+# --- 4. Interactive menu: choice 2 (minor) then confirmation --------------
 after_deb="$expected"
 expected="$(next_version "$after_deb" minor)"
-printf '2\no\n' | ./build-rpm.sh > /dev/null
-[ "$(cat VERSION)" = "$expected" ] || fail "VERSION vaut « $(cat VERSION) » après le choix 2, attendu « $expected »"
-ls ./imageprintlayout-"${expected%%-*}"-*.rpm > /dev/null || fail "paquet .rpm de la version $expected introuvable"
-echo "ok  menu interactif (rpm) : $after_deb -> $expected"
+printf '2\ny\n' | ./build-rpm.sh > /dev/null
+[ "$(cat VERSION)" = "$expected" ] || fail "VERSION is '$(cat VERSION)' after choice 2, expected '$expected'"
+ls ./imageprintlayout-"${expected%%-*}"-*.rpm > /dev/null || fail ".rpm package of version $expected not found"
+echo "ok  interactive menu (rpm): $after_deb -> $expected"
 
-# --- 5. --no-version-change : VERSION inchangée ---------------------------
-echo o | ./build-rpm.sh --no-version-change > /dev/null
-[ "$(cat VERSION)" = "$expected" ] || fail "VERSION a changé avec --no-version-change"
+# --- 5. --no-version-change: VERSION unchanged ----------------------------
+echo y | ./build-rpm.sh --no-version-change > /dev/null
+[ "$(cat VERSION)" = "$expected" ] || fail "VERSION changed with --no-version-change"
 echo "ok  --no-version-change"

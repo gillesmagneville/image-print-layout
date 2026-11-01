@@ -65,6 +65,12 @@ func walk(t *testing.T, root string, fn func(path, rel string)) {
 
 const spdx = "SPDX-License-Identifier: GPL-3.0-only"
 
+// The Code of Conduct is the Contributor Covenant 3.0, which its authors
+// distribute under CC BY-SA 4.0 (ShareAlike): the two files keep that licence.
+const spdxCodeOfConduct = "SPDX-License-Identifier: CC-BY-SA-4.0"
+
+var codeOfConduct = map[string]bool{"CODE_OF_CONDUCT.md": true, "CODE_OF_CONDUCT.fr.md": true}
+
 // Every source, script, document, packaging and CI file says under which
 // licence it is distributed, in its first three lines. (A byte order mark at
 // the start of a PowerShell or NSIS file does not matter: the test looks for
@@ -81,8 +87,12 @@ func TestEveryFileHasTheLicenceHeader(t *testing.T) {
 		if len(lines) > 3 {
 			lines = lines[:3]
 		}
-		if !strings.Contains(strings.Join(lines, "\n"), spdx) {
-			t.Errorf("%s: missing %q in its first lines", rel, spdx)
+		want := spdx
+		if codeOfConduct[rel] {
+			want = spdxCodeOfConduct
+		}
+		if !strings.Contains(strings.Join(lines, "\n"), want) {
+			t.Errorf("%s: missing %q in its first lines", rel, want)
 		}
 	})
 }

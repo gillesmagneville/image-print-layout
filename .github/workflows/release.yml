@@ -1,22 +1,22 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
-# Publie une version : un tag « vX.Y.Z » poussé sur un commit de main construit
-# les paquets de cette version, les essaie, puis crée la release GitHub avec les
-# paquets en pièces jointes et les sections du CHANGELOG (en anglais, puis en
-# français) pour texte.
+# Publishes a version: a "vX.Y.Z" tag pushed to a commit of main builds
+# the packages of that version, tries them, then creates the GitHub release with the
+# packages as attachments and the CHANGELOG sections (in English, then in
+# French) as text.
 #
 #   git tag v1.0.0 && git push origin v1.0.0
 #
-# Le tag doit être celui de VERSION et poser sur un commit de main : sinon le
-# workflow s'arrête avant de construire quoi que ce soit.
+# The tag must be that of VERSION and sit on a commit of main: otherwise the
+# workflow stops before building anything.
 #
-# Les paquets sont construits sans changer VERSION (--no-version-change) : ceux
-# du workflow CI portent la version suivante, parce qu'il essaie le changement
-# de version, et ne conviennent pas à une release.
+# The packages are built without changing VERSION (--no-version-change): those
+# of the CI workflow carry the next version, because it tries the version
+# change, and are not suitable for a release.
 #
-# Le workflow se lance aussi, sans rien publier, quand on le modifie dans une
-# pull request et à la demande (« Run workflow ») : c'est ainsi qu'on l'essaie
-# avant d'avoir un tag.
+# The workflow also runs, without publishing anything, when it is modified in a
+# pull request and on demand ("Run workflow"): that is how it is tried
+# before there is a tag.
 
 name: Release
 
@@ -37,9 +37,9 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # Avant de construire : le tag dit la version de VERSION, il est sur main, et
-  # les deux CHANGELOG (CHANGELOG.md et CHANGELOG.fr.md) ont une section pour
-  # cette version.
+  # Before building: the tag states the version in VERSION, it is on main, and
+  # the two CHANGELOGs (CHANGELOG.md and CHANGELOG.fr.md) have a section for
+  # this version.
   check:
     name: Version and release notes
     runs-on: ubuntu-latest
@@ -52,26 +52,26 @@ jobs:
         run: |
           version="$(tr -d '[:space:]' < VERSION)"
           if [ "$GITHUB_REF_NAME" != "v$version" ]; then
-            echo "::error title=Tag::le tag $GITHUB_REF_NAME ne correspond pas à VERSION ($version)"
+            echo "::error title=Tag::tag $GITHUB_REF_NAME does not match VERSION ($version)"
             exit 1
           fi
           case "$version" in
-            *-*) echo "::error title=Version::VERSION ($version) porte un suffixe : aucune version d'avant-publication n'est publiée"; exit 1 ;;
+            *-*) echo "::error title=Version::VERSION ($version) has a suffix: no pre-release version is published"; exit 1 ;;
           esac
           if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
-            echo "::error title=Tag::le tag $GITHUB_REF_NAME n'est pas sur un commit de main"
+            echo "::error title=Tag::tag $GITHUB_REF_NAME is not on a commit of main"
             exit 1
           fi
       - name: Both CHANGELOGs have a section for this version
         run: .github/scripts/release-notes.sh "$(tr -d '[:space:]' < VERSION)"
 
-  # Les paquets Linux sont liés aux bibliothèques de la machine qui les a
-  # construits. Le .deb est construit sur Ubuntu 24.04 (le plus ancien système
-  # pris en charge de la famille Debian : il s'installe aussi sur Debian 13) et
-  # le .rpm sur AlmaLinux 10 (un clone de RHEL 10 : il s'installe aussi sur
-  # Fedora). Le script est celui du job « distributions » de la CI : il construit
-  # le paquet, l'installe avec apt ou dnf, lance le programme installé et les 14
-  # tests d'acceptation.
+  # The Linux packages are tied to the libraries of the machine that built
+  # them. The .deb is built on Ubuntu 24.04 (the oldest supported system of
+  # the Debian family: it also installs on Debian 13) and
+  # the .rpm on AlmaLinux 10 (a RHEL 10 clone: it also installs on
+  # Fedora). The script is that of the "distributions" job of the CI: it builds
+  # the package, installs it with apt or dnf, runs the installed program and the 14
+  # acceptance tests.
   linux:
     name: ${{ matrix.name }}
     needs: check
@@ -94,7 +94,7 @@ jobs:
       NO_AT_BRIDGE: "1"
       LIBGL_ALWAYS_SOFTWARE: "1"
     steps:
-      # git d'abord : le script de construction lit la date du dernier commit.
+      # git first: the build script reads the date of the last commit.
       - name: Install git
         run: |
           if command -v apt-get > /dev/null; then
@@ -118,10 +118,10 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  # Windows : un seul système suffit, les paquets sont les mêmes pour Windows 10
-  # et 11 (MSYS2 UCRT64, 64 bits). Les paquets sont construits comme le fait un
-  # utilisateur (build-windows.ps1), puis la version portable et l'installeur
-  # sont lancés avec le seul PATH de Windows.
+  # Windows: a single system is enough, the packages are the same for Windows 10
+  # and 11 (MSYS2 UCRT64, 64-bit). The packages are built the way a
+  # user does (build-windows.ps1), then the portable version and the installer
+  # are run with only the Windows PATH.
   windows:
     name: Windows (installer and portable version)
     needs: check
@@ -150,9 +150,9 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  # Seulement pour un tag : les paquets, leurs empreintes, et le texte de la
-  # release (la section du CHANGELOG en anglais, puis la liste des fichiers, puis
-  # la même chose en français).
+  # Only for a tag: the packages, their checksums, and the text of the
+  # release (the CHANGELOG section in English, then the list of files, then
+  # the same in French).
   publish:
     name: Publish the release
     if: startsWith(github.ref, 'refs/tags/v')
@@ -167,8 +167,8 @@ jobs:
           pattern: package-*
           path: release-files
           merge-multiple: true
-      # Un fichier .sha256 par paquet, à côté de lui : « sha256sum -c fichier.sha256 »
-      # le vérifie une fois les deux dans le même dossier.
+      # One .sha256 file per package, next to it: "sha256sum -c file.sha256"
+      # checks it once both are in the same folder.
       - name: Checksums and release notes
         run: |
           cd release-files

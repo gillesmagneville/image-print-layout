@@ -2,11 +2,11 @@
 # SPDX-License-Identifier: GPL-3.0-only
 set -euo pipefail
 
-# Construit le paquet Debian (.deb) d'Image Print Layout, pour Debian, Ubuntu et
-# leurs dérivés. Mêmes options et même gestion du fichier VERSION que le
-# build-deb.sh de Planche-Contact. Le programme est compilé en Go (cgo,
-# librsvg, gdk-pixbuf, cairo) et empaqueté avec dpkg-deb : ni fpm, ni environnement
-# Python embarqué.
+# Builds the Debian package (.deb) of Image Print Layout, for Debian, Ubuntu and
+# their derivatives. Same options and same handling of the VERSION file as the
+# build-deb.sh of Planche-Contact. The program is compiled in Go (cgo, librsvg,
+# gdk-pixbuf, cairo) and packaged with dpkg-deb: no fpm, no embedded Python
+# environment.
 
 # ====================== CONFIGURATION ======================
 PACKAGE_NAME="imageprintlayout"
@@ -24,29 +24,29 @@ show_help() {
     cat << EOF
 Usage: ./build-deb.sh [options]
 
-Script de construction du paquet Debian pour Image Print Layout.
+Script that builds the Debian package for Image Print Layout.
 
-OPTIONS :
-  --major               Incrémente le numéro majeur   (ex: 1.2.3 → 2.0.0)
-  --minor               Incrémente le numéro mineur   (ex: 1.2.3 → 1.3.0)
-  --patch               Incrémente le numéro de patch (ex: 1.2.3 → 1.2.4)
-  --no-version-change   Reconstruit le paquet sans changer la version
-  --clean               Nettoie le dossier de build et supprime tous les .deb
-  --help, -h            Affiche cette aide
+OPTIONS:
+  --major               Increment the major number    (e.g. 1.2.3 → 2.0.0)
+  --minor               Increment the minor number    (e.g. 1.2.3 → 1.3.0)
+  --patch               Increment the patch number    (e.g. 1.2.3 → 1.2.4)
+  --no-version-change   Rebuild the package without changing the version
+  --clean               Clean the build folder and delete every .deb
+  --help, -h            Show this help
 
-Sans argument → mode interactif (demande major / minor / patch / no-version-change)
+Without an option → interactive mode (asks major / minor / patch / no-version-change)
 
-Le fichier VERSION n'est mis à jour qu'une fois le paquet construit. Une
-version d'avant-publication (0.1.0-dev) est publiée par --minor ou --patch
-(→ 0.1.0) ; --major donne 1.0.0.
+The VERSION file is only updated once the package has been built. A
+pre-release version (0.1.0-dev) is released by --minor or --patch
+(→ 0.1.0); --major gives 1.0.0.
 
-Le paquet est créé à la racine du dépôt : imageprintlayout_<version>_<arch>.deb
+The package is created at the root of the repository: imageprintlayout_<version>_<arch>.deb
 
-Prérequis (Debian, Ubuntu) :
+Prerequisites (Debian, Ubuntu):
   sudo apt install golang-go build-essential pkg-config librsvg2-dev libgdk-pixbuf-2.0-dev libfontconfig-dev libgtk-4-dev libgirepository1.0-dev dpkg-dev
 
-Pour une construction identique d'une fois sur l'autre, la date des fichiers
-est celle du dernier commit ; SOURCE_DATE_EPOCH la remplace si elle est définie.
+For an identical build from one run to the next, the date of the files
+is that of the last commit; SOURCE_DATE_EPOCH overrides it when it is set.
 
 EOF
 }
@@ -64,7 +64,7 @@ while [[ $# -gt 0 ]]; do
         --clean)              CLEAN=true; shift ;;
         --help|-h)            show_help; exit 0 ;;
         *)
-            echo "Option inconnue : $1"
+            echo "Unknown option: $1"
             show_help
             exit 1
             ;;
@@ -73,56 +73,56 @@ done
 
 cd "$PROJECT_DIR"
 
-# === Mode nettoyage ===
+# === Clean mode ===
 if [ "$CLEAN" = true ]; then
-    echo ">>> Nettoyage du dossier de build..."
+    echo ">>> Cleaning the build folder..."
     rm -rf "${WORK_DIR:?}"
-    echo ">>> Suppression des paquets .deb existants..."
+    echo ">>> Deleting the existing .deb packages..."
     rm -f ./*.deb
-    echo ">>> Nettoyage terminé."
+    echo ">>> Clean-up done."
     exit 0
 fi
 
-# === Vérification des outils ===
-erreur() {
+# === Checking the tools ===
+fail() {
     echo "" >&2
-    echo "Erreur : $*" >&2
+    echo "Error: $*" >&2
     exit 1
 }
 
-command -v dpkg-deb >/dev/null 2>&1 || erreur "dpkg-deb n'est pas installé. Installe-le avec : sudo apt install dpkg"
-command -v dpkg-shlibdeps >/dev/null 2>&1 || erreur "dpkg-shlibdeps n'est pas installé. Installe-le avec : sudo apt install dpkg-dev"
-command -v go >/dev/null 2>&1 || erreur "Go n'est pas installé (voir go.mod pour la version) : https://go.dev/doc/install"
-command -v gcc >/dev/null 2>&1 || erreur "gcc n'est pas installé. Installe-le avec : sudo apt install build-essential"
-command -v pkg-config >/dev/null 2>&1 || erreur "pkg-config n'est pas installé. Installe-le avec : sudo apt install pkg-config"
-pkg-config --exists librsvg-2.0 gdk-pixbuf-2.0 cairo fontconfig || erreur "les bibliothèques de développement de librsvg, de gdk-pixbuf, de cairo et de fontconfig sont absentes.
-  Installe-les avec : sudo apt install librsvg2-dev libgdk-pixbuf-2.0-dev libfontconfig-dev"
-pkg-config --exists gtk4 gobject-introspection-1.0 || erreur "les bibliothèques de développement de GTK 4 sont absentes (GTK 4.14 ou plus récent).
-  Installe-les avec : sudo apt install libgtk-4-dev libgirepository1.0-dev"
+command -v dpkg-deb >/dev/null 2>&1 || fail "dpkg-deb is not installed. Install it with: sudo apt install dpkg"
+command -v dpkg-shlibdeps >/dev/null 2>&1 || fail "dpkg-shlibdeps is not installed. Install it with: sudo apt install dpkg-dev"
+command -v go >/dev/null 2>&1 || fail "Go is not installed (see go.mod for the version): https://go.dev/doc/install"
+command -v gcc >/dev/null 2>&1 || fail "gcc is not installed. Install it with: sudo apt install build-essential"
+command -v pkg-config >/dev/null 2>&1 || fail "pkg-config is not installed. Install it with: sudo apt install pkg-config"
+pkg-config --exists librsvg-2.0 gdk-pixbuf-2.0 cairo fontconfig || fail "the development libraries of librsvg, gdk-pixbuf, cairo and fontconfig are missing.
+  Install them with: sudo apt install librsvg2-dev libgdk-pixbuf-2.0-dev libfontconfig-dev"
+pkg-config --exists gtk4 gobject-introspection-1.0 || fail "the GTK 4 development libraries are missing (GTK 4.14 or newer).
+  Install them with: sudo apt install libgtk-4-dev libgirepository1.0-dev"
 pkg-config --atleast-version=4.14 gtk4 && pkg-config --atleast-version=2.80 glib-2.0 && pkg-config --atleast-version=2.52 librsvg-2.0 ||
-    erreur "les bibliothèques de cette distribution sont trop anciennes : GTK $(pkg-config --modversion gtk4), GLib $(pkg-config --modversion glib-2.0), librsvg $(pkg-config --modversion librsvg-2.0).
-  Il faut GTK 4.14, GLib 2.80 et librsvg 2.52 au moins (gotk4 v0.3.1) : Debian 13, Ubuntu 24.04, Fedora,
-  RHEL 10 et leurs dérivés. Debian 12, Ubuntu 22.04 et RHEL 9 ne conviennent pas."
+    fail "this distribution's libraries are too old: GTK $(pkg-config --modversion gtk4), GLib $(pkg-config --modversion glib-2.0), librsvg $(pkg-config --modversion librsvg-2.0).
+  At least GTK 4.14, GLib 2.80 and librsvg 2.52 are required (gotk4 v0.3.1): Debian 13, Ubuntu 24.04, Fedora,
+  RHEL 10 and their derivatives. Debian 12, Ubuntu 22.04 and RHEL 9 are not suitable."
 
 case "$(uname -m)" in
     x86_64)  DEB_ARCH="amd64" ;;
     aarch64) DEB_ARCH="arm64" ;;
-    *) erreur "architecture $(uname -m) non prise en charge (x86_64 et aarch64 seulement)." ;;
+    *) fail "architecture $(uname -m) is not supported (x86_64 and aarch64 only)." ;;
 esac
 
-# === Lecture de la version actuelle ===
-[ -f "$VERSION_FILE" ] || erreur "fichier VERSION introuvable : $VERSION_FILE"
+# === Reading the current version ===
+[ -f "$VERSION_FILE" ] || fail "VERSION file not found: $VERSION_FILE"
 CURRENT_VERSION=$(tr -d '[:space:]' < "$VERSION_FILE")
 
-# Une version est X.Y.Z, éventuellement suivie d'un suffixe d'avant-publication
+# A version is X.Y.Z, optionally followed by a pre-release suffix
 # (X.Y.Z-dev).
 SEMVER='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$'
-[[ "$CURRENT_VERSION" =~ $SEMVER ]] || erreur "VERSION contient « $CURRENT_VERSION », qui n'est pas une version X.Y.Z ou X.Y.Z-suffixe."
+[[ "$CURRENT_VERSION" =~ $SEMVER ]] || fail "VERSION contains '$CURRENT_VERSION', which is not an X.Y.Z or X.Y.Z-suffix version."
 
-# next_version VERSION major|minor|patch affiche la version suivante. Sans
-# suffixe, c'est l'incrément habituel (1.2.3 → 1.2.4). Avec un suffixe, la
-# version d'avant-publication est d'abord publiée : 0.1.0-dev → 0.1.0 par
-# --minor ou --patch, puisque 0.1.0 n'existe pas encore ; --major donne 1.0.0.
+# next_version VERSION major|minor|patch prints the next version. Without a
+# suffix, it is the usual increment (1.2.3 → 1.2.4). With a suffix, the
+# pre-release version is released first: 0.1.0-dev → 0.1.0 with
+# --minor or --patch, since 0.1.0 does not exist yet; --major gives 1.0.0.
 next_version() {
     local version="$1" part="$2" pre=""
     [[ "$version" == *-* ]] && pre="${version#*-}"
@@ -145,18 +145,18 @@ next_version() {
     echo "${major}.${minor}.${patch}"
 }
 
-# === Mode interactif si aucun argument ===
+# === Interactive mode when there is no option ===
 if [ -z "$INCREMENT" ] && [ "$NO_VERSION_CHANGE" = false ]; then
     echo ""
-    echo "Version actuelle : $CURRENT_VERSION"
+    echo "Current version: $CURRENT_VERSION"
     echo ""
-    echo "Que souhaitez-vous faire ?"
+    echo "What do you want to do?"
     echo "  1) major              (→ $(next_version "$CURRENT_VERSION" major))"
     echo "  2) minor              (→ $(next_version "$CURRENT_VERSION" minor))"
     echo "  3) patch              (→ $(next_version "$CURRENT_VERSION" patch))"
-    echo "  4) no-version-change  (reconstruire en $CURRENT_VERSION)"
+    echo "  4) no-version-change  (rebuild as $CURRENT_VERSION)"
     echo ""
-    read -r -p "Votre choix [1/2/3/4] : " CHOICE || CHOICE=""
+    read -r -p "Your choice [1/2/3/4]: " CHOICE || CHOICE=""
 
     case $CHOICE in
         1) INCREMENT="major" ;;
@@ -164,24 +164,24 @@ if [ -z "$INCREMENT" ] && [ "$NO_VERSION_CHANGE" = false ]; then
         3) INCREMENT="patch" ;;
         4) NO_VERSION_CHANGE=true ;;
         *)
-            echo "Choix invalide. Annulation."
+            echo "Invalid choice. Cancelled."
             exit 1
             ;;
     esac
 fi
 
-# === Calcul de la nouvelle version ===
+# === Computing the new version ===
 if [ "$NO_VERSION_CHANGE" = true ]; then
     NEW_VERSION="$CURRENT_VERSION"
 else
     NEW_VERSION=$(next_version "$CURRENT_VERSION" "$INCREMENT")
 fi
 
-# Numéro de version Debian. Une version d'avant-publication (0.1.0-dev) doit se
-# classer avant la version finale (0.1.0) : c'est le rôle du « ~ ». Pas de
-# révision Debian (« -1 ») : comme chez Planche-Contact et LinuxDoctor, le nom
-# du fichier est imageprintlayout_<version>_<arch>.deb ; le « -1 » reste celui du
-# .rpm (release).
+# Debian version number. A pre-release version (0.1.0-dev) must sort before the
+# final version (0.1.0): that is the role of the "~". No Debian revision
+# ("-1"): as with Planche-Contact and LinuxDoctor, the file name is
+# imageprintlayout_<version>_<arch>.deb; the "-1" stays that of the .rpm
+# (release).
 VERSION_BASE="${NEW_VERSION%%-*}"
 PRERELEASE=""
 if [[ "$NEW_VERSION" == *-* ]]; then
@@ -190,34 +190,34 @@ if [[ "$NEW_VERSION" == *-* ]]; then
 fi
 DEB_VERSION="${VERSION_BASE}${PRERELEASE:+~$PRERELEASE}"
 
-# === Demande de confirmation ===
+# === Asking for confirmation ===
 echo ""
 echo "========================================"
 if [ "$NO_VERSION_CHANGE" = true ]; then
-    echo "  Mode           : Reconstruction sans changement de version"
+    echo "  Mode           : Rebuild without changing the version"
     echo "  Version        : $NEW_VERSION"
 else
-    echo "  Version actuelle : $CURRENT_VERSION"
-    echo "  Nouvelle version : $NEW_VERSION"
+    echo "  Current version : $CURRENT_VERSION"
+    echo "  New version     : $NEW_VERSION"
 fi
 echo "========================================"
 echo ""
-read -r -p "Construire le paquet en version $NEW_VERSION ? [o/N] " CONFIRM || CONFIRM=""
+read -r -p "Build the package as version $NEW_VERSION? [y/N] " CONFIRM || CONFIRM=""
 
-if [[ ! "$CONFIRM" =~ ^[oOyY]$ ]]; then
-    echo "Construction annulée. Aucun fichier n'a été modifié."
+if [[ ! "$CONFIRM" =~ ^[yY]$ ]]; then
+    echo "Build cancelled. No file was modified."
     exit 0
 fi
 
-# === À partir d'ici, la construction est confirmée ===
+# === From here on, the build is confirmed ===
 
-echo ">>> Suppression des paquets .deb existants..."
+echo ">>> Deleting the existing .deb packages..."
 rm -f ./*.deb
 
 DEB_FILE="./${PACKAGE_NAME}_${DEB_VERSION}_${DEB_ARCH}.deb"
 
-# Date des fichiers du paquet : celle du dernier commit, pour que deux
-# constructions du même code donnent le même paquet.
+# Date of the package files: that of the last commit, so that two builds of
+# the same code give the same package.
 if [ -z "${SOURCE_DATE_EPOCH:-}" ]; then
     SOURCE_DATE_EPOCH="$(git -c safe.directory="$PROJECT_DIR" -C "$PROJECT_DIR" log -1 --format=%ct 2>/dev/null || true)"
     SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(date +%s)}"
@@ -226,94 +226,97 @@ export SOURCE_DATE_EPOCH
 
 echo ""
 echo "========================================"
-echo " Construction du paquet $PACKAGE_NAME v$NEW_VERSION ($DEB_ARCH)"
+echo " Building package $PACKAGE_NAME v$NEW_VERSION ($DEB_ARCH)"
 echo "========================================"
 
 rm -rf "${WORK_DIR:?}"
 mkdir -p "$BUILD_DIR"
 
-# -trimpath, un identifiant de construction vide et l'absence d'informations
-# VCS rendent le binaire indépendant du dossier et de l'heure de la
-# construction ; -buildmode=pie permet à Linux de placer le programme à une
-# adresse aléatoire (durcissement). Le numéro de version du paquet est inscrit
-# dans le programme (imageprintlayout -version), même si le fichier VERSION du
-# projet n'est mis à jour qu'après un build réussi (voir plus bas).
-# gotk4 (la liaison de GTK pour Go) déclare « free » autrement que <stdlib.h> :
-# gcc le signale trois fois à chaque compilation (-Wbuiltin-declaration-mismatch).
-# Le code est celui de la bibliothèque et ce n'est pas un défaut ; on masque
-# seulement cet avertissement, sans toucher aux options par défaut de cgo
-# (-O2 -g). Les autres avertissements restent visibles.
-echo ">>> Compilation (cgo, GTK4, librsvg, gdk-pixbuf, cairo)..."
-echo "    La première compilation de GTK (gotk4) dure plusieurs minutes et n'affiche rien ;"
-echo "    les suivantes sont presque instantanées (cache de Go)."
+# -trimpath, an empty build id and the absence of VCS information make the
+# binary independent of the folder and of the time of the build; -buildmode=pie
+# lets Linux place the program at a random address (hardening). The package
+# version number is written into the program (imageprintlayout -version), even
+# though the project's VERSION file is only updated after a successful build
+# (see below).
+# gotk4 (the GTK binding for Go) declares "free" differently from <stdlib.h>:
+# gcc reports it three times at every compilation (-Wbuiltin-declaration-mismatch).
+# That is the library's code and not a defect; only this warning is hidden,
+# without touching cgo's default options
+# (-O2 -g). The other warnings stay visible.
+echo ">>> Compiling (cgo, GTK4, librsvg, gdk-pixbuf, cairo)..."
+echo "    The first compilation of GTK (gotk4) takes several minutes and prints nothing;"
+echo "    the following ones are almost instant (Go cache)."
 BINARY="$WORK_DIR/$PACKAGE_NAME"
 ( cd "$PROJECT_DIR" && CGO_ENABLED=1 CGO_CFLAGS="${CGO_CFLAGS:--O2 -g} -Wno-builtin-declaration-mismatch" go build -trimpath -buildvcs=false -buildmode=pie \
     -ldflags "-s -w -buildid= -X main.version=$NEW_VERSION" -o "$BINARY" ./cmd/imageprintlayout )
 
-echo ">>> Création de l'arborescence..."
+echo ">>> Creating the file tree..."
 install -D -m 0755 "$BINARY" "$BUILD_DIR/usr/bin/$PACKAGE_NAME"
 install -D -m 0644 "$PROJECT_DIR/metainfo/$APP_ID.desktop" "$BUILD_DIR/usr/share/applications/$APP_ID.desktop"
-# Métadonnées AppStream : elles permettent aux logithèques (GNOME Logiciels,
-# App Center) d'afficher le paquet avec sa description complète.
+# AppStream metadata: it lets software centres (GNOME Software, App Center)
+# show the package with its full description.
 install -D -m 0644 "$PROJECT_DIR/metainfo/$APP_ID.metainfo.xml" "$BUILD_DIR/usr/share/metainfo/$APP_ID.metainfo.xml"
 install -D -m 0644 "$PROJECT_DIR/icons/imageprintlayout.svg" "$BUILD_DIR/usr/share/icons/hicolor/scalable/apps/imageprintlayout.svg"
 install -D -m 0644 "$PROJECT_DIR/icons/imageprintlayout-256.png" "$BUILD_DIR/usr/share/icons/hicolor/256x256/apps/imageprintlayout.png"
-# Page de manuel : en anglais dans man1 (langue de repli), traduite dans le
-# dossier de chaque langue (man-db choisit selon la langue de l'utilisateur).
+# Manual page: in English in man1 (fallback language), translated in the
+# folder of each language (man-db picks the one matching the user's language).
 install -d -m 0755 "$BUILD_DIR/usr/share/man/man1"
 gzip -9n -c "$PROJECT_DIR/docs/imageprintlayout.1" > "$BUILD_DIR/usr/share/man/man1/$PACKAGE_NAME.1.gz"
-for LANGUE in fr es de; do
-    install -d -m 0755 "$BUILD_DIR/usr/share/man/$LANGUE/man1"
-    gzip -9n -c "$PROJECT_DIR/docs/$LANGUE/imageprintlayout.1" > "$BUILD_DIR/usr/share/man/$LANGUE/man1/$PACKAGE_NAME.1.gz"
+for LANG_CODE in fr es de; do
+    install -d -m 0755 "$BUILD_DIR/usr/share/man/$LANG_CODE/man1"
+    gzip -9n -c "$PROJECT_DIR/docs/$LANG_CODE/imageprintlayout.1" > "$BUILD_DIR/usr/share/man/$LANG_CODE/man1/$PACKAGE_NAME.1.gz"
 done
 
 DOC_DIR="$BUILD_DIR/usr/share/doc/$PACKAGE_NAME"
 install -D -m 0644 "$PROJECT_DIR/README.md" "$DOC_DIR/README.md"
 install -D -m 0644 "$PROJECT_DIR/README.fr.md" "$DOC_DIR/README.fr.md"
+install -D -m 0644 "$PROJECT_DIR/CODE_OF_CONDUCT.md" "$DOC_DIR/CODE_OF_CONDUCT.md"
+install -D -m 0644 "$PROJECT_DIR/CODE_OF_CONDUCT.fr.md" "$DOC_DIR/CODE_OF_CONDUCT.fr.md"
 install -D -m 0644 "$PROJECT_DIR/debian/copyright" "$DOC_DIR/copyright"
-# Noms que Debian attend pour les journaux de modifications : celui du projet
-# (changelog.gz, en anglais, avec sa version française changelog.fr.gz) et celui
-# du paquet (changelog.Debian.gz, au format Debian).
+# Names that Debian expects for the change logs: that of the project
+# (changelog.gz, in English, with its French version changelog.fr.gz) and that
+# of the package (changelog.Debian.gz, in Debian format).
 gzip -9n -c "$PROJECT_DIR/CHANGELOG.md" > "$DOC_DIR/changelog.gz"
 gzip -9n -c "$PROJECT_DIR/CHANGELOG.fr.md" > "$DOC_DIR/changelog.fr.gz"
 {
     echo "$PACKAGE_NAME ($DEB_VERSION) unstable; urgency=low"
     echo ""
-    echo "  * Paquet construit à partir du dépôt ; l'historique est dans changelog.gz (en anglais) et changelog.fr.gz (en français)."
+    echo "  * Package built from the repository; the history is in changelog.gz"
+    echo "    (English) and changelog.fr.gz (French)."
     echo ""
     echo " -- $MAINTAINER  $(date -u -d "@$SOURCE_DATE_EPOCH" -R)"
 } | gzip -9n -c > "$DOC_DIR/changelog.Debian.gz"
 install -D -m 0644 "$PROJECT_DIR/debian/lintian-overrides" "$BUILD_DIR/usr/share/lintian/overrides/$PACKAGE_NAME"
 
-# === Normalisation des permissions --------------------------------------
-# install -m fixe déjà les permissions voulues, quel que soit l'umask de la
-# machine de build (un umask restrictif rendrait sinon des fichiers illisibles
-# pour un utilisateur normal une fois le paquet installé). On normalise ici les
-# dossiers et les dates, pour que le paquet ne dépende pas non plus du moment
-# de la construction.
-echo ">>> Normalisation des permissions..."
+# === Normalising the permissions ----------------------------------------
+# install -m already sets the wanted permissions, whatever the umask of the
+# build machine (a restrictive umask would otherwise leave files unreadable
+# for a normal user once the package is installed). Here we normalise the
+# folders and the dates, so that the package does not depend on the time of
+# the build either.
+echo ">>> Normalising the permissions..."
 chmod 0644 "$DOC_DIR/changelog.gz" "$DOC_DIR/changelog.Debian.gz" "$BUILD_DIR"/usr/share/man/man1/*.gz "$BUILD_DIR"/usr/share/man/*/man1/*.gz
 find "$BUILD_DIR" -type d -exec chmod 755 {} +
 
-# Dépendances : dpkg-shlibdeps lit les bibliothèques que le binaire charge et
-# en déduit les paquets (avec les versions minimales) : librsvg, cairo et GTK 4
-# (libgtk-4-1) pour la fenêtre.
-echo ">>> Calcul des dépendances (dpkg-shlibdeps)..."
+# Dependencies: dpkg-shlibdeps reads the libraries that the binary loads and
+# deduces the packages from them (with the minimum versions): librsvg, cairo and
+# GTK 4 (libgtk-4-1) for the window.
+echo ">>> Computing the dependencies (dpkg-shlibdeps)..."
 SHLIBS_TMP="$(mktemp -d)"
 trap 'rm -rf "${SHLIBS_TMP:?}"' EXIT
-# dpkg-shlibdeps attend un dossier debian/ avec un fichier control. Il avertit
-# que le binaire n'est pas encore à sa place dans un paquet : c'est normal,
-# on l'examine avant de construire le paquet, et on ne garde pas cet avertissement.
-# LC_ALL=C : le message est filtré sur son texte anglais, il doit donc être
-# écrit en anglais quelle que soit la langue du système.
+# dpkg-shlibdeps expects a debian/ folder with a control file. It warns that
+# the binary is not yet in its place in a package: that is normal, we examine it
+# before building the package, and we do not keep that warning.
+# LC_ALL=C: the message is filtered on its English text, so it must be
+# written in English whatever the language of the system.
 mkdir "$SHLIBS_TMP/debian"
 printf 'Source: %s\n\nPackage: %s\nArchitecture: any\n' "$PACKAGE_NAME" "$PACKAGE_NAME" > "$SHLIBS_TMP/debian/control"
-DEPENDS="$(cd "$SHLIBS_TMP" && LC_ALL=C dpkg-shlibdeps -O "-e$BINARY" 2> "$SHLIBS_TMP/avertissements" | sed -n 's/^shlibs:Depends=//p')"
-grep -v 'should already be installed' "$SHLIBS_TMP/avertissements" >&2 || true
-[ -n "$DEPENDS" ] || erreur "dpkg-shlibdeps n'a trouvé aucune dépendance : le binaire n'est pas lié aux bibliothèques attendues."
+DEPENDS="$(cd "$SHLIBS_TMP" && LC_ALL=C dpkg-shlibdeps -O "-e$BINARY" 2> "$SHLIBS_TMP/warnings" | sed -n 's/^shlibs:Depends=//p')"
+grep -v 'should already be installed' "$SHLIBS_TMP/warnings" >&2 || true
+[ -n "$DEPENDS" ] || fail "dpkg-shlibdeps found no dependency: the binary is not linked to the expected libraries."
 echo "    Depends: $DEPENDS"
 
-echo ">>> Création des fichiers de contrôle..."
+echo ">>> Creating the control files..."
 INSTALLED_SIZE="$(du -sk "$BUILD_DIR" | cut -f1)"
 mkdir -p "$BUILD_DIR/DEBIAN"
 cat > "$BUILD_DIR/DEBIAN/control" << EOF
@@ -340,33 +343,33 @@ Description: $DESCRIPTION
  pour faire tenir une portion trop haute. Le fichier d'origine n'est jamais
  modifié.
 EOF
-# Scripts de maintenance : dpkg-deb les traite nativement quand ils sont dans DEBIAN/.
+# Maintainer scripts: dpkg-deb handles them natively when they are in DEBIAN/.
 install -m 0755 "$PROJECT_DIR/debian/postinst" "$BUILD_DIR/DEBIAN/postinst"
 install -m 0755 "$PROJECT_DIR/debian/postrm" "$BUILD_DIR/DEBIAN/postrm"
 ( cd "$BUILD_DIR" && find usr -type f -print0 | sort -z | xargs -0 md5sum ) > "$BUILD_DIR/DEBIAN/md5sums"
 chmod 0644 "$BUILD_DIR/DEBIAN/md5sums"
 find "$BUILD_DIR" -exec touch -h -d "@$SOURCE_DATE_EPOCH" {} +
 
-echo ">>> Création du paquet .deb..."
+echo ">>> Creating the .deb package..."
 dpkg-deb --root-owner-group -Zxz --build "$BUILD_DIR" "$DEB_FILE" > /dev/null
 
 echo ""
-echo "✅ Paquet créé avec succès :"
+echo "✅ Package generated:"
 echo "   $DEB_FILE"
-echo "   $(du -h "$DEB_FILE" | cut -f1) — sha256 $(sha256sum "$DEB_FILE" | cut -c1-16)…"
+    echo "   $(du -h "$DEB_FILE" | cut -f1) — sha256 $(sha256sum "$DEB_FILE" | cut -c1-16)…"
 
-# Le fichier VERSION du projet n'est mis à jour qu'ici, une fois le .deb
-# effectivement construit. Ainsi, un échec de build (compilation,
-# dpkg-shlibdeps, dpkg-deb...) ne laisse jamais le projet dans un état
-# incohérent (VERSION incrémenté sans .deb correspondant).
+# The project's VERSION file is only updated here, once the .deb has really
+# been built. This way, a failed build (compilation,
+# dpkg-shlibdeps, dpkg-deb...) never leaves the project in an inconsistent
+# state (VERSION incremented without a matching .deb).
 if [ "$NO_VERSION_CHANGE" = true ]; then
-    echo "   Version inchangée : $NEW_VERSION"
+    echo "   Version unchanged: $NEW_VERSION"
 else
     echo "$NEW_VERSION" > "$VERSION_FILE"
-    echo "   Version enregistrée : $NEW_VERSION"
+    echo "   Version recorded: $NEW_VERSION"
     if [[ "$NEW_VERSION" != *-* ]]; then
-        echo "   Pensez à ajouter « ## [$NEW_VERSION] » à CHANGELOG.md et à CHANGELOG.fr.md (voir CONTRIBUTING.fr.md)."
+        echo "   Remember to add '## [$NEW_VERSION]' to CHANGELOG.md and CHANGELOG.fr.md (see CONTRIBUTING.md)."
     fi
 fi
 echo ""
-echo "Pour l'essayer : sudo apt install \"$DEB_FILE\" && $PACKAGE_NAME -selftest"
+echo "To try it: sudo apt install \"$DEB_FILE\" && $PACKAGE_NAME -selftest"

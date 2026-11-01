@@ -2,23 +2,23 @@
 # SPDX-License-Identifier: GPL-3.0-only
 set -euo pipefail
 
-# Construit le paquet Windows d'Image Print Layout : une version portable (.zip)
-# et, si NSIS est installé, un installeur (.exe), à la racine du dépôt.
+# Builds the Windows package of Image Print Layout: a portable version (.zip)
+# and, if NSIS is installed, an installer (.exe), at the root of the repository.
 #
-# Ce script s'exécute dans un terminal MSYS2 UCRT64 (c'est là que se trouvent
-# Go, le compilateur C, GTK 4, librsvg et cairo pour Windows). On le lance de
-# préférence par build-windows.ps1, à la racine du dépôt : celui-ci gère les
-# options et le fichier VERSION comme build-deb.sh, prépare MSYS2 et NSIS, puis
-# appelle ce script avec le numéro de version choisi. Ce script ne modifie
-# jamais le fichier VERSION.
+# This script runs in an MSYS2 UCRT64 terminal (that is where Go, the C
+# compiler, GTK 4, librsvg and cairo for Windows are found). It is best run
+# through build-windows.ps1, at the root of the repository: that script handles
+# the options and the VERSION file like build-deb.sh, prepares MSYS2 and NSIS,
+# then calls this script with the chosen version number. This script never
+# modifies the VERSION file.
 
 # ====================== CONFIGURATION ======================
 PACKAGE_NAME="imageprintlayout"
 WINDOWS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$WINDOWS_DIR")"
-# Dossier de travail : celui que build-windows.ps1 choisit (variable
-# SVGPL_BUILD_DIR, en chemin Windows ou MSYS2), à défaut un dossier du
-# répertoire personnel. Fixé par main().
+# Working folder: the one that build-windows.ps1 chooses (variable
+# SVGPL_BUILD_DIR, as a Windows or MSYS2 path), otherwise a folder in the
+# home directory. Set by main().
 WORK=""
 # ===========================================================
 
@@ -26,18 +26,18 @@ step() { echo ">>> $*"; }
 
 die() {
     echo "" >&2
-    echo "Erreur : $*" >&2
+    echo "Error: $*" >&2
     exit 1
 }
 
-# require_tool COMMANDE "conseil d'installation"
+# require_tool COMMAND "installation advice"
 require_tool() {
-    command -v "$1" >/dev/null 2>&1 || die "$1 est introuvable. $2"
+    command -v "$1" >/dev/null 2>&1 || die "$1 not found. $2"
 }
 
-# Paquets MSYS2 nécessaires à la construction (les bibliothèques d'exécution
-# viennent avec GTK 4, librsvg et cairo). Les thèmes d'icônes sont livrés avec
-# le programme : sans eux, les boutons de la fenêtre n'ont pas d'image.
+# MSYS2 packages needed for the build (the runtime libraries come with
+# GTK 4, librsvg and cairo). The icon themes are shipped with the program:
+# without them, the buttons of the window have no image.
 MSYS_PACKAGES=(
     mingw-w64-ucrt-x86_64-go
     mingw-w64-ucrt-x86_64-gcc
@@ -54,47 +54,47 @@ MSYS_PACKAGES=(
     git
 )
 
-# Deux exécutables : imageprintlayout.exe, celui de la fenêtre (sous-système
-# Windows : pas de console qui s'ouvre derrière), et imageprintlayout-console.exe,
-# le même programme en sous-système console, pour -version, -selftest et les
-# messages d'erreur dans un terminal (un programme fenêtré n'écrit nulle part
-# dans un terminal).
+# Two executables: imageprintlayout.exe, the one of the window (Windows
+# subsystem: no console opens behind it), and imageprintlayout-console.exe,
+# the same program in the console subsystem, for -version, -selftest and the
+# error messages in a terminal (a windowed program writes nothing in a
+# terminal).
 GUI_EXE="$PACKAGE_NAME.exe"
 CONSOLE_EXE="$PACKAGE_NAME-console.exe"
 
-# Langues de GTK livrées avec le programme (le texte de ses propres boutons) ;
-# l'anglais est dans le code de GTK.
+# GTK languages shipped with the program (the text of its own buttons);
+# English is in the code of GTK.
 GTK_LOCALES=(fr es de)
 
-# Formats d'image que les chargeurs gdk-pixbuf livrés savent lire : ceux des
-# images que le programme ouvre (JPEG, PNG, TIFF, BMP, GIF, WebP) et ceux des
-# images incorporées aux SVG. Les cinq premiers sont indispensables : sans l'un
-# d'eux, le programme ne tiendrait pas ce qu'il annonce, et la construction
-# s'arrête. Le WebP (paquet MSYS2 à part) et le SVG sont livrés s'ils sont là.
+# Image formats that the shipped gdk-pixbuf loaders can read: those of the
+# images the program opens (JPEG, PNG, TIFF, BMP, GIF, WebP) and those of the
+# images embedded in SVGs. The first five are essential: without one of
+# them, the program would not do what it announces, and the build
+# stops. WebP (a separate MSYS2 package) and SVG are shipped if they are there.
 PIXBUF_REQUIRED=(png jpeg tiff gif bmp)
 PIXBUF_OPTIONAL=(webp svg)
 
 show_help() {
     cat << EOF2
-Usage : windows/build-windows.sh [options]
+Usage: windows/build-windows.sh [options]
 
-Construit, à la racine du dépôt :
-  imageprintlayout_<version>_windows-portable.zip   version portable
-  imageprintlayout_<version>_windows-setup.exe      installeur (si NSIS est là)
+Builds, at the root of the repository:
+  imageprintlayout_<version>_windows-portable.zip   portable version
+  imageprintlayout_<version>_windows-setup.exe      installer (if NSIS is there)
 
-OPTIONS :
-  --version X.Y.Z   Numéro de version à construire (par défaut : le contenu du
-                    fichier VERSION). Ce script ne modifie jamais VERSION.
-  --install-deps    Installe avec pacman les paquets MSYS2 manquants
-  --check-deps      Vérifie seulement que les paquets MSYS2 sont présents
-  --help, -h        Affiche cette aide
+OPTIONS:
+  --version X.Y.Z   Version number to build (default: the content of the
+                    VERSION file). This script never modifies VERSION.
+  --install-deps    Install the missing MSYS2 packages with pacman
+  --check-deps      Only check that the MSYS2 packages are present
+  --help, -h        Show this help
 
-À lancer dans un terminal « MSYS2 UCRT64 » (pas MSYS ni MINGW64). Plus simple :
-.\\build-windows.ps1 à la racine du dépôt, depuis PowerShell : il accepte
--Major, -Minor, -Patch et -NoVersionChange, comme build-deb.sh.
+To be run in a "MSYS2 UCRT64" terminal (not MSYS or MINGW64). Simpler:
+.\\build-windows.ps1 at the root of the repository, from PowerShell: it accepts
+-Major, -Minor, -Patch and -NoVersionChange, like build-deb.sh.
 
-Le dossier de travail est la variable d'environnement SVGPL_BUILD_DIR
-(par défaut ~/imageprintlayout-build).
+The working folder is the environment variable SVGPL_BUILD_DIR
+(default ~/imageprintlayout-build).
 EOF2
 }
 
@@ -102,8 +102,8 @@ INSTALL_DEPS=false
 CHECK_DEPS=false
 VERSION=""
 
-# ensure_packages vérifie les paquets MSYS2 ; avec --install-deps, il installe
-# ceux qui manquent, avec --check-deps il se contente de les lister.
+# ensure_packages checks the MSYS2 packages; with --install-deps, it installs
+# the missing ones, with --check-deps it only lists them.
 ensure_packages() {
     local missing=() p
     for p in "${MSYS_PACKAGES[@]}"; do
@@ -111,22 +111,22 @@ ensure_packages() {
     done
     [ ${#missing[@]} -eq 0 ] && return 0
     if [ "$CHECK_DEPS" = true ]; then
-        echo "Paquets MSYS2 manquants :" >&2
+        echo "Missing MSYS2 packages:" >&2
         printf '  %s\n' "${missing[@]}" >&2
         return 1
     fi
     if [ "$INSTALL_DEPS" != true ]; then
-        die "paquets MSYS2 manquants :
+        die "missing MSYS2 packages:
 $(printf '  %s\n' "${missing[@]}")
-Installez-les avec : pacman -S --needed ${missing[*]}
-ou relancez ce script avec --install-deps."
+Install them with: pacman -S --needed ${missing[*]}
+or run this script again with --install-deps."
     fi
-    step "Installation des paquets MSYS2 manquants..."
+    step "Installing the missing MSYS2 packages..."
     pacman -S --needed --noconfirm "${missing[@]}"
 }
 
-# Date des fichiers du paquet : celle du dernier commit, pour que deux
-# constructions du même code donnent le même paquet.
+# Date of the package files: that of the last commit, so that two builds of
+# the same code give the same package.
 set_source_date_epoch() {
     if [ -z "${SOURCE_DATE_EPOCH:-}" ]; then
         SOURCE_DATE_EPOCH="$(git -c safe.directory="$PROJECT_DIR" -C "$PROJECT_DIR" log -1 --format=%ct 2>/dev/null || true)"
@@ -135,33 +135,33 @@ set_source_date_epoch() {
     export SOURCE_DATE_EPOCH
 }
 
-# read_version fixe VERSION (option --version, à défaut fichier VERSION) et
-# VERSION_BASE, sa partie numérique : une version d'avant-publication
-# (0.1.0-dev) garde son suffixe dans les textes, mais les numéros de version
-# de Windows n'ont que quatre nombres.
+# read_version sets VERSION (--version option, otherwise the VERSION file) and
+# VERSION_BASE, its numeric part: a pre-release version
+# (0.1.0-dev) keeps its suffix in the texts, but Windows version numbers
+# only have four numbers.
 read_version() {
     if [ -z "$VERSION" ]; then
-        [ -f "$PROJECT_DIR/VERSION" ] || die "fichier VERSION introuvable : $PROJECT_DIR/VERSION"
+        [ -f "$PROJECT_DIR/VERSION" ] || die "VERSION file not found: $PROJECT_DIR/VERSION"
         VERSION="$(tr -d '[:space:]' < "$PROJECT_DIR/VERSION")"
     fi
     local semver='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$'
-    [[ "$VERSION" =~ $semver ]] || die "« $VERSION » n'est pas une version X.Y.Z ou X.Y.Z-suffixe."
+    [[ "$VERSION" =~ $semver ]] || die "'$VERSION' is not an X.Y.Z or X.Y.Z-suffix version."
     VERSION_BASE="${VERSION%%-*}"
 }
 
 check_go_prerequisites() {
-    require_tool go "Installez le paquet MSYS2 mingw-w64-ucrt-x86_64-go."
-    require_tool gcc "Installez le paquet MSYS2 mingw-w64-ucrt-x86_64-gcc."
-    require_tool pkg-config "Installez le paquet MSYS2 mingw-w64-ucrt-x86_64-pkgconf."
-    pkg-config --exists librsvg-2.0 gdk-pixbuf-2.0 cairo fontconfig || die "les bibliothèques de développement de librsvg, de gdk-pixbuf, de cairo et de fontconfig sont absentes (paquets MSYS2 mingw-w64-ucrt-x86_64-librsvg, -gdk-pixbuf2, -cairo et -fontconfig)."
-    pkg-config --exists gtk4 gobject-introspection-1.0 || die "les bibliothèques de développement de GTK 4 sont absentes (paquets MSYS2 mingw-w64-ucrt-x86_64-gtk4 et -gobject-introspection)."
+    require_tool go "Install the MSYS2 package mingw-w64-ucrt-x86_64-go."
+    require_tool gcc "Install the MSYS2 package mingw-w64-ucrt-x86_64-gcc."
+    require_tool pkg-config "Install the MSYS2 package mingw-w64-ucrt-x86_64-pkgconf."
+    pkg-config --exists librsvg-2.0 gdk-pixbuf-2.0 cairo fontconfig || die "the development libraries of librsvg, gdk-pixbuf, cairo and fontconfig are missing (MSYS2 packages mingw-w64-ucrt-x86_64-librsvg, -gdk-pixbuf2, -cairo and -fontconfig)."
+    pkg-config --exists gtk4 gobject-introspection-1.0 || die "the GTK 4 development libraries are missing (MSYS2 packages mingw-w64-ucrt-x86_64-gtk4 and -gobject-introspection)."
 }
 
-# build_binary DESTINATION SOUS-SYSTÈME compile le programme, en sous-système
-# « windows » (la fenêtre) ou « console ». -trimpath, un identifiant de
-# construction vide et l'absence d'informations VCS rendent le binaire
-# indépendant du dossier et de l'heure de la construction. Le numéro de
-# version est inscrit dans le programme (imageprintlayout -version).
+# build_binary DESTINATION SUBSYSTEM compiles the program, in the "windows"
+# subsystem (the window) or "console". -trimpath, an empty build id and the
+# absence of VCS information make the binary independent of the folder and
+# of the time of the build. The version number is written into the program
+# (imageprintlayout -version).
 build_binary() {
     local destination="$1" subsystem="$2" flags="-s -w -buildid= -X main.version=$VERSION" expected
     if [ "$subsystem" = "windows" ]; then
@@ -170,30 +170,30 @@ build_binary() {
     else
         expected="Windows CUI"
     fi
-    step "Compilation de $(basename "$destination") $VERSION (cgo, GTK4, librsvg, gdk-pixbuf, cairo ; sous-système $subsystem)..."
+    step "Compiling $(basename "$destination") $VERSION (cgo, GTK4, librsvg, gdk-pixbuf, cairo; $subsystem subsystem)..."
     if [ "$subsystem" = "windows" ]; then
-        echo "    La première compilation de GTK (gotk4) dure plusieurs minutes et n'affiche rien ;"
-        echo "    les suivantes sont presque instantanées (cache de Go)."
+        echo "    The first compilation of GTK (gotk4) takes several minutes and prints nothing;"
+        echo "    the following ones are almost instant (Go cache)."
     fi
     mkdir -p "$(dirname "$destination")"
-    # gotk4 déclare « free » autrement que <stdlib.h> : gcc le signale à chaque
-    # compilation. Ce n'est pas un défaut de ce dépôt ; on masque cet
-    # avertissement seulement, et on garde les options par défaut de cgo.
+    # gotk4 declares "free" differently from <stdlib.h>: gcc reports it at every
+    # compilation. It is not a defect of this repository; only this warning is
+    # hidden, and cgo's default options are kept.
     ( cd "$PROJECT_DIR" && CGO_ENABLED=1 CGO_CFLAGS="${CGO_CFLAGS:--O2 -g} -Wno-builtin-declaration-mismatch" go build -trimpath -buildvcs=false \
         -buildmode=exe -ldflags "$flags" -o "$destination" ./cmd/imageprintlayout )
-    # Un exécutable fenêtré lancé depuis un terminal n'écrit nulle part, un
-    # exécutable console ouvre une fenêtre noire derrière la fenêtre : on
-    # vérifie que chacun a le sous-système voulu.
+    # A windowed executable started from a terminal writes nowhere, a console
+    # executable opens a black window behind the window: we check that each
+    # has the wanted subsystem.
     objdump -p "$destination" | grep -E '^Subsystem' | grep -q "$expected" \
-        || die "$(basename "$destination") n'a pas le sous-système « $subsystem » : $(objdump -p "$destination" | grep -E '^Subsystem')"
+        || die "$(basename "$destination") does not have the '$subsystem' subsystem: $(objdump -p "$destination" | grep -E '^Subsystem')"
 }
 
-# normalize_tree RACINE fixe la date de tout le contenu.
+# normalize_tree ROOT sets the date of the whole content.
 normalize_tree() {
-    find "${1:?normalize_tree : dossier manquant}" -exec touch -h -d "@$SOURCE_DATE_EPOCH" {} +
+    find "${1:?normalize_tree: missing folder}" -exec touch -h -d "@$SOURCE_DATE_EPOCH" {} +
 }
 
-# find_makensis affiche le chemin de makensis (NSIS), s'il est installé.
+# find_makensis prints the path of makensis (NSIS), if it is installed.
 find_makensis() {
     local candidate
     for candidate in \
@@ -208,12 +208,12 @@ find_makensis() {
     command -v makensis 2>/dev/null || command -v makensis.exe 2>/dev/null || true
 }
 
-# make_resources DOSSIER écrit dans le dossier du programme la ressource qui
-# lui donne son icône et ses propriétés (clic droit > Propriétés), en anglais
-# et sans accent : windres lit ce fichier dans la page de code de Windows, pas
-# en UTF-8. Go la lie
-# toute seule : tout fichier .syso du dossier d'un paquet est ajouté à l'édition
-# de liens. Elle est supprimée à la sortie du script.
+# make_resources FOLDER writes, in the program's folder, the resource that
+# gives it its icon and its properties (right click > Properties), in English
+# and without accents: windres reads this file in the Windows code page, not
+# in UTF-8. Go links it
+# by itself: any .syso file in the folder of a package is added to the
+# link. It is deleted when the script exits.
 make_resources() {
     local cmd_dir="$1"
     local rc_dir="$WORK/resources"
@@ -252,11 +252,11 @@ EOF2
     trap 'rm -f "$SYSO"' EXIT
 }
 
-# dll_closure BINAIRE... affiche, une par ligne, les DLL de MSYS2 dont les
-# binaires dépendent, directement ou non. Les DLL de Windows (kernel32,
-# ucrtbase...) n'en font pas partie : elles sont sur toutes les machines.
-# Chaque DLL trouvée est examinée à son tour, jusqu'à ce qu'il n'y ait plus
-# rien de nouveau : on ne suppose pas que ldd donne les dépendances indirectes.
+# dll_closure BINARY... prints, one per line, the MSYS2 DLLs that the
+# binaries depend on, directly or not. The Windows DLLs (kernel32,
+# ucrtbase...) are not part of it: they are on every machine.
+# Each DLL found is examined in turn, until there is nothing new
+# left: we do not assume that ldd gives the indirect dependencies.
 dll_closure() {
     local -A seen=()
     local queue=("$@") item listing dll
@@ -265,7 +265,7 @@ dll_closure() {
         queue=("${queue[@]:1}")
         listing="$(ldd "$item")"
         if grep -q "not found" <<< "$listing"; then
-            die "bibliothèques introuvables pour $item :
+            die "libraries not found for $item:
 $(grep 'not found' <<< "$listing")"
         fi
         while IFS= read -r dll; do
@@ -278,18 +278,18 @@ $(grep 'not found' <<< "$listing")"
     printf '%s\n' "${!seen[@]}" | LC_ALL=C sort
 }
 
-# stage_windows RACINE EXE_FENÊTRE EXE_CONSOLE prépare l'arborescence « à la
-# manière d'un préfixe » que le zip et l'installeur reproduisent à l'identique
-# (GLib et GTK retrouvent leurs fichiers à partir de l'emplacement de leurs DLL,
-# qui doivent donc être dans un dossier bin/ à côté de share/) :
-#   bin/        les deux exécutables et les DLL
-#   etc/fonts/  la configuration de fontconfig
-#   lib/gdk-pixbuf-2.0/  les chargeurs d'images, avec leur cache
-#   share/glib-2.0/schemas/  les schémas de réglages de GTK (sans eux, GTK
-#                            s'arrête à l'ouverture d'un sélecteur de fichier)
-#   share/icons/             les thèmes d'icônes (Adwaita et hicolor)
-#   share/locale/            les traductions des textes propres à GTK
-#   share/licenses/          les licences des bibliothèques livrées
+# stage_windows ROOT GUI_EXE CONSOLE_EXE prepares the "prefix-like" tree
+# that the zip and the installer reproduce identically
+# (GLib and GTK find their files from the location of their DLLs,
+# which must therefore be in a bin/ folder next to share/):
+#   bin/        the two executables and the DLLs
+#   etc/fonts/  the fontconfig configuration
+#   lib/gdk-pixbuf-2.0/  the image loaders, with their cache
+#   share/glib-2.0/schemas/  the GTK settings schemas (without them, GTK
+#                            stops when a file chooser opens)
+#   share/icons/             the icon themes (Adwaita and hicolor)
+#   share/locale/            the translations of GTK's own texts
+#   share/licenses/          the licenses of the shipped libraries
 stage_windows() {
     local root="$1" gui="$2" console="$3" loaders=() loader dll name lang catalog
     rm -rf "${root:?}"
@@ -297,7 +297,7 @@ stage_windows() {
     install -m 0755 "$gui" "$root/bin/$GUI_EXE"
     install -m 0755 "$console" "$root/bin/$CONSOLE_EXE"
 
-    step "Chargeurs d'images (gdk-pixbuf)..."
+    step "Image loaders (gdk-pixbuf)..."
     local loader_src="$MINGW_PREFIX/lib/gdk-pixbuf-2.0/2.10.0/loaders"
     local loader_dst="$root/lib/gdk-pixbuf-2.0/2.10.0/loaders"
     for name in "${PIXBUF_REQUIRED[@]}" "${PIXBUF_OPTIONAL[@]}"; do
@@ -305,23 +305,23 @@ stage_windows() {
             install -D -m 0755 "$loader_src/libpixbufloader-$name.dll" "$loader_dst/libpixbufloader-$name.dll"
             loaders+=("$loader_src/libpixbufloader-$name.dll")
         elif [[ " ${PIXBUF_REQUIRED[*]} " == *" $name "* ]]; then
-            die "il manque le chargeur d'images « $name » de gdk-pixbuf ($loader_src) : le programme ne saurait pas ouvrir ce format. Installez le paquet MSYS2 mingw-w64-ucrt-x86_64-gdk-pixbuf2."
+            die "the gdk-pixbuf image loader '$name' is missing ($loader_src): the program would not be able to open this format. Install the MSYS2 package mingw-w64-ucrt-x86_64-gdk-pixbuf2."
         else
-            echo "    (pas de chargeur « $name » dans cette installation de MSYS2 : ce format ne sera pas lu)"
+            echo "    (no '$name' loader in this MSYS2 installation: this format will not be read)"
         fi
     done
 
-    step "Bibliothèques dont le programme dépend..."
+    step "Libraries the program depends on..."
     local dlls=()
     while IFS= read -r dll; do dlls+=("$dll"); done < <(dll_closure "$gui" "$console" "${loaders[@]}")
-    [ ${#dlls[@]} -gt 0 ] || die "aucune DLL trouvée pour $gui : ldd ne voit pas les bibliothèques de MSYS2 (terminal UCRT64 ?)."
+    [ ${#dlls[@]} -gt 0 ] || die "no DLL found for $gui: ldd does not see the MSYS2 libraries (UCRT64 terminal?)."
     for dll in "${dlls[@]}"; do
         install -m 0755 "$dll" "$root/bin/"
     done
-    echo "    ${#dlls[@]} DLL copiées dans bin/"
+    echo "    ${#dlls[@]} DLLs copied into bin/"
 
-    # Le cache liste les chargeurs avec leur chemin relatif au préfixe : le
-    # dossier peut ainsi être installé n'importe où.
+    # The cache lists the loaders with their path relative to the prefix: the
+    # folder can thus be installed anywhere.
     if [ ${#loaders[@]} -gt 0 ]; then
         local cache="$root/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache"
         local staged=()
@@ -330,21 +330,21 @@ stage_windows() {
             | sed -E 's#^"[^"]*[/\\]+(lib[/\\]+gdk-pixbuf-2\.0)#"\1#; /^"lib/ s#/#\\\\#g' \
             > "$cache"
         if grep -qE '^"[A-Za-z]:|^"/' "$cache"; then
-            die "le cache des chargeurs d'images contient un chemin absolu : $(grep -E '^"[A-Za-z]:|^"/' "$cache" | head -1)"
+            die "the image loader cache contains an absolute path: $(grep -E '^"[A-Za-z]:|^"/' "$cache" | head -1)"
         fi
-        echo "    cache des chargeurs d'images : $(grep -c '^"lib' "$cache") chargeur(s)"
+        echo "    image loader cache: $(grep -c '^"lib' "$cache") loader(s)"
     fi
 
-    step "Configuration de fontconfig..."
+    step "Configuring fontconfig..."
     cp -rL "$MINGW_PREFIX/etc/fonts" "$root/etc/fonts"
 
-    step "Réglages, icônes et traductions de GTK..."
+    step "GTK settings, icons and translations..."
     local schemas="$MINGW_PREFIX/share/glib-2.0/schemas/gschemas.compiled"
-    [ -f "$schemas" ] || die "les schémas de GTK sont introuvables : $schemas"
+    [ -f "$schemas" ] || die "the GTK schemas were not found: $schemas"
     install -D -m 0644 "$schemas" "$root/share/glib-2.0/schemas/gschemas.compiled"
     local theme
     for theme in Adwaita hicolor; do
-        [ -d "$MINGW_PREFIX/share/icons/$theme" ] || die "le thème d'icônes $theme est introuvable dans $MINGW_PREFIX/share/icons."
+        [ -d "$MINGW_PREFIX/share/icons/$theme" ] || die "the $theme icon theme was not found in $MINGW_PREFIX/share/icons."
         mkdir -p "$root/share/icons"
         cp -rL "$MINGW_PREFIX/share/icons/$theme" "$root/share/icons/$theme"
     done
@@ -354,12 +354,12 @@ stage_windows() {
                 install -D -m 0644 "$MINGW_PREFIX/share/locale/$lang/LC_MESSAGES/$catalog.mo" \
                     "$root/share/locale/$lang/LC_MESSAGES/$catalog.mo"
             else
-                echo "    (pas de traduction « $lang » de $catalog dans cette installation de MSYS2)"
+                echo "    (no '$lang' translation of $catalog in this MSYS2 installation)"
             fi
         done
     done
 
-    step "Licences des bibliothèques livrées..."
+    step "Licenses of the shipped libraries..."
     write_licenses "$root" "${dlls[@]}" "${loaders[@]}" "$MINGW_PREFIX/share/icons/Adwaita/index.theme"
 
     install -m 0644 "$PROJECT_DIR/LICENSE" "$root/LICENSE"
@@ -367,25 +367,27 @@ stage_windows() {
     install -m 0644 "$PROJECT_DIR/README.fr.md" "$root/README.fr.md"
     install -m 0644 "$PROJECT_DIR/CHANGELOG.md" "$root/CHANGELOG.md"
     install -m 0644 "$PROJECT_DIR/CHANGELOG.fr.md" "$root/CHANGELOG.fr.md"
+    install -m 0644 "$PROJECT_DIR/CODE_OF_CONDUCT.md" "$root/CODE_OF_CONDUCT.md"
+    install -m 0644 "$PROJECT_DIR/CODE_OF_CONDUCT.fr.md" "$root/CODE_OF_CONDUCT.fr.md"
 }
 
-# write_licenses RACINE FICHIER... : pour chaque paquet MSYS2 dont vient un des
-# fichiers, copie ses textes de licence et le range dans COMPOSANTS.txt.
+# write_licenses ROOT FILE...: for each MSYS2 package that one of the files comes from,
+# copies its license texts and lists it in COMPONENTS.txt.
 write_licenses() {
     local root="$1"; shift
-    local owners pkg short list="$root/share/licenses/COMPOSANTS.txt"
-    # pacman sort en erreur si l'un des fichiers n'a pas de propriétaire : sans gravité.
+    local owners pkg short list="$root/share/licenses/COMPONENTS.txt"
+    # pacman fails if one of the files has no owner: harmless.
     owners="$(pacman -Qo "$@" 2>/dev/null | sed -E 's/.* is owned by ([^ ]+) .*/\1/' | sort -u || true)"
     {
-        # La marque d'ordre des octets (BOM) permet à tous les outils de Windows
-        # (Bloc-notes ancien, PowerShell 5.1) de lire les accents.
+        # The byte order mark (BOM) lets all the Windows tools (old Notepad,
+        # PowerShell 5.1) read the file as UTF-8.
         printf '\xef\xbb\xbf'
-        echo "Bibliothèques libres livrées avec Image Print Layout"
-        echo "=================================================="
+        echo "Free libraries shipped with Image Print Layout"
+        echo "=============================================="
         echo ""
-        echo "Chaque bibliothèque reste soumise à sa propre licence, dont le texte est"
-        echo "dans le dossier de même nom. Leur code source est disponible auprès du"
-        echo "projet MSYS2 : https://packages.msys2.org/ (rubrique « Sources »)."
+        echo "Each library remains subject to its own license, the text of which is"
+        echo "in the folder of the same name. Their source code is available from the"
+        echo "MSYS2 project: https://packages.msys2.org/ (\"Sources\" section)."
         echo ""
     } > "$list"
     for pkg in $owners; do
@@ -394,19 +396,19 @@ write_licenses() {
             mkdir -p "$root/share/licenses/$short"
             cp -rL "$MINGW_PREFIX/share/licenses/$short/." "$root/share/licenses/$short/"
         fi
-        # « Licenses : spdx:LGPL-2.1-or-later » : on garde tout ce qui suit le premier « : ».
+        # "Licenses : spdx:LGPL-2.1-or-later": we keep everything after the first ":".
         printf '%-26s %-34s %s\n' "$short" \
             "$(pacman -Qi "$pkg" | awk '/^Version/ { sub(/^[^:]*: */, ""); print; exit }')" \
             "$(pacman -Qi "$pkg" | awk '/^Licenses/ { sub(/^[^:]*: */, ""); print; exit }')" >> "$list"
     done
-    echo "    $(echo "$owners" | wc -w) bibliothèques décrites dans share/licenses/COMPOSANTS.txt"
+    echo "    $(echo "$owners" | wc -w) libraries described in share/licenses/COMPONENTS.txt"
 }
 
-# write_installer_includes DOSSIER RACINE SORTIE écrit les deux fichiers que
-# installer.nsi inclut : les valeurs de cette construction, et la liste des
-# fichiers à supprimer à la désinstallation. Cette liste évite qu'un
-# désinstalleur n'efface un dossier entier, au cas où l'utilisateur aurait
-# installé le programme dans un dossier qui contient d'autres fichiers.
+# write_installer_includes FOLDER ROOT OUTPUT writes the two files that
+# installer.nsi includes: the values of this build, and the list of the
+# files to delete at uninstall. This list prevents an uninstaller from
+# erasing a whole folder, in case the user installed the program in a
+# folder that contains other files.
 write_installer_includes() {
     local dir="$1" root="$2" output="$3" win_root rel
     win_root="$(cygpath -w "$root")"
@@ -435,16 +437,16 @@ build_installer() {
     write_installer_includes "$dir" "$root" "$output"
     cp "$WINDOWS_DIR/installer.nsi" "$dir/installer.nsi"
     rm -f "${output:?}"
-    # « -V2 » et non « /V2 » : MSYS2 prendrait « /V2 » pour un chemin POSIX.
+    # "-V2" and not "/V2": MSYS2 would take "/V2" for a POSIX path.
     ( cd "$dir" && "$makensis" -V2 installer.nsi )
-    [ -f "$output" ] || die "NSIS n'a pas produit $output."
+    [ -f "$output" ] || die "NSIS did not produce $output."
 }
 
 main() {
     while [[ $# -gt 0 ]]; do
         case $1 in
             --version)
-                [ $# -ge 2 ] || die "--version attend un numéro de version (ex : --version 1.2.3)."
+                [ $# -ge 2 ] || die "--version expects a version number (e.g. --version 1.2.3)."
                 VERSION="$2"
                 shift 2
                 ;;
@@ -452,24 +454,24 @@ main() {
             --check-deps)   CHECK_DEPS=true; shift ;;
             --help|-h)      show_help; exit 0 ;;
             *)
-                echo "Option inconnue : $1"
+                echo "Unknown option: $1"
                 show_help
                 exit 1
                 ;;
         esac
     done
 
-    [ "${MSYSTEM:-}" = "UCRT64" ] || die "ce script doit s'exécuter dans un terminal MSYS2 UCRT64 (MSYSTEM vaut « ${MSYSTEM:-vide} »).
-Lancez plutôt .\\build-windows.ps1 depuis PowerShell, à la racine du dépôt."
-    [ "$(uname -m)" = "x86_64" ] || die "seul Windows 64 bits (x64) est pris en charge."
+    [ "${MSYSTEM:-}" = "UCRT64" ] || die "this script must run in an MSYS2 UCRT64 terminal (MSYSTEM is '${MSYSTEM:-empty}').
+Run .\\build-windows.ps1 from PowerShell instead, at the root of the repository."
+    [ "$(uname -m)" = "x86_64" ] || die "only 64-bit Windows (x64) is supported."
     WORK="$(cygpath -u "${SVGPL_BUILD_DIR:-$HOME/imageprintlayout-build}")"
 
     ensure_packages
     [ "$CHECK_DEPS" = true ] && exit 0
 
-    # Le paquet Go de MSYS2 est compilé avec -trimpath : son programme ne sait
-    # pas retrouver tout seul son dossier d'installation. On le lui donne, sauf
-    # si l'utilisateur a déjà choisi.
+    # MSYS2's Go package is built with -trimpath: its program cannot find
+    # its installation folder by itself. We give it, unless
+    # the user has already chosen.
     if [ -z "${GOROOT:-}" ] && [ -d "$MINGW_PREFIX/lib/go" ]; then
         GOROOT="$(cygpath -m "$MINGW_PREFIX/lib/go")"
         export GOROOT
@@ -478,9 +480,9 @@ Lancez plutôt .\\build-windows.ps1 depuis PowerShell, à la racine du dépôt."
     read_version
     set_source_date_epoch
     check_go_prerequisites
-    step "Go : $(go version)"
-    require_tool windres "Il fait partie du paquet MSYS2 mingw-w64-ucrt-x86_64-binutils (installé avec gcc)."
-    require_tool ldd "Il fait partie de MSYS2 (paquet msys2-runtime)."
+    step "Go: $(go version)"
+    require_tool windres "It is part of the MSYS2 package mingw-w64-ucrt-x86_64-binutils (installed with gcc)."
+    require_tool ldd "It is part of MSYS2 (package msys2-runtime)."
     require_tool zip "pacman -S zip"
 
     local pkgdir="${PACKAGE_NAME}-${VERSION}-windows-x64"
@@ -491,7 +493,7 @@ Lancez plutôt .\\build-windows.ps1 depuis PowerShell, à la racine du dépôt."
 
     echo ""
     echo "========================================"
-    echo " Construction de $PACKAGE_NAME $VERSION (Windows x64)"
+    echo " Building $PACKAGE_NAME $VERSION (Windows x64)"
     echo "========================================"
 
     rm -rf "${WORK:?}"
@@ -501,19 +503,19 @@ Lancez plutôt .\\build-windows.ps1 depuis PowerShell, à la racine du dépôt."
     build_binary "$console" console
     rm -f "$SYSO"
 
-    step "Préparation de l'arborescence du paquet..."
+    step "Preparing the package tree..."
     stage_windows "$root" "$gui" "$console"
     normalize_tree "$root"
 
-    # Le paquet doit marcher sur une machine où MSYS2 n'est pas installé : on
-    # le lance avec un PATH réduit à celui de Windows, ses DLL doivent suffire.
-    step "Vérification du paquet (auto-test avec le seul PATH de Windows)..."
+    # The package must work on a machine where MSYS2 is not installed: we
+    # run it with a PATH reduced to that of Windows, its DLLs must be enough.
+    step "Checking the package (self-test with the Windows PATH only)..."
     local winroot
     winroot="$(cygpath -u "${SYSTEMROOT:-${SystemRoot:-C:\\Windows}}")"
     env PATH="$winroot/System32:$winroot" "$root/bin/$CONSOLE_EXE" -selftest \
-        || die "l'auto-test du programme échoue hors de MSYS2 : le paquet est incomplet (DLL, polices ou chargeurs d'images manquants)."
+        || die "the program's self-test fails outside MSYS2: the package is incomplete (missing DLLs, fonts or image loaders)."
 
-    step "Création de la version portable (.zip)..."
+    step "Creating the portable version (.zip)..."
     rm -f "${zip_out:?}"
     ( cd "$WORK" && find "$pkgdir" | LC_ALL=C sort | TZ=UTC zip -X -9 -q "$zip_out" -@ )
 
@@ -521,22 +523,22 @@ Lancez plutôt .\\build-windows.ps1 depuis PowerShell, à la racine du dépôt."
     local makensis
     makensis="$(find_makensis)"
     if [ -n "$makensis" ]; then
-        step "Création de l'installeur (.exe) avec NSIS..."
+        step "Creating the installer (.exe) with NSIS..."
         build_installer "$makensis" "$root" "$setup_out"
         built="$built
    $setup_out"
     else
         echo ""
-        echo "NSIS est introuvable : seule la version portable (.zip) est produite."
-        echo "Pour obtenir aussi l'installeur : winget install NSIS.NSIS, puis relancez."
+        echo "NSIS not found: only the portable version (.zip) is produced."
+        echo "To get the installer too: winget install NSIS.NSIS, then run again."
     fi
 
     echo ""
-    echo "✅ Paquet(s) créé(s) avec succès :"
+    echo "✅ Package(s) generated:"
     echo "   $built"
 }
 
-# Le script peut être « sourcé » (pour en tester les fonctions) sans rien lancer.
+# The script can be "sourced" (to test its functions) without running anything.
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
     main "$@"
 fi

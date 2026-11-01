@@ -1,24 +1,24 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-3.0-only
 #
-# Écrit le texte d'une release GitHub, en anglais puis en français : pour
-# chaque langue, la section du CHANGELOG de la version (CHANGELOG.md pour
-# l'anglais, CHANGELOG.fr.md pour le français), puis la liste des fichiers
-# joints avec ce qu'ils sont. Utilisé par le workflow release.yml.
+# Writes the text of a GitHub release, in English then in French: for each
+# language, the section of the CHANGELOG for the version (CHANGELOG.md for
+# English, CHANGELOG.fr.md for French), then the list of the attached files
+# with what they are. Used by the release.yml workflow.
 #
-# Usage : release-notes.sh VERSION [DOSSIER_DES_FICHIERS]
+# Usage: release-notes.sh VERSION [FILES_FOLDER]
 #
-# Sans dossier, seules les sections des deux CHANGELOG sont écrites (le workflow
-# les vérifie avant de construire). Le texte est écrit sur la sortie standard.
+# Without a folder, only the sections of the two CHANGELOGs are written (the
+# workflow checks them before building). The text is written to standard output.
 
 set -euo pipefail
 
-version="${1:?usage : release-notes.sh VERSION [DOSSIER_DES_FICHIERS]}"
+version="${1:?usage: release-notes.sh VERSION [FILES_FOLDER]}"
 files="${2:-}"
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 
-# La section « ## [X.Y.Z] - AAAA-MM-JJ » du CHANGELOG $1 jusqu'à la suivante,
-# sans son titre ni ses lignes vides du début et de la fin. Échoue si elle manque.
+# The "## [X.Y.Z] - YYYY-MM-DD" section of CHANGELOG $1 up to the next one,
+# without its title or its blank lines at the start and the end. Fails if it is missing.
 changelog_section() {
     local file="$1" section
     section="$(awk -v version="$version" '
@@ -28,21 +28,21 @@ changelog_section() {
     ' "$file")"
 
     if [ -z "$(tr -d '[:space:]' <<< "$section")" ]; then
-        echo "release-notes.sh : $file n'a pas de section « ## [$version] - AAAA-MM-JJ » avec du texte" >&2
+        echo "release-notes.sh: $file has no '## [$version] - YYYY-MM-DD' section with text" >&2
         return 1
     fi
 
-    # Retire les lignes vides du début et de la fin.
+    # Remove the blank lines at the start and at the end.
     printf '%s\n' "$section" | sed -e '/./,$!d' | sed -e ':a' -e '/^\n*$/{$d;N;ba' -e '}'
 }
 
-# La liste des fichiers joints, dans la langue $1 (en ou fr).
+# The list of the attached files, in language $1 (en or fr).
 files_list() {
     local lang="$1" path name what checksum
     for path in "$files"/imageprintlayout*; do
         [ -f "$path" ] || continue
         name="$(basename "$path")"
-        # Les empreintes sont dites avec le paquet qu'elles vérifient.
+        # The checksums are told with the package they verify.
         case "$name" in *.sha256) continue ;; esac
         case "$lang:$name" in
             en:*.deb)                  what="Ubuntu 24.04 and later, Debian 13: \`sudo apt install ./$name\`" ;;
@@ -73,8 +73,8 @@ files_list() {
     done
 }
 
-# Les deux sections sont lues avant d'écrire quoi que ce soit : il en manque une,
-# rien n'est écrit.
+# The two sections are read before anything is written: if one is missing,
+# nothing is written.
 english="$(changelog_section CHANGELOG.md)"
 french="$(changelog_section CHANGELOG.fr.md)"
 

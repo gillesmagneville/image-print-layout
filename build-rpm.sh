@@ -2,10 +2,10 @@
 # SPDX-License-Identifier: GPL-3.0-only
 set -euo pipefail
 
-# Construit le paquet RPM d'Image Print Layout, pour Fedora, RHEL et leurs
-# dérivés. Mêmes options et même gestion du fichier VERSION que build-deb.sh.
-# rpmbuild empaquète un dossier préparé par le script ; il ne compile rien
-# lui-même.
+# Builds the RPM package of Image Print Layout, for Fedora, RHEL and their
+# derivatives. Same options and same handling of the VERSION file as build-deb.sh.
+# rpmbuild packages a folder prepared by the script; it compiles nothing
+# itself.
 
 # ====================== CONFIGURATION ======================
 PACKAGE_NAME="imageprintlayout"
@@ -23,37 +23,37 @@ show_help() {
     cat << EOF
 Usage: ./build-rpm.sh [options]
 
-Script de construction du paquet RPM pour Image Print Layout.
+Script that builds the RPM package for Image Print Layout.
 
-OPTIONS :
-  --major               Incrémente le numéro majeur   (ex: 1.2.3 → 2.0.0)
-  --minor               Incrémente le numéro mineur   (ex: 1.2.3 → 1.3.0)
-  --patch               Incrémente le numéro de patch (ex: 1.2.3 → 1.2.4)
-  --no-version-change   Reconstruit le paquet sans changer la version
-  --clean               Nettoie le dossier de build et supprime tous les .rpm
-  --help, -h            Affiche cette aide
+OPTIONS:
+  --major               Increment the major number    (e.g. 1.2.3 → 2.0.0)
+  --minor               Increment the minor number    (e.g. 1.2.3 → 1.3.0)
+  --patch               Increment the patch number    (e.g. 1.2.3 → 1.2.4)
+  --no-version-change   Rebuild the package without changing the version
+  --clean               Clean the build folder and delete every .rpm
+  --help, -h            Show this help
 
-Sans argument → mode interactif (demande major / minor / patch / no-version-change)
+Without an option → interactive mode (asks major / minor / patch / no-version-change)
 
-Le fichier VERSION n'est mis à jour qu'une fois le paquet construit. Une
-version d'avant-publication (0.1.0-dev) est publiée par --minor ou --patch
-(→ 0.1.0) ; --major donne 1.0.0.
+The VERSION file is only updated once the package has been built. A
+pre-release version (0.1.0-dev) is released by --minor or --patch
+(→ 0.1.0); --major gives 1.0.0.
 
-Le paquet est créé à la racine du dépôt :
-imageprintlayout-<version>-<release>.<arch>.rpm. Une version d'avant-publication
-(0.1.0-dev) devient la release « 0.1.dev » et se classe avant la 0.1.0.
+The package is created at the root of the repository:
+imageprintlayout-<version>-<release>.<arch>.rpm. A pre-release version
+(0.1.0-dev) becomes release "0.1.dev" and sorts before 0.1.0.
 
-Prérequis :
+Prerequisites:
   Fedora        : sudo dnf install golang gcc pkgconf librsvg2-devel gdk-pixbuf2-devel cairo-devel fontconfig-devel gtk4-devel gobject-introspection-devel rpm-build
   Debian/Ubuntu : sudo apt install golang-go build-essential pkg-config librsvg2-dev libgdk-pixbuf-2.0-dev libfontconfig-dev libgtk-4-dev libgirepository1.0-dev rpm
 
-Les dépendances du paquet (bibliothèques partagées) sont déduites du binaire
-par rpmbuild. Le paquet est lié aux versions des bibliothèques de la machine
-de construction : pour viser une distribution, construisez-le dessus (ou dans
-un conteneur de cette distribution).
+The dependencies of the package (shared libraries) are deduced from the binary
+by rpmbuild. The package is tied to the library versions of the build
+machine: to target a distribution, build it on that distribution (or in a
+container of that distribution).
 
-Pour une construction identique d'une fois sur l'autre, la date des fichiers
-est celle du dernier commit ; SOURCE_DATE_EPOCH la remplace si elle est définie.
+For an identical build from one run to the next, the date of the files
+is that of the last commit; SOURCE_DATE_EPOCH overrides it when it is set.
 
 EOF
 }
@@ -71,7 +71,7 @@ while [[ $# -gt 0 ]]; do
         --clean)              CLEAN=true; shift ;;
         --help|-h)            show_help; exit 0 ;;
         *)
-            echo "Option inconnue : $1"
+            echo "Unknown option: $1"
             show_help
             exit 1
             ;;
@@ -80,57 +80,57 @@ done
 
 cd "$PROJECT_DIR"
 
-# === Mode nettoyage ===
+# === Clean mode ===
 if [ "$CLEAN" = true ]; then
-    echo ">>> Nettoyage du dossier de build..."
+    echo ">>> Cleaning the build folder..."
     rm -rf "${WORK_DIR:?}"
-    echo ">>> Suppression des paquets .rpm existants..."
+    echo ">>> Deleting the existing .rpm packages..."
     rm -f ./*.rpm
-    echo ">>> Nettoyage terminé."
+    echo ">>> Clean-up done."
     exit 0
 fi
 
-# === Vérification des outils ===
-erreur() {
+# === Checking the tools ===
+fail() {
     echo "" >&2
-    echo "Erreur : $*" >&2
+    echo "Error: $*" >&2
     exit 1
 }
 
-command -v rpmbuild >/dev/null 2>&1 || erreur "rpmbuild n'est pas installé. Installe-le avec : sudo dnf install rpm-build (Debian/Ubuntu : sudo apt install rpm)"
-command -v go >/dev/null 2>&1 || erreur "Go n'est pas installé (voir go.mod pour la version) : https://go.dev/doc/install"
-command -v gcc >/dev/null 2>&1 || erreur "gcc n'est pas installé. Installe-le avec : sudo dnf install gcc (Debian/Ubuntu : sudo apt install build-essential)"
-command -v pkg-config >/dev/null 2>&1 || erreur "pkg-config n'est pas installé. Installe-le avec : sudo dnf install pkgconf (Debian/Ubuntu : sudo apt install pkg-config)"
-pkg-config --exists librsvg-2.0 gdk-pixbuf-2.0 cairo fontconfig || erreur "les bibliothèques de développement de librsvg, de gdk-pixbuf, de cairo et de fontconfig sont absentes.
+command -v rpmbuild >/dev/null 2>&1 || fail "rpmbuild is not installed. Install it with: sudo dnf install rpm-build (Debian/Ubuntu: sudo apt install rpm)"
+command -v go >/dev/null 2>&1 || fail "Go is not installed (see go.mod for the version): https://go.dev/doc/install"
+command -v gcc >/dev/null 2>&1 || fail "gcc is not installed. Install it with: sudo dnf install gcc (Debian/Ubuntu: sudo apt install build-essential)"
+command -v pkg-config >/dev/null 2>&1 || fail "pkg-config is not installed. Install it with: sudo dnf install pkgconf (Debian/Ubuntu: sudo apt install pkg-config)"
+pkg-config --exists librsvg-2.0 gdk-pixbuf-2.0 cairo fontconfig || fail "the development libraries of librsvg, gdk-pixbuf, cairo and fontconfig are missing.
   Fedora        : sudo dnf install librsvg2-devel gdk-pixbuf2-devel cairo-devel fontconfig-devel
   Debian/Ubuntu : sudo apt install librsvg2-dev libgdk-pixbuf-2.0-dev libfontconfig-dev"
-pkg-config --exists gtk4 gobject-introspection-1.0 || erreur "les bibliothèques de développement de GTK 4 sont absentes (GTK 4.14 ou plus récent).
+pkg-config --exists gtk4 gobject-introspection-1.0 || fail "the GTK 4 development libraries are missing (GTK 4.14 or newer).
   Fedora        : sudo dnf install gtk4-devel gobject-introspection-devel
   Debian/Ubuntu : sudo apt install libgtk-4-dev libgirepository1.0-dev"
 pkg-config --atleast-version=4.14 gtk4 && pkg-config --atleast-version=2.80 glib-2.0 && pkg-config --atleast-version=2.52 librsvg-2.0 ||
-    erreur "les bibliothèques de cette distribution sont trop anciennes : GTK $(pkg-config --modversion gtk4), GLib $(pkg-config --modversion glib-2.0), librsvg $(pkg-config --modversion librsvg-2.0).
-  Il faut GTK 4.14, GLib 2.80 et librsvg 2.52 au moins (gotk4 v0.3.1) : Debian 13, Ubuntu 24.04, Fedora,
-  RHEL 10 et leurs dérivés. Debian 12, Ubuntu 22.04 et RHEL 9 ne conviennent pas."
+    fail "this distribution's libraries are too old: GTK $(pkg-config --modversion gtk4), GLib $(pkg-config --modversion glib-2.0), librsvg $(pkg-config --modversion librsvg-2.0).
+  At least GTK 4.14, GLib 2.80 and librsvg 2.52 are required (gotk4 v0.3.1): Debian 13, Ubuntu 24.04, Fedora,
+  RHEL 10 and their derivatives. Debian 12, Ubuntu 22.04 and RHEL 9 are not suitable."
 
 case "$(uname -m)" in
     x86_64)  RPM_ARCH="x86_64" ;;
     aarch64) RPM_ARCH="aarch64" ;;
-    *) erreur "architecture $(uname -m) non prise en charge (x86_64 et aarch64 seulement)." ;;
+    *) fail "architecture $(uname -m) is not supported (x86_64 and aarch64 only)." ;;
 esac
 
-# === Lecture de la version actuelle ===
-[ -f "$VERSION_FILE" ] || erreur "fichier VERSION introuvable : $VERSION_FILE"
+# === Reading the current version ===
+[ -f "$VERSION_FILE" ] || fail "VERSION file not found: $VERSION_FILE"
 CURRENT_VERSION=$(tr -d '[:space:]' < "$VERSION_FILE")
 
-# Une version est X.Y.Z, éventuellement suivie d'un suffixe d'avant-publication
+# A version is X.Y.Z, optionally followed by a pre-release suffix
 # (X.Y.Z-dev).
 SEMVER='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$'
-[[ "$CURRENT_VERSION" =~ $SEMVER ]] || erreur "VERSION contient « $CURRENT_VERSION », qui n'est pas une version X.Y.Z ou X.Y.Z-suffixe."
+[[ "$CURRENT_VERSION" =~ $SEMVER ]] || fail "VERSION contains '$CURRENT_VERSION', which is not an X.Y.Z or X.Y.Z-suffix version."
 
-# next_version VERSION major|minor|patch affiche la version suivante. Sans
-# suffixe, c'est l'incrément habituel (1.2.3 → 1.2.4). Avec un suffixe, la
-# version d'avant-publication est d'abord publiée : 0.1.0-dev → 0.1.0 par
-# --minor ou --patch, puisque 0.1.0 n'existe pas encore ; --major donne 1.0.0.
+# next_version VERSION major|minor|patch prints the next version. Without a
+# suffix, it is the usual increment (1.2.3 → 1.2.4). With a suffix, the
+# pre-release version is released first: 0.1.0-dev → 0.1.0 with
+# --minor or --patch, since 0.1.0 does not exist yet; --major gives 1.0.0.
 next_version() {
     local version="$1" part="$2" pre=""
     [[ "$version" == *-* ]] && pre="${version#*-}"
@@ -153,18 +153,18 @@ next_version() {
     echo "${major}.${minor}.${patch}"
 }
 
-# === Mode interactif si aucun argument ===
+# === Interactive mode when there is no option ===
 if [ -z "$INCREMENT" ] && [ "$NO_VERSION_CHANGE" = false ]; then
     echo ""
-    echo "Version actuelle : $CURRENT_VERSION"
+    echo "Current version: $CURRENT_VERSION"
     echo ""
-    echo "Que souhaitez-vous faire ?"
+    echo "What do you want to do?"
     echo "  1) major              (→ $(next_version "$CURRENT_VERSION" major))"
     echo "  2) minor              (→ $(next_version "$CURRENT_VERSION" minor))"
     echo "  3) patch              (→ $(next_version "$CURRENT_VERSION" patch))"
-    echo "  4) no-version-change  (reconstruire en $CURRENT_VERSION)"
+    echo "  4) no-version-change  (rebuild as $CURRENT_VERSION)"
     echo ""
-    read -r -p "Votre choix [1/2/3/4] : " CHOICE || CHOICE=""
+    read -r -p "Your choice [1/2/3/4]: " CHOICE || CHOICE=""
 
     case $CHOICE in
         1) INCREMENT="major" ;;
@@ -172,22 +172,22 @@ if [ -z "$INCREMENT" ] && [ "$NO_VERSION_CHANGE" = false ]; then
         3) INCREMENT="patch" ;;
         4) NO_VERSION_CHANGE=true ;;
         *)
-            echo "Choix invalide. Annulation."
+            echo "Invalid choice. Cancelled."
             exit 1
             ;;
     esac
 fi
 
-# === Calcul de la nouvelle version ===
+# === Computing the new version ===
 if [ "$NO_VERSION_CHANGE" = true ]; then
     NEW_VERSION="$CURRENT_VERSION"
 else
     NEW_VERSION=$(next_version "$CURRENT_VERSION" "$INCREMENT")
 fi
 
-# Numéros de version RPM. Une version d'avant-publication (0.1.0-dev) doit se
-# classer avant la version finale (0.1.0) : sa release est « 0.1.dev », celle
-# d'une version finale est « 1 ».
+# RPM version numbers. A pre-release version (0.1.0-dev) must sort before the
+# final version (0.1.0): its release is "0.1.dev", that of a final version
+# is "1".
 RPM_VERSION="${NEW_VERSION%%-*}"
 PRERELEASE=""
 if [[ "$NEW_VERSION" == *-* ]]; then
@@ -197,34 +197,34 @@ fi
 RPM_RELEASE="${PRERELEASE:+0.1.$PRERELEASE}"
 RPM_RELEASE="${RPM_RELEASE:-1}"
 
-# === Demande de confirmation ===
+# === Asking for confirmation ===
 echo ""
 echo "========================================"
 if [ "$NO_VERSION_CHANGE" = true ]; then
-    echo "  Mode           : Reconstruction sans changement de version"
+    echo "  Mode           : Rebuild without changing the version"
     echo "  Version        : $NEW_VERSION"
 else
-    echo "  Version actuelle : $CURRENT_VERSION"
-    echo "  Nouvelle version : $NEW_VERSION"
+    echo "  Current version : $CURRENT_VERSION"
+    echo "  New version     : $NEW_VERSION"
 fi
 echo "========================================"
 echo ""
-read -r -p "Construire le paquet en version $NEW_VERSION ? [o/N] " CONFIRM || CONFIRM=""
+read -r -p "Build the package as version $NEW_VERSION? [y/N] " CONFIRM || CONFIRM=""
 
-if [[ ! "$CONFIRM" =~ ^[oOyY]$ ]]; then
-    echo "Construction annulée. Aucun fichier n'a été modifié."
+if [[ ! "$CONFIRM" =~ ^[yY]$ ]]; then
+    echo "Build cancelled. No file was modified."
     exit 0
 fi
 
-# === À partir d'ici, la construction est confirmée ===
+# === From here on, the build is confirmed ===
 
-echo ">>> Suppression des paquets .rpm existants..."
+echo ">>> Deleting the existing .rpm packages..."
 rm -f ./*.rpm
 
 RPM_FILE="./${PACKAGE_NAME}-${RPM_VERSION}-${RPM_RELEASE}.${RPM_ARCH}.rpm"
 
-# Date des fichiers du paquet : celle du dernier commit, pour que deux
-# constructions du même code donnent le même paquet.
+# Date of the package files: that of the last commit, so that two builds of
+# the same code give the same package.
 if [ -z "${SOURCE_DATE_EPOCH:-}" ]; then
     SOURCE_DATE_EPOCH="$(git -c safe.directory="$PROJECT_DIR" -C "$PROJECT_DIR" log -1 --format=%ct 2>/dev/null || true)"
     SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(date +%s)}"
@@ -233,74 +233,76 @@ export SOURCE_DATE_EPOCH
 
 echo ""
 echo "========================================"
-echo " Construction du paquet $PACKAGE_NAME v$NEW_VERSION ($RPM_ARCH)"
+echo " Building package $PACKAGE_NAME v$NEW_VERSION ($RPM_ARCH)"
 echo "========================================"
 
 rm -rf "${WORK_DIR:?}"
 mkdir -p "$BUILD_DIR"
 
-# -trimpath, un identifiant de construction vide et l'absence d'informations
-# VCS rendent le binaire indépendant du dossier et de l'heure de la
-# construction ; -buildmode=pie permet à Linux de placer le programme à une
-# adresse aléatoire (durcissement). Le numéro de version du paquet est inscrit
-# dans le programme (imageprintlayout -version), même si le fichier VERSION du
-# projet n'est mis à jour qu'après un build réussi (voir plus bas).
-# gotk4 (la liaison de GTK pour Go) déclare « free » autrement que <stdlib.h> :
-# gcc le signale trois fois à chaque compilation (-Wbuiltin-declaration-mismatch).
-# Le code est celui de la bibliothèque et ce n'est pas un défaut ; on masque
-# seulement cet avertissement, sans toucher aux options par défaut de cgo
-# (-O2 -g). Les autres avertissements restent visibles.
-echo ">>> Compilation (cgo, GTK4, librsvg, gdk-pixbuf, cairo)..."
-echo "    La première compilation de GTK (gotk4) dure plusieurs minutes et n'affiche rien ;"
-echo "    les suivantes sont presque instantanées (cache de Go)."
+# -trimpath, an empty build id and the absence of VCS information make the
+# binary independent of the folder and of the time of the build; -buildmode=pie
+# lets Linux place the program at a random address (hardening). The package
+# version number is written into the program (imageprintlayout -version), even
+# though the project's VERSION file is only updated after a successful build
+# (see below).
+# gotk4 (the GTK binding for Go) declares "free" differently from <stdlib.h>:
+# gcc reports it three times at every compilation (-Wbuiltin-declaration-mismatch).
+# That is the library's code and not a defect; only this warning is hidden,
+# without touching cgo's default options
+# (-O2 -g). The other warnings stay visible.
+echo ">>> Compiling (cgo, GTK4, librsvg, gdk-pixbuf, cairo)..."
+echo "    The first compilation of GTK (gotk4) takes several minutes and prints nothing;"
+echo "    the following ones are almost instant (Go cache)."
 BINARY="$WORK_DIR/$PACKAGE_NAME"
 ( cd "$PROJECT_DIR" && CGO_ENABLED=1 CGO_CFLAGS="${CGO_CFLAGS:--O2 -g} -Wno-builtin-declaration-mismatch" go build -trimpath -buildvcs=false -buildmode=pie \
     -ldflags "-s -w -buildid= -X main.version=$NEW_VERSION" -o "$BINARY" ./cmd/imageprintlayout )
 
-echo ">>> Création de l'arborescence..."
+echo ">>> Creating the file tree..."
 install -D -m 0755 "$BINARY" "$BUILD_DIR/usr/bin/$PACKAGE_NAME"
 install -D -m 0644 "$PROJECT_DIR/metainfo/$APP_ID.desktop" "$BUILD_DIR/usr/share/applications/$APP_ID.desktop"
-# Métadonnées AppStream : elles permettent aux logithèques (GNOME Logiciels,
-# KDE Discover) d'afficher le paquet avec sa description complète.
+# AppStream metadata: it lets software centres (GNOME Software,
+# KDE Discover) show the package with its full description.
 install -D -m 0644 "$PROJECT_DIR/metainfo/$APP_ID.metainfo.xml" "$BUILD_DIR/usr/share/metainfo/$APP_ID.metainfo.xml"
 install -D -m 0644 "$PROJECT_DIR/icons/imageprintlayout.svg" "$BUILD_DIR/usr/share/icons/hicolor/scalable/apps/imageprintlayout.svg"
 install -D -m 0644 "$PROJECT_DIR/icons/imageprintlayout-256.png" "$BUILD_DIR/usr/share/icons/hicolor/256x256/apps/imageprintlayout.png"
-# Page de manuel : en anglais dans man1 (langue de repli), traduite dans le
-# dossier de chaque langue (man-db choisit selon la langue de l'utilisateur).
+# Manual page: in English in man1 (fallback language), translated in the
+# folder of each language (man-db picks the one matching the user's language).
 install -d -m 0755 "$BUILD_DIR/usr/share/man/man1"
 gzip -9n -c "$PROJECT_DIR/docs/imageprintlayout.1" > "$BUILD_DIR/usr/share/man/man1/$PACKAGE_NAME.1.gz"
-for LANGUE in fr es de; do
-    install -d -m 0755 "$BUILD_DIR/usr/share/man/$LANGUE/man1"
-    gzip -9n -c "$PROJECT_DIR/docs/$LANGUE/imageprintlayout.1" > "$BUILD_DIR/usr/share/man/$LANGUE/man1/$PACKAGE_NAME.1.gz"
+for LANG_CODE in fr es de; do
+    install -d -m 0755 "$BUILD_DIR/usr/share/man/$LANG_CODE/man1"
+    gzip -9n -c "$PROJECT_DIR/docs/$LANG_CODE/imageprintlayout.1" > "$BUILD_DIR/usr/share/man/$LANG_CODE/man1/$PACKAGE_NAME.1.gz"
 done
 chmod 0644 "$BUILD_DIR"/usr/share/man/man1/*.gz "$BUILD_DIR"/usr/share/man/*/man1/*.gz
 install -D -m 0644 "$PROJECT_DIR/README.md" "$BUILD_DIR/usr/share/doc/$PACKAGE_NAME/README.md"
 install -D -m 0644 "$PROJECT_DIR/README.fr.md" "$BUILD_DIR/usr/share/doc/$PACKAGE_NAME/README.fr.md"
+install -D -m 0644 "$PROJECT_DIR/CODE_OF_CONDUCT.md" "$BUILD_DIR/usr/share/doc/$PACKAGE_NAME/CODE_OF_CONDUCT.md"
+install -D -m 0644 "$PROJECT_DIR/CODE_OF_CONDUCT.fr.md" "$BUILD_DIR/usr/share/doc/$PACKAGE_NAME/CODE_OF_CONDUCT.fr.md"
 install -D -m 0644 "$PROJECT_DIR/CHANGELOG.md" "$BUILD_DIR/usr/share/doc/$PACKAGE_NAME/CHANGELOG.md"
 install -D -m 0644 "$PROJECT_DIR/CHANGELOG.fr.md" "$BUILD_DIR/usr/share/doc/$PACKAGE_NAME/CHANGELOG.fr.md"
 install -D -m 0644 "$PROJECT_DIR/LICENSE" "$BUILD_DIR/usr/share/licenses/$PACKAGE_NAME/LICENSE"
 
-# install -m fixe les permissions voulues, quel que soit l'umask de la machine
-# de build ; on fixe ici les dates, pour que le paquet ne dépende pas du moment
-# de la construction.
-echo ">>> Normalisation des permissions..."
+# install -m already sets the wanted permissions, whatever the umask of the
+# build machine; here we set the dates, so that the package does not depend on
+# the time of the build.
+echo ">>> Normalising the permissions..."
 find "$BUILD_DIR" -type d -exec chmod 755 {} +
 find "$BUILD_DIR" -exec touch -h -d "@$SOURCE_DATE_EPOCH" {} +
 
-echo ">>> Écriture du fichier .spec..."
+echo ">>> Writing the .spec file..."
 TOP="$WORK_DIR/rpmbuild"
 SPEC="$TOP/SPECS/$PACKAGE_NAME.spec"
 mkdir -p "$TOP/SPECS"
 {
-    # Il n'y a ni %prep, ni %build, ni %install : le programme est déjà
-    # compilé et installé dans BUILD_DIR, rpmbuild ne fait que l'empaqueter.
+    # There is no %prep, %build or %install: the program is already
+    # compiled and installed in BUILD_DIR, rpmbuild only packages it.
     cat << EOF
-# Le binaire est déjà dépouillé à l'édition de liens ; pas de paquet debuginfo.
+# The binary is already stripped at link time; no debuginfo package.
 %global debug_package %{nil}
 %global __strip /bin/true
 %define _build_id_links none
 
-# Un même contenu donne un même paquet : dates fixées par SOURCE_DATE_EPOCH.
+# The same content gives the same package: dates fixed by SOURCE_DATE_EPOCH.
 %define use_source_date_epoch_as_buildtime 1
 %define clamp_mtime_to_source_date_epoch 1
 %define _buildhost reproducible
@@ -309,15 +311,15 @@ Name:           $PACKAGE_NAME
 Version:        $RPM_VERSION
 Release:        $RPM_RELEASE
 Summary:        $DESCRIPTION
-License:        GPL-3.0-only
+License:        GPL-3.0-only AND CC-BY-SA-4.0
 URL:            $URL
 Packager:       $MAINTAINER
-# Les chargeurs d'images de gdk-pixbuf sont en partie dans des paquets à part :
-# le TIFF dans gdk-pixbuf2-modules, le WebP dans webp-pixbuf-loader. Sans eux, le
-# programme refuse ce format en le disant et lit les autres.
+# The gdk-pixbuf image loaders are partly in separate packages:
+# TIFF in gdk-pixbuf2-modules, WebP in webp-pixbuf-loader. Without them the
+# program refuses that format and says so, and reads the others.
 Recommends:     gdk-pixbuf2-modules webp-pixbuf-loader
-# Le programme s'appelait « svgprintlayout » jusqu'à la version 1.0.x : installer
-# celui-ci retire l'ancien paquet.
+# The program was called "svgprintlayout" up to version 1.0.x: installing
+# this one removes the old package.
 Obsoletes:      svgprintlayout < 1.1.0
 
 %description
@@ -331,7 +333,7 @@ Le document garde une échelle unique : aucune page n'est réduite en silence
 pour faire tenir une portion trop haute. Le fichier d'origine n'est jamais
 modifié.
 
-# Met à jour les caches de l'icône et du menu ; un échec n'est pas une erreur.
+# Updates the icon and menu caches; a failure is not an error.
 %post
 /usr/bin/gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor >/dev/null 2>&1 || :
 /usr/bin/update-desktop-database -q /usr/share/applications >/dev/null 2>&1 || :
@@ -346,8 +348,8 @@ EOF
     echo "%attr(0755,root,root) /usr/bin/$PACKAGE_NAME"
     echo "%dir /usr/share/doc/$PACKAGE_NAME"
     echo "%dir /usr/share/licenses/$PACKAGE_NAME"
-    # Les notes et la licence reçoivent leurs marques (%doc, %license) : dnf
-    # peut alors les exclure ou les lister à part.
+    # The notes and the licence get their marks (%doc, %license): dnf
+    # can then exclude them or list them separately.
     ( cd "$BUILD_DIR" && find usr -type f ! -path "usr/bin/*" | sort | sed \
         -e 's|^usr/share/doc/|%doc /usr/share/doc/|' \
         -e 's|^usr/share/licenses/|%license /usr/share/licenses/|' \
@@ -356,10 +358,10 @@ EOF
     echo ""
     echo "%changelog"
     echo "* $(LC_ALL=C date -u -d "@$SOURCE_DATE_EPOCH" '+%a %b %d %Y') $MAINTAINER - $RPM_VERSION-$RPM_RELEASE"
-    echo "- Paquet construit à partir du dépôt ; l'historique est dans CHANGELOG.md (en anglais) et CHANGELOG.fr.md (en français)."
+    echo "- Package built from the repository; the history is in CHANGELOG.md (English) and CHANGELOG.fr.md (French)."
 } > "$SPEC"
 
-echo ">>> Création du paquet .rpm..."
+echo ">>> Creating the .rpm package..."
 rpmbuild -bb "$SPEC" \
     --quiet \
     --buildroot "$BUILD_DIR" \
@@ -367,25 +369,25 @@ rpmbuild -bb "$SPEC" \
     --define "_topdir $TOP" \
     --define "_rpmdir $PROJECT_DIR" \
     --define "_rpmfilename %%{NAME}-%%{VERSION}-%%{RELEASE}.%%{ARCH}.rpm"
-[ -f "$RPM_FILE" ] || erreur "rpmbuild n'a pas produit $RPM_FILE."
+[ -f "$RPM_FILE" ] || fail "rpmbuild did not produce $RPM_FILE."
 
 echo ""
-echo "✅ Paquet créé avec succès :"
+echo "✅ Package generated:"
 echo "   $RPM_FILE"
 echo "   $(du -h "$RPM_FILE" | cut -f1) — sha256 $(sha256sum "$RPM_FILE" | cut -c1-16)…"
 
-# Le fichier VERSION du projet n'est mis à jour qu'ici, une fois le .rpm
-# effectivement construit. Ainsi, un échec de build (compilation, rpmbuild...)
-# ne laisse jamais le projet dans un état incohérent (VERSION incrémenté sans
-# .rpm correspondant).
+# The project's VERSION file is only updated here, once the .rpm has really
+# been built. This way, a failed build (compilation, rpmbuild...)
+# never leaves the project in an inconsistent state (VERSION incremented
+# without a matching .rpm).
 if [ "$NO_VERSION_CHANGE" = true ]; then
-    echo "   Version inchangée : $NEW_VERSION"
+    echo "   Version unchanged: $NEW_VERSION"
 else
     echo "$NEW_VERSION" > "$VERSION_FILE"
-    echo "   Version enregistrée : $NEW_VERSION"
+    echo "   Version recorded: $NEW_VERSION"
     if [[ "$NEW_VERSION" != *-* ]]; then
-        echo "   Pensez à ajouter « ## [$NEW_VERSION] » à CHANGELOG.md et à CHANGELOG.fr.md (voir CONTRIBUTING.fr.md)."
+        echo "   Remember to add '## [$NEW_VERSION]' to CHANGELOG.md and CHANGELOG.fr.md (see CONTRIBUTING.md)."
     fi
 fi
 echo ""
-echo "Pour l'essayer : sudo dnf install \"$RPM_FILE\" && $PACKAGE_NAME -selftest"
+echo "To try it: sudo dnf install \"$RPM_FILE\" && $PACKAGE_NAME -selftest"

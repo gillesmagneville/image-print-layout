@@ -33,7 +33,7 @@ Le script a les mêmes options que `build-deb.sh` et `build-rpm.sh` (et que le
 .\build-windows.ps1 -NoVersionChange   # reconstruit sans changer la version
 .\build-windows.ps1 -Clean             # supprime le dossier de build et les paquets Windows
 .\build-windows.ps1 -Help              # aide
-.\build-windows.ps1 -Oui               # répond « oui » à toutes les questions (sans surveillance)
+.\build-windows.ps1 -Yes               # répond « oui » à toutes les questions (sans surveillance)
 ```
 
 Sans option de version, le script affiche la version actuelle (fichier `VERSION`),
@@ -107,8 +107,8 @@ imageprintlayout-X.Y.Z-windows-x64/
 ├── share/glib-2.0/schemas/         schémas de réglages de GTK (sans eux, GTK s'arrête à l'ouverture d'un sélecteur de fichier)
 ├── share/icons/                    thèmes d'icônes Adwaita et hicolor (images des boutons)
 ├── share/locale/                   traductions des textes propres à GTK (français, espagnol, allemand)
-├── share/licenses/                 licence de chaque bibliothèque, et COMPOSANTS.txt (liste, versions)
-├── LICENSE, README.md, README.fr.md, CHANGELOG.md, CHANGELOG.fr.md
+├── share/licenses/                 licence de chaque bibliothèque, et COMPONENTS.txt (liste, versions)
+├── LICENSE, README.md, README.fr.md, CHANGELOG.md, CHANGELOG.fr.md, CODE_OF_CONDUCT.md, CODE_OF_CONDUCT.fr.md
 ```
 
 Un programme Windows n'est pas installé sous un préfixe fixe : fontconfig et gdk-pixbuf
@@ -187,7 +187,7 @@ Ne les enregistrez pas sans BOM.
 ## Ce qui est vérifié, et par qui
 
 La CI (job `windows-package`, sur `windows-2022` et `windows-latest`) fait exactement ce que
-fait un utilisateur : elle exécute `.\build-windows.ps1 -Patch -Oui` dans Windows PowerShell 5.1 (et vérifie que
+fait un utilisateur : elle exécute `.\build-windows.ps1 -Patch -Yes` dans Windows PowerShell 5.1 (et vérifie que
 `VERSION` est mis à jour après la construction), puis
 décompresse le `.zip`, lance `imageprintlayout-console.exe -selftest` avec le seul PATH de
 Windows, puis **ouvre la fenêtre** dans les quatre langues (le programme crée un fichier
@@ -214,7 +214,7 @@ nécessaires au premier essai.
 
 ## Dépannage
 
-**« ce script doit s'exécuter dans un terminal MSYS2 UCRT64 »**
+**« this script must run in an MSYS2 UCRT64 terminal »** (message du script, en anglais : « ce script doit s'exécuter dans un terminal MSYS2 UCRT64 »)
 `build-windows.sh` a été lancé dans un autre terminal (MSYS, MINGW64, Git Bash).
 Lancez `.\build-windows.ps1`, ou ouvrez « MSYS2 UCRT64 » dans le menu Démarrer.
 
@@ -222,7 +222,7 @@ Lancez `.\build-windows.ps1`, ou ouvrez « MSYS2 UCRT64 » dans le menu Démarre
 La base de paquets de MSYS2 est périmée. Dans un terminal MSYS2 UCRT64, `pacman -Syu`
 (deux fois si MSYS2 demande de relancer la mise à jour), puis relancez la construction.
 
-**« bibliothèques introuvables pour … »**
+**« libraries not found for … »** (message du script, en anglais : « bibliothèques introuvables pour … »)
 `ldd` ne voit pas une DLL de MSYS2 : c'est le signe que le script n'a pas été lancé dans
 un terminal UCRT64, ou qu'un paquet est à moitié installé (`pacman -S --needed` le
 répare).
@@ -232,7 +232,7 @@ répare).
 Utilisez `imageprintlayout-console.exe` pour voir les messages (`-version`, `-selftest`, ou
 le message d'une erreur de démarrage).
 
-**« l'auto-test du programme échoue hors de MSYS2 »**
+**« the program's self-test fails outside MSYS2 »** (message du script, en anglais : « l'auto-test du programme échoue hors de MSYS2 »)
 Le paquet est incomplet. Le message d'`-selftest`, affiché juste au-dessus, dit ce qui
 manque : une police (« aucune police n'a été incorporée »), une image PNG qui n'apparaît
 pas (chargeurs d'images ou leur cache), ou une DLL (la fenêtre d'erreur de Windows

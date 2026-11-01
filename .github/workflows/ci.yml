@@ -133,12 +133,12 @@ jobs:
           sudo apt-get install -y --no-install-recommends librsvg2-dev libgdk-pixbuf-2.0-dev libfontconfig-dev libgtk-4-dev libgirepository1.0-dev \
             rpm lintian appstream desktop-file-utils xvfb xauth imagemagick adwaita-icon-theme
       # The scripts ask which version to build and for a confirmation, like a
-      # user's run: "o" answers the confirmation, --no-version-change keeps
+      # user's run: "y" answers the confirmation, --no-version-change keeps
       # VERSION as it is. The packages are written at the root of the repository.
       - name: Build the .deb and the .rpm
         run: |
-          echo o | ./build-deb.sh --no-version-change
-          echo o | ./build-rpm.sh --no-version-change
+          echo y | ./build-deb.sh --no-version-change
+          echo y | ./build-rpm.sh --no-version-change
       - name: Check the .deb with lintian, AppStream and desktop-file-validate
         run: |
           lintian --fail-on error ./*.deb
@@ -165,8 +165,8 @@ jobs:
       - name: Check that building twice gives the same files
         run: |
           sha256sum ./*.deb ./*.rpm > "$RUNNER_TEMP/first.sha"
-          echo o | ./build-deb.sh --no-version-change >/dev/null
-          echo o | ./build-rpm.sh --no-version-change >/dev/null
+          echo y | ./build-deb.sh --no-version-change >/dev/null
+          echo y | ./build-rpm.sh --no-version-change >/dev/null
           sha256sum --check "$RUNNER_TEMP/first.sha"
       - uses: actions/upload-artifact@v4
         with:
@@ -181,22 +181,22 @@ jobs:
       - name: Check how the scripts manage VERSION
         run: .github/scripts/test-version-handling.sh
 
-  # Les paquets Linux sont liés aux bibliothèques de la machine qui les a
-  # construits. Ce job construit donc le paquet dans un conteneur de chaque
-  # distribution visée (famille Debian : .deb ; famille Red Hat : .rpm), l'y
-  # installe avec apt ou dnf, et lance le programme installé. Pour une
-  # distribution connue pour être trop ancienne (« refus attendu » : GTK < 4.14
-  # ou GLib < 2.80), le test vérifie que le script de construction refuse, avec
-  # un message clair. Le résultat de chaque distribution est dans l'annotation
-  # de l'exécution.
+  # The Linux packages are tied to the libraries of the machine that built
+  # them. This job therefore builds the package in a container of each
+  # target distribution (Debian family: .deb; Red Hat family: .rpm), installs
+  # it there with apt or dnf, and runs the installed program. For a
+  # distribution known to be too old ("refusal expected": GTK < 4.14
+  # or GLib < 2.80), the test checks that the build script refuses, with
+  # a clear message. The result of each distribution is in the annotation
+  # of the run.
   distributions:
     name: ${{ matrix.name }}
     runs-on: ubuntu-latest
     container: ${{ matrix.image }}
     timeout-minutes: 60
-    # Chemin absolu : après setup-go, le PATH que le lanceur donne au conteneur
-    # de Rocky Linux 10 ne contient plus /usr/bin, et « sh » n'est plus trouvé
-    # (code 127). Le script remet les dossiers système dans le PATH.
+    # Absolute path: after setup-go, the PATH that the runner gives to the
+    # Rocky Linux 10 container no longer contains /usr/bin, and "sh" is not found
+    # any more (code 127). The script puts the system folders back in the PATH.
     defaults:
       run:
         shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
@@ -211,9 +211,9 @@ jobs:
           - { name: "CentOS Stream 10",           image: "quay.io/centos/centos:stream10",  family: redhat, expect: "" }
           - { name: "AlmaLinux 10",               image: "almalinux:10",                    family: redhat, expect: "" }
           - { name: "Rocky Linux 10",             image: "rockylinux/rockylinux:10",        family: redhat, expect: "" }
-          - { name: "Debian 12 (refus attendu)",  image: "debian:12",                       family: debian, expect: refus }
-          - { name: "Ubuntu 22.04 (refus attendu)", image: "ubuntu:22.04",                  family: debian, expect: refus }
-          - { name: "AlmaLinux 9 (refus attendu)", image: "almalinux:9",                    family: redhat, expect: refus }
+          - { name: "Debian 12 (refusal expected)",  image: "debian:12",                       family: debian, expect: refusal }
+          - { name: "Ubuntu 22.04 (refusal expected)", image: "ubuntu:22.04",                  family: debian, expect: refusal }
+          - { name: "AlmaLinux 9 (refusal expected)", image: "almalinux:9",                    family: redhat, expect: refusal }
     env:
       CGO_ENABLED: "1"
       GSK_RENDERER: cairo
@@ -221,7 +221,7 @@ jobs:
       NO_AT_BRIDGE: "1"
       LIBGL_ALWAYS_SOFTWARE: "1"
     steps:
-      # git d'abord : le script de construction lit la date du dernier commit.
+      # git first: the build script reads the date of the last commit.
       - name: Install git
         run: |
           if command -v apt-get > /dev/null; then
@@ -231,16 +231,16 @@ jobs:
           fi
       - uses: actions/checkout@v4
       - name: PATH before setup-go
-        run: echo "::notice title=PATH avant setup-go::$PATH ; bash=$(command -v bash) ; sh=$(command -v sh)"
+        run: echo "::notice title=PATH before setup-go::$PATH ; bash=$(command -v bash) ; sh=$(command -v sh)"
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache: false
       - name: PATH after setup-go
-        run: echo "::notice title=PATH après setup-go::$PATH ; bash=$(command -v bash) ; sh=$(command -v sh) ; go=$(command -v go)"
-      # Les outils que le script suppose présents : si une image minimale en
-      # manque un, l'annotation le dit (les journaux ne se lisent pas sans
-      # téléchargement).
+        run: echo "::notice title=PATH after setup-go::$PATH ; bash=$(command -v bash) ; sh=$(command -v sh) ; go=$(command -v go)"
+      # The tools that the script assumes are present: if a minimal image
+      # lacks one, the annotation says so (the logs cannot be read without
+      # downloading them).
       - name: Tools the script needs
         run: |
           PATH="$PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -248,7 +248,7 @@ jobs:
           for tool in bash env tee tail awk sed grep sort tr seq mktemp dirname; do
             command -v "$tool" > /dev/null || missing="$missing $tool"
           done
-          echo "::notice title=Outils::manquants :${missing:- aucun}; shell=$SHELL; $(. /etc/os-release && echo "$PRETTY_NAME")"
+          echo "::notice title=Tools::missing:${missing:- none}; shell=$SHELL; $(. /etc/os-release && echo "$PRETTY_NAME")"
       - name: Build the package, install it, run it
         run: /usr/bin/bash .github/scripts/test-distribution.sh ${{ matrix.family }} ${{ matrix.expect }}
       - uses: actions/upload-artifact@v4
@@ -259,10 +259,10 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-  # Windows 10 et 11 : la CI n'a ni l'un ni l'autre, seulement des Windows
-  # Server. windows-2022 (le plus ancien proposé) sert de repère pour Windows 10,
-  # windows-latest (Windows Server 2025) pour Windows 11 ; la recette à la main sur
-  # une vraie machine Windows a été faite pour la 1.0.0 (§14 de ARCHITECTURE.md).
+  # Windows 10 and 11: the CI has neither, only Windows Server editions.
+  # windows-2022 (the oldest offered) is the reference for Windows 10,
+  # windows-latest (Windows Server 2025) for Windows 11; the manual test on
+  # a real Windows machine was done for 1.0.0 (section 14 of ARCHITECTURE.md).
   windows-package:
     name: Windows package (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -277,7 +277,7 @@ jobs:
         shell: pwsh
         run: choco install nsis --no-progress -y
       # The same entry point as a user's: it checks MSYS2 and its packages,
-      # installs what is missing (-Oui answers yes), then builds both packages
+      # installs what is missing (-Yes answers yes), then builds both packages
       # as -Patch, which also checks that VERSION is updated after the build.
       # Windows PowerShell 5.1 on purpose: it is what a user has. The steps
       # are in a script so that a failure leaves its last lines as an error

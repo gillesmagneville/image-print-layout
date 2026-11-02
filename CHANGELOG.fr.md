@@ -11,6 +11,10 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Ajouté
+
+- **Une politique de sécurité** ([`SECURITY.fr.md`](SECURITY.fr.md), en français et en anglais) : comment signaler une vulnérabilité en privé, quelles versions reçoivent des correctifs et ce qu'on peut en attendre. C'est un fichier du dépôt ; les paquets ne l'embarquent pas.
+
 ## [1.3.2] - 2026-10-31
 
 Version de maintenance : le programme lui-même ne change pas.

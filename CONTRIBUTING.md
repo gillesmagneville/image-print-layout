@@ -11,6 +11,8 @@ Image Print Layout is developed by Gilles MAGNEVILLE, and designed with the help
 
 By taking part in this project, you agree to follow its [Code of Conduct](CODE_OF_CONDUCT.md).
 
+To report a **security problem**, please do not open a public issue: follow the [Security Policy](SECURITY.md).
+
 ## Reporting a bug
 
 Open an issue stating:
@@ -152,7 +154,7 @@ as long as a package of `internal/` is not listed there.
 Every document of the project exists in two languages: English (the default file,
 `X.md`) and French (`X.fr.md`), each linking to the other at the top of the file. When you
 change one, change the other too (or say in your pull request that the other still has to
-be updated). The documents are: `README`, `ARCHITECTURE`, `CONTRIBUTING`, `CODE_OF_CONDUCT`, `PROJECT_CONTEXT`,
+be updated). The documents are: `README`, `ARCHITECTURE`, `CONTRIBUTING`, `CODE_OF_CONDUCT`, `SECURITY`, `PROJECT_CONTEXT`,
 `CHANGELOG`, `docs/M0`, `windows/README` and `testdata/README`. `go test ./internal/repocheck`
 checks that both versions exist, link to each other and have the same sections, and that the
 two changelogs list the same releases.

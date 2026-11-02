@@ -88,6 +88,7 @@ Chaque document existe en deux langues : l'anglais (le fichier par défaut, `X.m
 - [`ARCHITECTURE.fr.md`](ARCHITECTURE.fr.md) : le contrat technique (paquets, interfaces, formules, format de projet, vérifications, plan de livraison). Il fait foi pour tout ce qui est concret.
 - [`CONTRIBUTING.fr.md`](CONTRIBUTING.fr.md) : signaler un bug, proposer une amélioration, contribuer du code.
 - [`CODE_OF_CONDUCT.fr.md`](CODE_OF_CONDUCT.fr.md) : le code de conduite de la communauté (Contributor Covenant 3.0).
+- [`SECURITY.fr.md`](SECURITY.fr.md) : la politique de sécurité : comment signaler une vulnérabilité.
 - [`docs/M0.fr.md`](docs/M0.fr.md) : rapport du prototype du moteur de rendu (mesures, découvertes, ce qui reste à valider).
 - [`CHANGELOG.fr.md`](CHANGELOG.fr.md) : l'historique des changements.
 

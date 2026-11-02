@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **A security policy** ([`SECURITY.md`](SECURITY.md), in English and in French): how to report a vulnerability privately, which versions receive fixes and what to expect. It is a file of the repository; the packages do not ship it.
+
 ## [1.3.2] - 2026-10-31
 
 Maintenance release: the program itself does not change.

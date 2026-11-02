@@ -88,6 +88,7 @@ Every document exists in two languages: English (the default file, `X.md`) and F
 - [`ARCHITECTURE.md`](ARCHITECTURE.md): the technical contract (packages, interfaces, formulas, project format, checks, delivery plan). It is authoritative for everything concrete.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md): report a bug, propose an improvement, contribute code.
 - [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md): the code of conduct of the community (Contributor Covenant 3.0).
+- [`SECURITY.md`](SECURITY.md): the security policy: how to report a vulnerability.
 - [`docs/M0.md`](docs/M0.md): report on the rendering engine prototype (measurements, discoveries, what remains to be validated).
 - [`CHANGELOG.md`](CHANGELOG.md): the history of changes.
 

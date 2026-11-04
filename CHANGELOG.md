@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - **A security policy** ([`SECURITY.md`](SECURITY.md), in English and in French): how to report a vulnerability privately, which versions receive fixes and what to expect. It is a file of the repository; the packages do not ship it.
 
+### Changed
+
+- **The last comments in English**: the comments of `.gitattributes`, of the `.desktop` file and of the AppStream file (`metainfo/`) were still in French; they are now in English, like those of the code, the scripts and the CI. Nothing changes for the user, and the Go code was already commented in English.
+
 ## [1.3.2] - 2026-10-31
 
 Maintenance release: the program itself does not change.

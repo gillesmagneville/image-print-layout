@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-only
-# Le texte sans suffixe est l'anglais, langue de repli ; les suffixes [fr],
-# [es] et [de] donnent les trois autres langues du programme.
+# The text without a suffix is English, the fallback language; the suffixes [fr],
+# [es] and [de] give the other three languages of the program.
 [Desktop Entry]
 Type=Application
 Name=Image Print Layout

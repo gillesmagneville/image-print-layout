@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- SPDX-License-Identifier: GPL-3.0-only -->
 <!--
-  Métadonnées AppStream d'Image Print Layout, pour les gestionnaires de logiciels
-  (GNOME Logiciels, App Center, KDE Discover). Le texte sans attribut xml:lang
-  est l'anglais, langue de repli ; xml:lang="fr", "es" et "de" donnent les trois
-  autres langues du programme.
+  AppStream metadata of Image Print Layout, for software managers
+  (GNOME Software, App Center, KDE Discover). The text without an xml:lang
+  attribute is English, the fallback language; xml:lang="fr", "es" and "de" give
+  the other three languages of the program.
 
-  L'<id> doit correspondre au nom de ce fichier (io.github.gillesmagneville.imageprintlayout.metainfo.xml)
-  et le <launchable> au nom du fichier .desktop installé (io.github.gillesmagneville.imageprintlayout.desktop). Le nom
-  de domaine inversé est celui que demande AppStream pour un projet hébergé sur GitHub.
+  The <id> must match the name of this file (io.github.gillesmagneville.imageprintlayout.metainfo.xml)
+  and the <launchable> the name of the installed .desktop file (io.github.gillesmagneville.imageprintlayout.desktop). The reverse
+  domain name is the one AppStream asks for a project hosted on GitHub.
 -->
 <component type="desktop-application">
   <id>io.github.gillesmagneville.imageprintlayout</id>

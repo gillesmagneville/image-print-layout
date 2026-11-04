@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 #
-# Les scripts lus par bash doivent garder des fins de ligne Unix, même dans une
-# copie de travail Windows (MSYS2) : un retour chariot casserait leur exécution.
+# Scripts read by bash must keep Unix line endings, even in a Windows working
+# copy (MSYS2): a carriage return would break their execution.
 *.sh   text eol=lf
 *.1    text eol=lf
 VERSION  text eol=lf

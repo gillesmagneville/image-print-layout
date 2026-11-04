@@ -15,6 +15,10 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 - **Une politique de sécurité** ([`SECURITY.fr.md`](SECURITY.fr.md), en français et en anglais) : comment signaler une vulnérabilité en privé, quelles versions reçoivent des correctifs et ce qu'on peut en attendre. C'est un fichier du dépôt ; les paquets ne l'embarquent pas.
 
+### Modifié
+
+- **Les derniers commentaires en anglais** : les commentaires de `.gitattributes`, du fichier `.desktop` et du fichier AppStream (`metainfo/`) étaient encore en français ; ils sont maintenant en anglais, comme ceux du code, des scripts et de la CI. Rien ne change pour l'utilisateur, et le code Go était déjà commenté en anglais.
+
 ## [1.3.2] - 2026-10-31
 
 Version de maintenance : le programme lui-même ne change pas.

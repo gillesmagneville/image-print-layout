@@ -11,7 +11,10 @@ set -euo pipefail
 PACKAGE_NAME="imageprintlayout"
 APP_ID="io.github.gillesmagneville.imageprintlayout"
 MAINTAINER="Gilles MAGNEVILLE <gilles@magneville.fr>"
-DESCRIPTION="Met en page un SVG ou une image sur plusieurs feuilles et l'exporte en PDF"
+# The summary and the description are in English, the language of the packages,
+# and the .rpm also carries them in French, Spanish and German (Summary(xx) and
+# %description -l xx): rpm -qi shows the one of the language of the system.
+DESCRIPTION="Lays out an SVG drawing or an image over several sheets and exports it as a PDF"
 URL="https://github.com/gillesmagneville/image-print-layout"
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORK_DIR="$HOME/rpm-build"
@@ -311,6 +314,9 @@ Name:           $PACKAGE_NAME
 Version:        $RPM_VERSION
 Release:        $RPM_RELEASE
 Summary:        $DESCRIPTION
+Summary(fr):    Met en page un dessin SVG ou une image sur plusieurs feuilles et l'exporte en PDF
+Summary(es):    Reparte un dibujo SVG o una imagen en varias hojas y lo exporta como PDF
+Summary(de):    Verteilt eine SVG-Zeichnung oder ein Bild auf mehrere Blätter und exportiert das Ergebnis als PDF
 License:        GPL-3.0-only AND CC-BY-SA-4.0
 URL:            $URL
 Packager:       $MAINTAINER
@@ -323,6 +329,16 @@ Recommends:     gdk-pixbuf2-modules webp-pixbuf-loader
 Obsoletes:      svgprintlayout < 1.1.0
 
 %description
+Image Print Layout prepares a document of any size for printing on several
+sheets of standard paper: a vector SVG drawing, or an image (JPEG, PNG,
+TIFF, WebP, BMP, GIF). You choose the format, the margins and the width,
+place the cuts with the mouse, then export a single multi-page PDF
+(vector for an SVG).
+
+The document keeps a single scale: no page is silently shrunk to fit a
+portion that is too tall. The original file is never modified.
+
+%description -l fr
 Image Print Layout prépare l'impression d'un document de dimensions
 quelconques sur plusieurs feuilles de papier standard : un dessin vectoriel
 SVG, ou une image (JPEG, PNG, TIFF, WebP, BMP, GIF). On choisit le format,
@@ -332,6 +348,28 @@ un seul PDF multipage (vectoriel pour un SVG).
 Le document garde une échelle unique : aucune page n'est réduite en silence
 pour faire tenir une portion trop haute. Le fichier d'origine n'est jamais
 modifié.
+
+%description -l es
+Image Print Layout prepara la impresión de un documento de cualquier tamaño
+en varias hojas de papel estándar: un dibujo vectorial SVG o una imagen
+(JPEG, PNG, TIFF, WebP, BMP, GIF). Se elige el formato, los márgenes y el
+ancho, se colocan los cortes con el ratón y se exporta un único PDF de
+varias páginas (vectorial si es un SVG).
+
+El documento conserva una única escala: ninguna página se reduce en silencio
+para que quepa una parte demasiado alta. El archivo original nunca se
+modifica.
+
+%description -l de
+Image Print Layout bereitet ein Dokument beliebiger Größe für den Druck auf
+mehreren Blättern Standardpapier vor: eine SVG-Vektorzeichnung oder ein Bild
+(JPEG, PNG, TIFF, WebP, BMP, GIF). Man wählt Format, Ränder und Breite,
+setzt die Schnitte mit der Maus und exportiert ein einziges mehrseitiges PDF
+(bei SVG als Vektor-PDF).
+
+Das Dokument behält einen einzigen Maßstab: Keine Seite wird
+stillschweigend verkleinert, damit ein zu hoher Abschnitt passt. Die
+ursprüngliche Datei wird nie verändert.
 
 # Updates the icon and menu caches; a failure is not an error.
 %post

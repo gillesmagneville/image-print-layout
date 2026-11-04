@@ -12,7 +12,9 @@ set -euo pipefail
 PACKAGE_NAME="imageprintlayout"
 APP_ID="io.github.gillesmagneville.imageprintlayout"
 MAINTAINER="Gilles MAGNEVILLE <gilles@magneville.fr>"
-DESCRIPTION="Met en page un SVG ou une image sur plusieurs feuilles et l'exporte en PDF"
+# A .deb has a single description, and by custom it is in English. The software
+# centres show the AppStream sheet (metainfo/), which has the four languages.
+DESCRIPTION="Lays out an SVG drawing or an image over several sheets and exports it as a PDF"
 URL="https://github.com/gillesmagneville/image-print-layout"
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORK_DIR="$HOME/deb-build"
@@ -333,15 +335,14 @@ Conflicts: svgprintlayout (<< 1.1.0)
 Replaces: svgprintlayout (<< 1.1.0)
 Homepage: $URL
 Description: $DESCRIPTION
- Image Print Layout prépare l'impression d'un document de dimensions
- quelconques sur plusieurs feuilles de papier standard : un dessin vectoriel
- SVG, ou une image (JPEG, PNG, TIFF, WebP, BMP, GIF). On choisit le format,
- les marges et la largeur, on place les coupures à la souris, puis on exporte
- un seul PDF multipage (vectoriel pour un SVG).
+ Image Print Layout prepares a document of any size for printing on several
+ sheets of standard paper: a vector SVG drawing, or an image (JPEG, PNG,
+ TIFF, WebP, BMP, GIF). You choose the format, the margins and the width,
+ place the cuts with the mouse, then export a single multi-page PDF
+ (vector for an SVG).
  .
- Le document garde une échelle unique : aucune page n'est réduite en silence
- pour faire tenir une portion trop haute. Le fichier d'origine n'est jamais
- modifié.
+ The document keeps a single scale: no page is silently shrunk to fit a
+ portion that is too tall. The original file is never modified.
 EOF
 # Maintainer scripts: dpkg-deb handles them natively when they are in DEBIAN/.
 install -m 0755 "$PROJECT_DIR/debian/postinst" "$BUILD_DIR/DEBIAN/postinst"

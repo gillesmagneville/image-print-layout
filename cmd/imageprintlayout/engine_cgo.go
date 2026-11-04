@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/gillesmagneville/image-print-layout/internal/engine"
+	"github.com/gillesmagneville/image-print-layout/internal/i18n"
 	"github.com/gillesmagneville/image-print-layout/internal/units"
 )
 
@@ -54,7 +55,7 @@ const (
 // sees: the size they have at their resolution, the red of the top left corner
 // and the white of the bottom right one, and that a JPEG goes into a PDF as it
 // is. It is what tells a package whose image loaders are missing.
-func checkImages(out io.Writer, ok func(string)) error {
+func checkImages(out io.Writer, tr *i18n.Translator, ok func(string)) error {
 	for _, c := range []struct {
 		name   string
 		format engine.Format
@@ -70,16 +71,16 @@ func checkImages(out io.Writer, ok func(string)) error {
 			return err
 		}
 		if got := engine.Detect(raw); got != c.format {
-			return fmt.Errorf("l'image %s d'essai est reconnue comme %q", c.name, got)
+			return errors.New(tr.T("selftest.error.image_detect", "name", c.name, "got", fmt.Sprintf("%q", got)))
 		}
 		d, err := engine.LoadImage(raw, "")
 		if err != nil {
-			return fmt.Errorf("l'image %s d'essai n'a pas pu être lue : %v. Vérifiez que gdk-pixbuf et son chargeur d'images %s sont installés", c.name, err, c.name)
+			return errors.New(tr.T("selftest.error.image_load", "name", c.name, "error", err.Error()))
 		}
 		defer d.Close()
 		w, h := d.Size()
 		if math.Abs(w-c.units) > 0.01 || math.Abs(h-c.units) > 0.01 {
-			return fmt.Errorf("l'image %s d'essai devrait mesurer %.2f x %.2f unités, le moteur lit %v x %v", c.name, c.units, c.units, w, h)
+			return errors.New(tr.T("selftest.error.image_size", "name", c.name, "expected", tr.Number(c.units, 2), "width", w, "height", h))
 		}
 		px := 32 / w
 		img, err := d.Render(engine.Box{W: w, H: h}, px, nil)
@@ -89,7 +90,7 @@ func checkImages(out io.Writer, ok func(string)) error {
 		red := color.RGBAModel.Convert(img.At(4, 4)).(color.RGBA)
 		white := color.RGBAModel.Convert(img.At(28, 28)).(color.RGBA)
 		if red.R < 200 || red.G > 80 || red.B > 80 || white.R < 200 || white.G < 200 || white.B < 200 {
-			return fmt.Errorf("l'image %s d'essai est mal lue : le coin haut gauche devrait être rouge (lu %v) et le coin bas droit blanc (lu %v)", c.name, red, white)
+			return errors.New(tr.T("selftest.error.image_pixels", "name", c.name, "red", red, "white", white))
 		}
 		if c.format == engine.FormatJPEG {
 			var pdf bytes.Buffer
@@ -98,31 +99,32 @@ func checkImages(out io.Writer, ok func(string)) error {
 				return err
 			}
 			if !bytes.Contains(pdf.Bytes(), []byte("/DCTDecode")) {
-				return errors.New("le JPEG d'essai n'est pas incorporé tel quel dans le PDF")
+				return errors.New(tr.T("selftest.error.jpeg_not_embedded"))
 			}
 		}
-		ok(fmt.Sprintf("lecture d'une image %s intégrée (%d × %d pixels)", c.name, d.ImageInfo().WidthPx, d.ImageInfo().HeightPx))
+		ok(tr.T("selftest.ok.image", "name", c.name, "width", d.ImageInfo().WidthPx, "height", d.ImageInfo().HeightPx))
 	}
 	var have []string
 	for _, f := range engine.SupportedImageFormats() {
 		have = append(have, f.Label())
 	}
-	fmt.Fprintf(out, "Formats d'image lisibles : %s\n", strings.Join(have, ", "))
+	fmt.Fprintln(out, tr.T("selftest.formats", "formats", strings.Join(have, ", ")))
 	return nil
 }
 
 // runSelfTest checks, on the machine and with the libraries it runs on, the
 // whole chain an installed package depends on: the SVG library and its
 // fonts, the drawing library, the PDF writer and the readers of images. It is what a package
-// smoke test, or a user whose export fails, runs first.
-func runSelfTest(out io.Writer) error {
+// smoke test, or a user whose export fails, runs first. What it says is in the
+// language of tr.
+func runSelfTest(out io.Writer, tr *i18n.Translator) error {
 	rsvg, cairo := engine.Versions()
-	fmt.Fprintf(out, "Moteur de rendu : librsvg %s, cairo %s\n", rsvg, cairo)
+	fmt.Fprintln(out, tr.T("selftest.engine", "rsvg", rsvg, "cairo", cairo))
 	if conf := os.Getenv("FONTCONFIG_FILE"); conf != "" {
-		fmt.Fprintf(out, "Configuration des polices : %s\n", conf)
+		fmt.Fprintln(out, tr.T("selftest.fontconfig", "path", conf))
 	}
 	if cache := os.Getenv("GDK_PIXBUF_MODULE_FILE"); cache != "" {
-		fmt.Fprintf(out, "Chargeurs d'images : %s\n", cache)
+		fmt.Fprintln(out, tr.T("selftest.loaders", "path", cache))
 	}
 	ok := func(what string) { fmt.Fprintf(out, "  ok  %s\n", what) }
 
@@ -133,18 +135,18 @@ func runSelfTest(out io.Writer) error {
 	defer d.Close()
 	w, h := d.Size()
 	if math.Abs(w-100) > 1e-6 || math.Abs(h-60) > 1e-6 {
-		return fmt.Errorf("le SVG d'essai devrait mesurer 100 x 60 unités, le moteur lit %v x %v", w, h)
+		return errors.New(tr.T("selftest.error.svg_size", "width", w, "height", h))
 	}
-	ok("chargement du SVG intégré (100 x 60 unités)")
+	ok(tr.T("selftest.ok.svg"))
 
 	box, err := d.Measure("bloc")
 	if err != nil {
 		return err
 	}
 	if math.Abs(box.X-10) > 0.01 || math.Abs(box.Y-10) > 0.01 || math.Abs(box.W-40) > 0.01 || math.Abs(box.H-20) > 0.01 {
-		return fmt.Errorf("la boîte du bloc devrait être (10, 10, 40 x 20), le moteur lit (%v, %v, %v x %v)", box.X, box.Y, box.W, box.H)
+		return errors.New(tr.T("selftest.error.box", "x", box.X, "y", box.Y, "width", box.W, "height", box.H))
 	}
-	ok("mesure d'un élément dans le repère du document")
+	ok(tr.T("selftest.ok.measure"))
 
 	img, err := d.Render(engine.Box{X: 0, Y: 0, W: w, H: h}, 4, color.White)
 	if err != nil {
@@ -153,17 +155,17 @@ func runSelfTest(out io.Writer) error {
 	blue := color.RGBAModel.Convert(img.At(4*20, 4*20)).(color.RGBA)
 	paper := color.RGBAModel.Convert(img.At(4*2, 4*2)).(color.RGBA)
 	if blue.B < 180 || blue.R > 100 || paper.R < 230 || paper.G < 230 || paper.B < 230 {
-		return fmt.Errorf("le rendu en image est faux : le bloc devrait être bleu (lu %v) et le fond clair (lu %v)", blue, paper)
+		return errors.New(tr.T("selftest.error.render", "block", blue, "paper", paper))
 	}
 	red := color.RGBAModel.Convert(img.At(4*70, 4*20)).(color.RGBA)
 	if red.R < 180 || red.G > 110 || red.B > 110 {
-		return fmt.Errorf("l'image PNG incorporée n'apparaît pas : le carré devrait être rouge (lu %v). Vérifiez que gdk-pixbuf et ses chargeurs d'images sont installés", red)
+		return errors.New(tr.T("selftest.error.embedded_png", "red", red))
 	}
-	ok("rendu en image, image PNG incorporée comprise")
+	ok(tr.T("selftest.ok.render"))
 
 	a4, found := units.Lookup("A4")
 	if !found {
-		return errors.New("format A4 introuvable")
+		return errors.New(tr.T("selftest.error.no_a4"))
 	}
 	sheetW, sheetH := a4.Oriented(false)
 	s, err := units.MMPerUnit(150, w)
@@ -184,24 +186,24 @@ func runSelfTest(out io.Writer) error {
 	}
 	pdf := bytes.TrimRight(first.Bytes(), "\r\n ")
 	if !bytes.HasPrefix(pdf, []byte("%PDF-")) || !bytes.HasSuffix(pdf, []byte("%%EOF")) {
-		return errors.New("le fichier produit n'est pas un PDF complet")
+		return errors.New(tr.T("selftest.error.pdf_incomplete"))
 	}
-	ok(fmt.Sprintf("export PDF d'une page A4 (%d octets)", first.Len()))
+	ok(tr.T("selftest.ok.pdf", "bytes", first.Len()))
 
 	if !bytes.Contains(pdf, []byte("/FontFile")) {
-		return errors.New("aucune police n'a été incorporée au PDF : le texte serait absent. Vérifiez qu'une police est installée et que fontconfig la trouve")
+		return errors.New(tr.T("selftest.error.no_font"))
 	}
-	ok("police incorporée dans le PDF (le texte reste du texte)")
+	ok(tr.T("selftest.ok.font"))
 
 	if !bytes.Equal(first.Bytes(), second.Bytes()) {
-		return errors.New("deux exports successifs du même document ne sont pas identiques")
+		return errors.New(tr.T("selftest.error.not_deterministic"))
 	}
-	ok("deux exports successifs identiques")
+	ok(tr.T("selftest.ok.deterministic"))
 
-	if err := checkImages(out, ok); err != nil {
+	if err := checkImages(out, tr, ok); err != nil {
 		return err
 	}
 
-	fmt.Fprintln(out, "Tout fonctionne.")
+	fmt.Fprintln(out, tr.T("selftest.success"))
 	return nil
 }

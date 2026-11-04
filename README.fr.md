@@ -220,7 +220,7 @@ la construction Windows (MSYS2, NSIS, SmartScreen, dépannage) dans
 
 Le programme installé sait s'auto-vérifier : `imageprintlayout -selftest` contrôle le
 moteur de rendu (bibliothèques, polices, images incorporées, lecture d'un JPEG, d'un PNG et d'un TIFF, export PDF) sur la machine
-où il tourne. C'est la première commande à lancer en cas de problème.
+où il tourne, et le dit dans la langue de l'interface (option `-lang`). C'est la première commande à lancer en cas de problème.
 
 ## Auteur
 

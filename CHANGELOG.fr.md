@@ -18,6 +18,7 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 ### Modifié
 
 - **Les derniers commentaires en anglais** : les commentaires de `.gitattributes`, du fichier `.desktop` et du fichier AppStream (`metainfo/`) étaient encore en français ; ils sont maintenant en anglais, comme ceux du code, des scripts et de la CI. Rien ne change pour l'utilisateur, et le code Go était déjà commenté en anglais.
+- **`-selftest` parle la langue de l'interface** : ses messages (les versions du moteur et des bibliothèques, chaque contrôle, les échecs avec le conseil qui les accompagne, « Tout fonctionne. ») étaient toujours en français. Ils sont maintenant dans les quatre langues (`-lang`, sinon la langue du système), comme le reste de la ligne de commande, et se trouvent dans les catalogues sous `selftest.*`. Les contrôles sont les mêmes et le code de sortie ne change pas.
 
 ## [1.3.2] - 2026-10-31
 

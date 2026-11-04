@@ -220,7 +220,7 @@ the Windows build (MSYS2, NSIS, SmartScreen, troubleshooting) in
 
 The installed program can check itself: `imageprintlayout -selftest` checks the
 rendering engine (libraries, fonts, embedded images, reading a JPEG, a PNG and a TIFF, PDF export) on the machine
-where it runs. It is the first command to run in case of a problem.
+where it runs, and says so in the language of the interface (option `-lang`). It is the first command to run in case of a problem.
 
 ## Author
 

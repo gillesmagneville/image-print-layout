@@ -48,7 +48,7 @@ func main() {
 	}
 
 	if *selfTest {
-		if err := runSelfTest(os.Stdout); err != nil {
+		if err := runSelfTest(os.Stdout, tr); err != nil {
 			fmt.Fprintln(os.Stderr, tr.T("cli.error.selftest", "error", err.Error()))
 			os.Exit(1)
 		}

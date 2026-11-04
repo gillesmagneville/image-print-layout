@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - **The last comments in English**: the comments of `.gitattributes`, of the `.desktop` file and of the AppStream file (`metainfo/`) were still in French; they are now in English, like those of the code, the scripts and the CI. Nothing changes for the user, and the Go code was already commented in English.
 - **`-selftest` speaks the language of the interface**: its messages (the versions of the engine and of the libraries, each check, the failures with the advice that goes with them, "Everything works.") were always in French. They are now in the four languages (`-lang`, else the language of the system), like the rest of the command line, and live in the catalogs under `selftest.*`. The checks are the same and the exit code does not change.
+- **The descriptions of the packages are in English, and in four languages for the `.rpm`**: the `.deb` and the `.rpm` described the program in French only. The `.deb` has a single description, now in English, as is the custom; the `.rpm` carries it in English and also in French, Spanish and German (`rpm -qi` shows the one of the language of the system). The software centres keep reading the AppStream sheet, which already had the four languages.
 
 ## [1.3.2] - 2026-10-31
 

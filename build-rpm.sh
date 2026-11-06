@@ -306,8 +306,11 @@ mkdir -p "$TOP/SPECS"
 %define _build_id_links none
 
 # The same content gives the same package: dates fixed by SOURCE_DATE_EPOCH.
+# (build_mtime_policy replaces clamp_mtime_to_source_date_epoch, which recent
+# versions of rpm flag as deprecated; the script already sets the dates of the
+# files, the policy is only a safety net.)
 %define use_source_date_epoch_as_buildtime 1
-%define clamp_mtime_to_source_date_epoch 1
+%define build_mtime_policy clamp_to_source_date_epoch
 %define _buildhost reproducible
 
 Name:           $PACKAGE_NAME

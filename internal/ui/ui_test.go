@@ -560,7 +560,7 @@ func runScenario() {
 			if shown := texts(w.win); !contains(shown, "Bei 100 %: 338,7 × 1449,7 mm") {
 				fail("document (de): the size at 100%% is not shown with a comma; the window shows %q", shown)
 			}
-			if shown := texts(w.win); !contains(shown, "3 Schnitte vorgeschlagen, für 4 Seiten (Strg+Z zum Zurückgehen).") {
+			if shown := texts(w.win); !contains(shown, "3 Schnitte vorgeschlagen, für 4 Seiten (Strg+Z zum Rückgängigmachen).") {
 				fail("document (de): the status of the automatic cuts is not in German; the window shows %q", shown)
 			}
 			return true

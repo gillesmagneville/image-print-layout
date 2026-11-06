@@ -49,8 +49,8 @@ Le script vérifie ses prérequis et propose d'installer ce qui manque (voir ci-
 
 - `imageprintlayout_X.Y.Z_windows-portable.zip` : un dossier autonome, à décompresser
   n'importe où et à lancer sans installation ;
-- `imageprintlayout_X.Y.Z_windows-setup.exe` : l'installeur (menu Démarrer, désinstalleur),
-  si NSIS est disponible.
+- `imageprintlayout_X.Y.Z_windows-setup.exe` : l'installeur (raccourcis facultatifs du menu Démarrer et du Bureau,
+  désinstalleur), si NSIS est disponible.
 
 Le dossier de travail est `%LOCALAPPDATA%\imageprintlayout-build`, hors du dépôt ; `-Clean`
 le supprime.

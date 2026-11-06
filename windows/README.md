@@ -49,8 +49,8 @@ At the end, the root of the repository contains:
 
 - `imageprintlayout_X.Y.Z_windows-portable.zip`: a standalone folder, to unzip
   anywhere and launch without installation;
-- `imageprintlayout_X.Y.Z_windows-setup.exe`: the installer (Start menu, uninstaller),
-  if NSIS is available.
+- `imageprintlayout_X.Y.Z_windows-setup.exe`: the installer (optional Start menu and Desktop shortcuts,
+  uninstaller), if NSIS is available.
 
 The working folder is `%LOCALAPPDATA%\imageprintlayout-build`, outside the repository; `-Clean`
 deletes it.

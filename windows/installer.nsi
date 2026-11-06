@@ -37,6 +37,7 @@ BrandingText "Image Print Layout ${APP_VERSION}"
 !include "MUI2.nsh"
 !include "FileFunc.nsh"  ; ${GetSize}, for EstimatedSize
 !include "x64.nsh"       ; ${RunningX64}
+!include "Sections.nsh"  ; ${SelectSection}, to tick the Desktop shortcut
 
 !define MUI_ABORTWARNING
 !define MUI_ICON "${APP_ICON}"
@@ -45,7 +46,14 @@ BrandingText "Image Print Layout ${APP_VERSION}"
 ; administrator, and the program started from here would too. The Start
 ; menu shortcut starts it with the person's rights.
 
+; Components page: lets the user tick the optional shortcuts (Start Menu,
+; Desktop). Without it the two optional sections below would never be offered
+; (the Desktop one, unticked by default, could never be chosen). No
+; description area: the three entries speak for themselves.
+!define MUI_COMPONENTSPAGE_NODESC
+
 !insertmacro MUI_PAGE_WELCOME
+!insertmacro MUI_PAGE_COMPONENTS
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_PAGE_FINISH
@@ -122,6 +130,8 @@ Function .onInit
     StrCmp $0 "" instdir_done 0
     StrCpy $INSTDIR $0
     instdir_done:
+
+    Call KeepDesktopShortcut
 FunctionEnd
 
 Function un.onInit
@@ -185,6 +195,16 @@ SectionEnd
 Section /o "$(SEC_DESKTOP)" SecDesktop
     CreateShortCut "$DESKTOP\Image Print Layout.lnk" "$INSTDIR\bin\imageprintlayout.exe"
 SectionEnd
+
+; Update: the old uninstaller, run by SecMain, deletes the Desktop shortcut.
+; If there was one, we tick the box again so that it is recreated; the user
+; can still untick it. (Called by .onInit, but defined here because the
+; section index ${SecDesktop} only exists once the section is declared.)
+Function KeepDesktopShortcut
+    IfFileExists "$DESKTOP\Image Print Layout.lnk" 0 no_desktop_lnk
+        !insertmacro SelectSection ${SecDesktop}
+    no_desktop_lnk:
+FunctionEnd
 
 Section "Uninstall"
     !include "uninstall-files.nsh"

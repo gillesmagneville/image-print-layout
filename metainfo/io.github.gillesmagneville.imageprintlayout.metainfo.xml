@@ -87,6 +87,14 @@
   </categories>
 
   <releases>
+    <release version="1.3.3" date="2026-11-06">
+      <description>
+        <p>Maintenance release: the Windows installer offers its shortcuts (Start Menu, Desktop) on a components page, and a box to run the program at the end. The messages of the -selftest check and the descriptions of the packages are now translated, and the Spanish and German texts were proofread. The layout, the cuts and the exports do not change.</p>
+        <p xml:lang="fr">Version de maintenance : l'installeur Windows propose ses raccourcis (menu Démarrer, Bureau) sur une page des composants, et une case pour lancer le programme à la fin. Les messages du contrôle -selftest et les descriptions des paquets sont maintenant traduits, et les textes espagnols et allemands ont été relus. La mise en page, les coupures et les exports ne changent pas.</p>
+        <p xml:lang="es">Versión de mantenimiento: el instalador de Windows ofrece sus accesos directos (menú Inicio, Escritorio) en una página de componentes, y una casilla para ejecutar el programa al final. Los mensajes de la comprobación -selftest y las descripciones de los paquetes están ahora traducidos, y se han revisado los textos en español y en alemán. La maquetación, los cortes y las exportaciones no cambian.</p>
+        <p xml:lang="de">Wartungsversion: Das Windows-Installationsprogramm bietet seine Verknüpfungen (Startmenü, Desktop) auf einer Komponentenseite an und am Ende ein Kästchen zum Starten des Programms. Die Meldungen der Prüfung -selftest und die Beschreibungen der Pakete sind jetzt übersetzt, und die spanischen und deutschen Texte wurden überarbeitet. Seitenlayout, Schnitte und Exporte ändern sich nicht.</p>
+      </description>
+    </release>
     <release version="1.3.2" date="2026-10-31">
       <description>
         <p>Maintenance release: the project now has a Code of Conduct, which the packages ship, and its build scripts and CI are in English. The program itself does not change.</p>

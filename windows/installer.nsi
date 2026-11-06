@@ -42,9 +42,11 @@ BrandingText "Image Print Layout ${APP_VERSION}"
 !define MUI_ABORTWARNING
 !define MUI_ICON "${APP_ICON}"
 !define MUI_UNICON "${APP_ICON}"
-; No "Run the program" box at the end: the installer runs as
-; administrator, and the program started from here would too. The Start
-; menu shortcut starts it with the person's rights.
+; "Run Image Print Layout" box on the last page. The installer runs as
+; administrator, and a program started directly from here would too: the
+; function goes through Explorer instead (see LaunchProgram).
+!define MUI_FINISHPAGE_RUN
+!define MUI_FINISHPAGE_RUN_FUNCTION LaunchProgram
 
 ; Components page: lets the user tick the optional shortcuts (Start Menu,
 ; Desktop). Without it the two optional sections below would never be offered
@@ -204,6 +206,14 @@ Function KeepDesktopShortcut
     IfFileExists "$DESKTOP\Image Print Layout.lnk" 0 no_desktop_lnk
         !insertmacro SelectSection ${SecDesktop}
     no_desktop_lnk:
+FunctionEnd
+
+; Called by the box of the last page (never shown by a silent installation).
+; "explorer.exe <program>" asks the Explorer already running in the user's
+; session to open the program, which therefore starts with the user's rights
+; and not with the administrator rights of the installer.
+Function LaunchProgram
+    Exec '"$WINDIR\explorer.exe" "$INSTDIR\bin\imageprintlayout.exe"'
 FunctionEnd
 
 Section "Uninstall"

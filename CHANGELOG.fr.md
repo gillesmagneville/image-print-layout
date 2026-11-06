@@ -11,6 +11,10 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+## [1.3.3] - 2026-11-06
+
+Version de maintenance : la mise en page, les coupures et les exports ne changent pas. L'installeur Windows propose ses raccourcis et une case « Lancer », les messages de `-selftest` et les descriptions des paquets sont traduits, et les textes espagnols et allemands ont été relus.
+
 ### Ajouté
 
 - **Une politique de sécurité** ([`SECURITY.fr.md`](SECURITY.fr.md), en français et en anglais) : comment signaler une vulnérabilité en privé, quelles versions reçoivent des correctifs et ce qu'on peut en attendre. C'est un fichier du dépôt ; les paquets ne l'embarquent pas.

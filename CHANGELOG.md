@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.3.3] - 2026-11-06
+
+Maintenance release: the layout, the cuts and the exports do not change. The Windows installer offers its shortcuts and a "Run" box, the messages of `-selftest` and the descriptions of the packages are translated, and the Spanish and German texts were proofread.
+
 ### Added
 
 - **A security policy** ([`SECURITY.md`](SECURITY.md), in English and in French): how to report a vulnerability privately, which versions receive fixes and what to expect. It is a file of the repository; the packages do not ship it.
